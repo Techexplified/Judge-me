@@ -1,0 +1,321 @@
+{% if block.settings.enable %}
+<div id="app-reviews-root" 
+     data-product-id="{{ product.id }}" 
+     data-product-name="{{ product.title | escape }}"
+     data-shop="{{ shop.permanent_domain }}">
+</div>
+
+<script>
+async function initProductReviews() {
+  const root = document.querySelector("#app-reviews-root");
+  if (!root) return;
+
+  const shop = root.dataset.shop;
+  const productId = root.dataset.productId;
+  const productName = root.dataset.productName;
+  const API = "https://backup-jet.vercel.app";
+
+  try {
+    const [settingsRes, reviewsRes] = await Promise.all([
+      fetch(`${API}/api/public/settings?shop=${shop}`),
+      fetch(`${API}/api/public/reviews?productId=${productId}&shop=${shop}`)
+    ]);
+
+    const settingsData = await settingsRes.json();
+    const reviewsData = await reviewsRes.json();
+
+    const cfg = settingsData.config || {
+      starColor: "#f97316",
+      buttonColor: "#2563eb",
+      fontSize: 14
+    };
+
+    const style = document.createElement("style");
+    style.innerHTML = `
+      .jd-wrapper {
+        display: flex;
+        gap: 60px;
+        align-items: flex-start;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: ${cfg.fontSize}px;
+        color: #1a202c;
+        margin: 60px 0;
+      }
+      .jd-left { width: 60%; }
+      .jd-right {
+        width: 40%;
+        display: none;
+        border: 1px solid #f1f5f9;
+        background: #f8fafc;
+        padding: 32px;
+        border-radius: 12px;
+        position: sticky;
+        top: 20px;
+      }
+      .jd-title { font-size: 28px; font-weight: 800; margin-bottom: 24px; letter-spacing: -0.025em; }
+      
+      /* --- Enhanced Review Item UI --- */
+      .jd-review {
+        padding: 32px 0;
+        border-bottom: 1px solid #edf2f7;
+      }
+      .jd-review:last-child { border-bottom: none; }
+
+      .jd-review-header {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .jd-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        color: #4a5568;
+        flex-shrink: 0;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      }
+      .jd-author { font-weight: 700; font-size: 16px; color: #1a202c; }
+      .jd-stars {
+        color: ${cfg.starColor};
+        font-size: 14px;
+        margin: 8px 0;
+        display: flex;
+        gap: 2px;
+      }
+      .jd-meta {
+        font-size: 13px;
+        color: #718096;
+        margin-bottom: 12px;
+      }
+      .jd-comment { 
+        line-height: 1.7; 
+        color: #2d3748; 
+        font-size: 15px;
+        word-break: break-word; 
+      }
+      
+      /* --- Professional Store Reply UI --- */
+      .jd-reply-box {
+        margin-top: 20px;
+        margin-left: 20px;
+        padding: 20px;
+        
+        border-radius: 8px;
+        position: relative;
+      }
+      .jd-reply-box::before {
+        content: "";
+        position: absolute;
+        left: -12px;
+        top: 20px;
+        border-width: 6px;
+        border-style: solid;
+        border-color: transparent #f1f5f9 transparent transparent;
+      }
+      .jd-reply-header {
+        font-size: 13px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .jd-reply-content {
+        color: #475569;
+        line-height: 1.6;
+        font-size: 14px;
+      }
+      .jd-reply-icon {
+        width: 16px;
+        height: 16px;
+        color: #64748b;
+      }
+
+      /* --- Form/Button Elements (Keep functionality same) --- */
+      .jd-write-btn {
+        margin-bottom: 32px;
+        padding: 14px 28px;
+        border-radius: 8px;
+        border: 1px solid #1a202c;
+        background: #1a202c;
+        color: #fff;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s ease;
+      }
+      .jd-write-btn:hover { background: #000; transform: translateY(-1px); }
+      
+      .jd-input {
+        width: 100%;
+        padding: 12px;
+        margin: 8px 0 16px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        box-sizing: border-box;
+        font-family: inherit;
+      }
+      .jd-submit {
+        width: 100%;
+        padding: 14px;
+        background: ${cfg.buttonColor};
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .jd-star-input span {
+        font-size: 32px;
+        cursor: pointer;
+        color: ${cfg.starColor};
+        opacity: 0.3;
+      }
+      label { font-weight: 600; font-size: 13px; color: #475569; }
+    `;
+    document.head.appendChild(style);
+
+    root.innerHTML = `
+      <div class="jd-wrapper">
+        <div class="jd-left">
+          <div class="jd-title">Customer Reviews</div>
+          <button id="openFormBtn" class="jd-write-btn">Write a product review</button>
+
+          <div id="reviews-container">
+            ${reviewsData.length === 0 ? `<p style="color:#718096">No reviews yet. Be the first to share your thoughts!</p>` : reviewsData.map(r => `
+              <div class="jd-review">
+                <div class="jd-review-header">
+                  <div class="jd-avatar">${r.author.charAt(0).toUpperCase()}</div>
+                  <div>
+                    <div class="jd-author">${r.author}</div>
+                    <div class="jd-stars">
+                      ${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}
+                    </div>
+                  </div>
+                </div>
+                <div class="jd-meta">
+                  Reviewed on ${new Date(r.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                </div>
+                <div class="jd-comment">${r.comment}</div>
+
+                ${r.reply ? `
+                  <div class="jd-reply-box">
+                    <div class="jd-reply-header">
+                      <svg class="jd-reply-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 17 4 12 9 7"></polyline>
+                        <path d="M20 18v-2a4 4 0 0 0-4-4H4"></path>
+                      </svg>
+                      Store Response
+                    </div>
+                    <div class="jd-reply-content">${r.reply}</div>
+                  </div>
+                ` : ''}
+              </div>
+            `).join("")}
+          </div>
+        </div>
+
+        <div class="jd-right" id="reviewForm">
+          <h3 style="margin-top:0; margin-bottom:20px">Review this product</h3>
+          <label>Your Rating *</label>
+          <div class="jd-star-input" id="starInput" style="margin-bottom:15px">
+            ${[1,2,3,4,5].map(i => `<span data-v="${i}">★</span>`).join("")}
+          </div>
+          <label>Name</label>
+          <input id="author-field" class="jd-input" placeholder="Your name">
+          <label>Write your review *</label>
+          <textarea id="comment-field" class="jd-input" style="height:150px" placeholder="What did you like or dislike?"></textarea>
+          <button id="submitBtn" class="jd-submit">Submit Review</button>
+          <p id="form-msg" style="margin-top:15px; text-align:center; font-size: 13px; font-weight:600;"></p>
+        </div>
+      </div>
+    `;
+
+    document.getElementById("openFormBtn").onclick = () => {
+      document.getElementById("reviewForm").style.display = "block";
+    };
+
+    let currentRating = 5;
+    const stars = document.querySelectorAll("#starInput span");
+    const updateStars = (val) => {
+      stars.forEach(s => s.style.opacity = s.dataset.v <= val ? "1" : "0.3");
+    };
+
+    stars.forEach(star => {
+      star.onclick = () => {
+        currentRating = star.dataset.v;
+        updateStars(currentRating);
+      };
+    });
+    updateStars(5);
+
+    document.getElementById("submitBtn").onclick = async () => {
+      const author = document.getElementById("author-field").value;
+      const comment = document.getElementById("comment-field").value;
+      const msg = document.getElementById("form-msg");
+
+      if (!comment) {
+        msg.style.color = "#e53e3e";
+        msg.innerText = "Please write a review.";
+        return;
+      }
+
+      msg.style.color = "#2d3748";
+      msg.innerText = "Submitting...";
+
+      try {
+        const res = await fetch(`${API}/api/public/reviews`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            shop, productId, productName,
+            rating: currentRating,
+            author: author || "Anonymous",
+            comment
+          })
+        });
+
+        if (res.ok) {
+          msg.style.color = "#38a169";
+          msg.innerText = "Thanks for your review!";
+          setTimeout(() => initProductReviews(), 1500);
+        } else {
+          throw new Error();
+        }
+      } catch {
+        msg.style.color = "#e53e3e";
+        msg.innerText = "Error submitting review.";
+      }
+    };
+
+  } catch (e) {
+    console.error("Widget Error", e);
+  }
+}
+initProductReviews();
+</script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Product Reviews",
+  "target": "section",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "enable",
+      "label": "Enable reviews",
+      "default": true
+    }
+  ]
+}
+{% endschema %}

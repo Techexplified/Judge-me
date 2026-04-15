@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Session {
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+model Review {
+  id           String   @id @default(uuid())
+  shop         String
+  productId    String
+  productName  String?
+  productImage String?
+  rating       Int
+  title        String?
+  comment      String
+  author       String
+  email        String?
+  status       String   @default("PENDING")
+  reply        String?
+  replyDate    DateTime?
+  createdAt    DateTime @default(now())
+}
+
+model Settings {
+  id        String   @id @default(uuid())
+  shop      String   @unique
+  config    String   @db.Text
+  updatedAt DateTime @updatedAt
+}
