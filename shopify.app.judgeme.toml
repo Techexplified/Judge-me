@@ -2,7 +2,7 @@
 
 client_id = "66266bdf32e75472ea62e98d37e652fe"
 name = "judgeme"
-application_url = "https://judgme.onrender.com"
+application_url = "https://judge-me-sigma.vercel.app"
 embedded = true
 
 [webhooks]
@@ -22,14 +22,14 @@ api_version = "2025-10"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products"
+scopes = "read_products"
 optional_scopes = [ ]
 use_legacy_install_flow = false
 
 [auth]
 redirect_urls = [
-  "https://judgme.onrender.com/auth/callback",
-  "https://judgme.onrender.com/api/auth"
+  "https://judge-me-sigma.vercel.app/auth/callback",
+  "https://judge-me-sigma.vercel.app/api/auth"
 ]
 
 [pos]

@@ -2,7 +2,7 @@
 
 client_id = "98eccc305b95a11d2b9dbec18a0681d1"
 name = "judgeMe"
-application_url = "https://backup-jet.vercel.app"
+application_url = "https://judge-me-sigma.vercel.app"
 embedded = true
 
 [webhooks]
@@ -26,8 +26,8 @@ scopes = "read_orders,read_products,write_customers,write_themes"
 
 [auth]
 redirect_urls = [
-  "https://backup-jet.vercel.app/api/auth",
-  "https://backup-jet.vercel.app/callback"
+  "https://judge-me-sigma.vercel.app/api/auth",
+  "https://judge-me-sigma.vercel.app/callback"
 ]
 
 [pos]
