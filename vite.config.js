@@ -23,6 +23,13 @@ if (
 
 const host = new URL(process.env.SHOPIFY_APP_URL || "http://localhost")
   .hostname;
+const allowedHosts = Array.from(
+  new Set([
+    host,
+    // Allow Cloudflare quick tunnel subdomains used during local development.
+    ".trycloudflare.com",
+  ]),
+);
 let hmrConfig;
 
 if (host === "localhost") {
@@ -43,7 +50,7 @@ if (host === "localhost") {
 
 export default defineConfig({
   server: {
-    allowedHosts: [host],
+    allowedHosts,
     cors: {
       preflightContinue: true,
     },

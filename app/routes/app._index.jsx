@@ -367,6 +367,7 @@ export default function Dashboard() {
 
   const OpenRouterForm = openRouterFetcher.Form;
   const playbookBusy = playbookFetcher.state !== "idle";
+  const totalReviewBars = buildTotalReviewBars(kpis.totalReviews);
 
   const runPlaybook = () => {
     setPlaybookOpen(true);
@@ -402,7 +403,10 @@ export default function Dashboard() {
                     <span style={{ ...s.cardIcon, ...s.cardIconCompact }}><MessageSquare size={15} /></span>
                     <Badge tone="green"><ArrowUpRight size={12} />{kpis.totalTrend}</Badge>
                   </div>
-                  <div style={s.bigNumCompact}>{kpis.totalReviews}</div>
+                  <div style={s.kpiMetricRowCompact}>
+                    <div style={s.bigNumCompact}>{kpis.totalReviews}</div>
+                    <MiniBarGraph values={totalReviewBars} />
+                  </div>
                   <div style={s.cardLabelCompact}>Total Reviews</div>
                 </Card>
               </div>
@@ -878,6 +882,25 @@ function Dot({ color, label, compact }) {
   );
 }
 
+function buildTotalReviewBars(totalReviews) {
+  const n = Number.parseInt(String(totalReviews), 10) || 0;
+  const base = Math.max(1, Math.min(6, n));
+  return [0.24, 0.42, 0.32, 0.58, 0.46, 0.74, 0.62].map((v, idx) => {
+    const scaled = v + base * 0.02 + idx * 0.005;
+    return Math.max(0.2, Math.min(1, scaled));
+  });
+}
+
+function MiniBarGraph({ values }) {
+  return (
+    <div style={s.miniBarWrap} aria-hidden="true">
+      {values.map((v, idx) => (
+        <span key={`${idx}-${v}`} style={{ ...s.miniBar, height: `${Math.round(v * 100)}%` }} />
+      ))}
+    </div>
+  );
+}
+
 function SentimentChip({ v }) {
   const t =
     v === "Positive"
@@ -921,7 +944,7 @@ const R = 20;
 const shadow = "0 8px 32px rgba(15,23,42,0.08), 0 2px 6px rgba(15,23,42,0.04)";
 
 const s = {
-  page: { padding: "36px 40px", background: "#f1f4f9", minHeight: "100vh", fontFamily: "'Inter',system-ui,-apple-system,sans-serif", fontSize: 14 },
+  page: { padding: "36px 40px", background: "#ffffff", minHeight: "100vh", fontFamily: "'Inter',system-ui,-apple-system,sans-serif", fontSize: 14 },
 
   header: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, marginBottom: 28 },
   eyebrow: { fontSize: 12, fontWeight: 700, color: "#64748b", letterSpacing: "0.04em" },
@@ -938,9 +961,11 @@ const s = {
   kpiWrap: { display: "flex", flexDirection: "column", gap: 16, minWidth: 0 },
   kpiTopRow: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr",
+    gridTemplateColumns: "minmax(0, 1.22fr) minmax(0, 0.82fr)",
     gap: 24,
     minWidth: 0,
+    width: "100%",
+    alignItems: "stretch",
   },
   kpiBottomRow: {
     display: "grid",
@@ -948,22 +973,30 @@ const s = {
     gap: 20,
     minWidth: 0,
     width: "100%",
-    alignItems: "start",
+    alignItems: "stretch",
   },
-  kpiTopCell: { minWidth: 0 },
+  kpiTopCell: { minWidth: 0, display: "flex", alignItems: "stretch" },
   kpiVelCell: { minWidth: 0, maxWidth: "100%", display: "flex", flexDirection: "column" },
   kpiSentCell: { minWidth: 0, maxWidth: "100%", display: "flex", flexDirection: "column" },
   kpiChartCard: {
     display: "flex",
     flexDirection: "column",
     width: "100%",
+    height: "100%",
     maxWidth: "100%",
     boxSizing: "border-box",
   },
   cardChartDense: { padding: "16px 20px" },
 
   card: { background: "#fff", borderRadius: R, border: "1px solid #e6edf5", padding: "22px 24px", boxShadow: shadow, boxSizing: "border-box" },
-  cardCompact: { padding: "14px 18px", borderRadius: R },
+  cardCompact: {
+    padding: "14px 18px",
+    borderRadius: R,
+    width: "100%",
+    minHeight: 126,
+    display: "flex",
+    flexDirection: "column",
+  },
 
   cardHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   cardHeadCompact: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
@@ -971,6 +1004,31 @@ const s = {
   cardIconCompact: { width: 28, height: 28, borderRadius: 10 },
   cardLabel: { fontSize: 12, fontWeight: 700, color: "#94a3b8", marginTop: 2 },
   cardLabelCompact: { fontSize: 11, fontWeight: 700, color: "#94a3b8", marginTop: 1 },
+  kpiMetricRowCompact: {
+    display: "flex",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: 20,
+    marginTop: 4,
+    width: "100%",
+  },
+  miniBarWrap: {
+    width: 176,
+    height: 36,
+    display: "flex",
+    alignItems: "flex-end",
+    gap: 6,
+    opacity: 0.9,
+    flexShrink: 0,
+    borderBottom: "1px solid #ccfbf1",
+    paddingBottom: 2,
+  },
+  miniBar: {
+    width: 12,
+    borderRadius: "3px 3px 0 0",
+    background: "#23b5b5",
+    display: "block",
+  },
 
   bigNum: { fontSize: 28, fontWeight: 900, color: "#0f172a", lineHeight: 1.1, margin: "6px 0 0" },
   bigNumCompact: { fontSize: 26, fontWeight: 900, color: "#0f172a", lineHeight: 1.1, margin: "4px 0 0" },
@@ -1152,9 +1210,9 @@ const s = {
   },
 
   aiUrgentCard: {
-    background: "#fdf2f8",
+    background: "#fffafb",
     borderRadius: R,
-    border: "1px solid #f9a8d4",
+    border: "1px solid #fbcfe8",
     boxShadow: shadow,
     padding: "18px 20px",
     display: "grid",
@@ -1165,7 +1223,7 @@ const s = {
     width: 32,
     height: 32,
     borderRadius: 10,
-    background: "#fce7f3",
+    background: "#fdf2f8",
     display: "grid",
     placeItems: "center",
   },
@@ -1175,13 +1233,13 @@ const s = {
     gap: 6,
     fontSize: 11,
     fontWeight: 900,
-    color: "#dc2626",
-    background: "#fff",
-    border: "1px solid #fecaca",
+    color: "#e11d48",
+    background: "#fffafc",
+    border: "1px solid #fecdd3",
     padding: "4px 12px",
     borderRadius: 999,
   },
-  aiUrgentDot: { width: 6, height: 6, borderRadius: 999, background: "#dc2626" },
+  aiUrgentDot: { width: 6, height: 6, borderRadius: 999, background: "#fb7185" },
   aiUrgentTitle: { fontSize: 15, fontWeight: 900, color: "#0f172a", lineHeight: 1.35, margin: 0 },
   aiSnippetStack: { display: "grid", gap: 8 },
   aiSnippet: {
@@ -1190,23 +1248,23 @@ const s = {
     alignItems: "flex-start",
     padding: "10px 12px",
     borderRadius: 12,
-    border: "1px solid #f9a8d4",
-    background: "#fff",
+    border: "1px solid #fbcfe8",
+    background: "#fffdff",
   },
   aiSnippetAv: {
     width: 28,
     height: 28,
     borderRadius: 999,
-    background: "#fce7f3",
-    color: "#9d174d",
+    background: "#fdf2f8",
+    color: "#be185d",
     fontWeight: 900,
     fontSize: 12,
     display: "grid",
     placeItems: "center",
     flexShrink: 0,
   },
-  aiSnippetText: { fontSize: 12, fontWeight: 600, color: "#831843", lineHeight: 1.4, margin: 0 },
-  aiSnippetEmpty: { fontSize: 12, fontWeight: 600, color: "#9d174d", margin: 0, lineHeight: 1.4 },
+  aiSnippetText: { fontSize: 12, fontWeight: 600, color: "#9f1239", lineHeight: 1.4, margin: 0 },
+  aiSnippetEmpty: { fontSize: 12, fontWeight: 600, color: "#be185d", margin: 0, lineHeight: 1.4 },
   aiUrgentCta: {
     display: "inline-flex",
     alignItems: "center",
@@ -1215,12 +1273,12 @@ const s = {
     marginTop: 4,
     padding: "12px 16px",
     borderRadius: 12,
-    background: "#ec4899",
+    background: "#f472b6",
     color: "#fff",
     fontWeight: 900,
     fontSize: 14,
     textDecoration: "none",
-    boxShadow: "0 6px 20px rgba(236,72,153,0.35)",
+    boxShadow: "0 4px 14px rgba(244,114,182,0.22)",
   },
 
   aiSpotCard: {
