@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types, jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions, jsx-a11y/label-has-associated-control */
-import { useLoaderData, useFetcher, useLocation } from "react-router";
+import { useLoaderData, useFetcher } from "react-router";
 import { authenticate } from "../shopify.server";
 import { useState } from "react";
 
@@ -96,13 +96,11 @@ export default function AdminDashboard() {
 
 /* ---------------- MODAL COMPONENT ---------------- */
 function ReviewDetailsModal({ review, onClose }) {
-  const location = useLocation();
   const fetcher = useFetcher();
   const [replyText, setReplyText] = useState(review.reply || "");
 
   const handleSave = () => {
-    const action = `${location.pathname}${location.search}`;
-    fetcher.submit({ reviewId: review.id, reply: replyText }, { method: "POST", action });
+    fetcher.submit({ reviewId: review.id, reply: replyText }, { method: "POST" });
   };
 
   return (

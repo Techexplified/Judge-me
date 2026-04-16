@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types -- dashboard uses many small presentational helpers */
 import { createHash } from "node:crypto";
 import { useEffect, useState } from "react";
-import { useLoaderData, useFetcher, useRevalidator, Link, useLocation } from "react-router";
+import { useLoaderData, useFetcher, useRevalidator, Link } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.server";
@@ -356,9 +356,6 @@ export default function Dashboard() {
     aiError,
     urgentNeedsCount,
   } = useLoaderData();
-  const location = useLocation();
-  /** Embedded admin keeps session context in the query string; must be preserved on POST/navigation. */
-  const embeddedAction = `${location.pathname}${location.search}`;
   const openRouterFetcher = useFetcher();
   const playbookFetcher = useFetcher();
   const revalidator = useRevalidator();
@@ -374,10 +371,7 @@ export default function Dashboard() {
 
   const runPlaybook = () => {
     setPlaybookOpen(true);
-    playbookFetcher.submit(
-      { _intent: "aiPlaybook" },
-      { method: "post", action: embeddedAction },
-    );
+    playbookFetcher.submit({ _intent: "aiPlaybook" }, { method: "post" });
   };
 
   const closePlaybook = () => {
@@ -510,7 +504,7 @@ export default function Dashboard() {
                 <Sparkles size={16} />
                 <span style={s.byokHeadText}>Your API key</span>
               </div>
-              <OpenRouterForm method="post" action={embeddedAction} style={s.byokForm}>
+              <OpenRouterForm method="post" style={s.byokForm}>
                 <input type="hidden" name="_intent" value="openRouter" />
                 <input
                   id="dash-openrouter-key"
@@ -647,7 +641,6 @@ function TopInsightCard({ panel, onViewFullAnalysis, disabled }) {
 }
 
 function UrgentCard({ panel, urgentNeedsCount }) {
-  const location = useLocation();
   const snippets = panel.urgent.snippets || [];
   const headline =
     urgentNeedsCount > 0
@@ -678,7 +671,7 @@ function UrgentCard({ panel, urgentNeedsCount }) {
           ))
         )}
       </div>
-      <Link to={`/app/reviews${location.search}`} style={s.aiUrgentCta}>
+      <Link to="/app/reviews" style={s.aiUrgentCta}>
         <MessageCircle size={18} color="#fff" />
         Respond now
       </Link>

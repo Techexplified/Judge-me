@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types, jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions, react/no-unescaped-entities */
 import { useState } from "react";
-import { useLoaderData, useFetcher, useLocation } from "react-router";
+import { useLoaderData, useFetcher } from "react-router";
 import {
   Star,
   X,
@@ -264,15 +264,13 @@ function ProductReviewsModal({ product, onClose }) {
 }
 
 function ReviewChatItem({ review }) {
-  const location = useLocation();
   const fetcher = useFetcher();
   const [isEditing, setIsEditing] = useState(!review.reply);
   const [replyText, setReplyText] = useState(review.reply || "");
 
   const handleSave = () => {
     if (!replyText.trim()) return;
-    const action = `${location.pathname}${location.search}`;
-    fetcher.submit({ reviewId: review.id, reply: replyText }, { method: "POST", action });
+    fetcher.submit({ reviewId: review.id, reply: replyText }, { method: "POST" });
     setIsEditing(false);
   };
 
