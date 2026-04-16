@@ -1,7 +1,7 @@
 //app.write-review.jsx
 /* eslint-disable jsx-a11y/label-has-associated-control, jsx-a11y/alt-text */
 import { useState } from "react";
-import { useSubmit, useNavigation } from "react-router";
+import { useSubmit, useNavigation, useLocation } from "react-router";
 import { authenticate } from "../shopify.server";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { Star, ShoppingBag } from "lucide-react";
@@ -40,6 +40,7 @@ export const action = async ({ request }) => {
 export default function WriteReviewPage() {
   const submit = useSubmit();
   const nav = useNavigation();
+  const location = useLocation();
   const shopify = useAppBridge();
 
   const [product, setProduct] = useState(null);
@@ -71,7 +72,7 @@ export default function WriteReviewPage() {
     fd.append("productName", product.title);
     fd.append("productImage", product.image);
 
-    submit(fd, { method: "post" });
+    submit(fd, { method: "post", action: `${location.pathname}${location.search}` });
   };
 
   return (

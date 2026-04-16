@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types, jsx-a11y/label-has-associated-control, jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
 import { useState, useEffect } from "react";
-import { useSubmit, useLoaderData, useNavigation, useActionData } from "react-router";
+import { useSubmit, useLoaderData, useNavigation, useActionData, useLocation } from "react-router";
 import {
   Star,
   Box,
@@ -42,6 +42,7 @@ export default function Editor() {
   const { savedConfig } = useLoaderData();
   const actionData = useActionData();
   const navigation = useNavigation();
+  const location = useLocation();
   const submit = useSubmit();
 
   const [config, setConfig] = useState(savedConfig);
@@ -67,7 +68,8 @@ export default function Editor() {
   };
 
   const saveConfig = () => {
-    submit({ config: JSON.stringify(config) }, { method: "POST" });
+    const action = `${location.pathname}${location.search}`;
+    submit({ config: JSON.stringify(config) }, { method: "POST", action });
   };
 
   const styles = {

@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types, jsx-a11y/label-has-associated-control, react-hooks/set-state-in-effect, jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useSubmit, useLoaderData, useNavigation, useActionData } from "react-router";
+import { useSubmit, useLoaderData, useNavigation, useActionData, useLocation } from "react-router";
 import {
   Star,
   RotateCcw,
@@ -162,7 +162,9 @@ export default function ReviewEditor() {
   const { savedConfig, reviewContext } = useLoaderData();
   const actionData = useActionData();
   const navigation = useNavigation();
+  const location = useLocation();
   const submit = useSubmit();
+  const embeddedAction = `${location.pathname}${location.search}`;
 
   const [config, setConfig] = useState(() => mergeWithDefaults(savedConfig));
   const [showSaveToast, setShowSaveToast] = useState(false);
@@ -223,8 +225,8 @@ export default function ReviewEditor() {
   }, []);
 
   const saveConfig = useCallback(() => {
-    submit({ config: JSON.stringify(config) }, { method: "POST" });
-  }, [submit, config]);
+    submit({ config: JSON.stringify(config) }, { method: "POST", action: embeddedAction });
+  }, [submit, config, embeddedAction]);
 
   const resetConfig = useCallback(() => {
     setConfig(mergeWithDefaults(defaultConfig));
@@ -288,7 +290,7 @@ export default function ReviewEditor() {
     if (reviewContext.productImage) {
       fd.set("productImage", reviewContext.productImage);
     }
-    submit(fd, { method: "POST" });
+    submit(fd, { method: "POST", action: embeddedAction });
   };
 
   const presetLayout = () => {
