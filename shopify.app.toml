@@ -34,4 +34,5 @@ redirect_urls = [
 embedded = true
 
 [build]
+# When false, dev tunnels can disagree with `application_url` → App Bridge postMessage / nav issues in the admin iframe.
 automatically_update_urls_on_dev = true

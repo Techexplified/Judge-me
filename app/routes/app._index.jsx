@@ -1,10 +1,25 @@
 /* eslint-disable react/prop-types -- dashboard uses many small presentational helpers */
-import { createHash } from "node:crypto";
-import { useEffect, useState } from "react";
-import { useLoaderData, useFetcher, useRevalidator, Link } from "react-router";
+import { useMemo, useState } from "react";
+import {
+  useLoaderData,
+  useFetcher,
+  Link,
+  useLocation,
+  useSearchParams,
+} from "react-router";
+import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.server";
+import { mergeShopifyEmbedParams } from "../utils/shopify-embed-nav.js";
+import {
+  computeDashboardMetrics,
+  filterReviewsByRangeStart,
+  parseDashboardRange,
+  rangeLabel,
+  rangeStartFromKey,
+  playbookFingerprint,
+} from "../utils/dashboard-metrics.server.js";
 import {
   getResolvedOpenRouterKey,
   generateReviewDigest,
@@ -14,7 +29,6 @@ import {
   AlertTriangle,
   ArrowUpRight,
   CalendarDays,
-  ChevronDown,
   Crown,
   Download,
   Lightbulb,
@@ -27,52 +41,22 @@ import {
   X,
 } from "lucide-react";
 
+function reviewsHref(productName, productId, extras = {}) {
+  const q = new URLSearchParams();
+  q.set("product", String(productName ?? "").trim());
+  const pid =
+    productId != null && String(productId).trim() !== ""
+      ? String(productId).trim()
+      : "";
+  if (pid) q.set("pid", pid);
+  if (extras.mode) q.set("mode", String(extras.mode));
+  return `/app/reviews?${q.toString()}`;
+}
+
 function clipText(text, max) {
   const s = text ? String(text).trim() : "";
   if (s.length <= max) return s;
   return `${s.slice(0, max - 1)}…`;
-}
-
-function fingerprintAiDigest(shop, reviews) {
-  const sig = reviews
-    .map((r) => `${r.id}:${r.rating}:${r.reply ? String(r.reply).length : 0}`)
-    .sort()
-    .join("|");
-  return createHash("sha256").update(`${shop}\0${sig}`).digest("hex");
-}
-
-function needsReply(review) {
-  return !review.reply || String(review.reply).trim() === "";
-}
-
-function pickUrgentCandidates(reviews) {
-  return reviews
-    .filter((r) => (r.rating <= 3 && needsReply(r)) || r.rating <= 2)
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 8)
-    .map((r) => ({
-      id: r.id,
-      excerpt: clipText(r.comment, 110),
-      authorInitial: (r.author && r.author[0] ? r.author[0] : "?").toUpperCase(),
-      rating: r.rating,
-    }));
-}
-
-function countUrgentNeeds(reviews) {
-  return reviews.filter((r) => (r.rating <= 3 && needsReply(r)) || r.rating <= 2).length;
-}
-
-function pickSpotlight(reviews) {
-  const good = reviews.filter((r) => r.rating >= 4 && r.comment && r.comment.trim().length > 15);
-  if (!good.length) return null;
-  const sorted = [...good].sort((a, b) => b.comment.length - a.comment.length);
-  const r = sorted[0];
-  return {
-    quote: r.comment.trim(),
-    author: r.author || "Customer",
-    rating: r.rating,
-    verified: true,
-  };
 }
 
 export async function action({ request }) {
@@ -95,12 +79,24 @@ export async function action({ request }) {
     if (!apiKey) {
       return { playbookError: "Add your OpenRouter API key first." };
     }
+    const rangeRaw = fd.get("range");
+    const rangeKey = ["7", "30", "90", "all"].includes(String(rangeRaw))
+      ? String(rangeRaw)
+      : "30";
+    const now = new Date();
+    const rangeStart = rangeStartFromKey(now, rangeKey);
     const reviewRows = await db.review.findMany({
       where: { shop },
       orderBy: { createdAt: "desc" },
     });
-    if (!reviewRows.length) {
-      return { playbookError: "Collect some reviews before running a playbook." };
+    const scopedReviews = filterReviewsByRangeStart(reviewRows, rangeStart);
+    if (!scopedReviews.length) {
+      return { playbookError: "No reviews in this date range." };
+    }
+    const pbFp = playbookFingerprint(shop, rangeKey, scopedReviews);
+    const cachedPb = config.aiPlaybookCache;
+    if (cachedPb?.fingerprint === pbFp && cachedPb?.playbook) {
+      return { playbook: cachedPb.playbook };
     }
     const panel = config.aiDigestCache?.panel;
     const digestForPlaybook =
@@ -113,10 +109,19 @@ export async function action({ request }) {
         : null;
     const { playbook, error } = await generatePlaybook({
       apiKey,
-      reviews: reviewRows,
+      reviews: scopedReviews,
       digest: digestForPlaybook,
     });
     if (error) return { playbookError: error };
+    const newConfig = {
+      ...config,
+      aiPlaybookCache: { fingerprint: pbFp, playbook, rangeKey },
+    };
+    await db.settings.upsert({
+      where: { shop },
+      update: { config: JSON.stringify(newConfig) },
+      create: { shop, config: JSON.stringify(newConfig) },
+    });
     return { playbook };
   }
 
@@ -138,6 +143,7 @@ export async function action({ request }) {
   if (clear) {
     delete config.openRouterApiKey;
     delete config.aiDigestCache;
+    delete config.aiPlaybookCache;
   } else if (typeof key === "string" && key.trim()) {
     config.openRouterApiKey = key.trim();
   }
@@ -146,6 +152,9 @@ export async function action({ request }) {
     update: { config: JSON.stringify(config) },
     create: { shop, config: JSON.stringify(config) },
   });
+  // Return a plain response. React Router automatically revalidates all
+  // active loaders after any fetcher action completes — no redirect or
+  // manual revalidation needed.
   return { openRouterSaved: true };
 }
 
@@ -165,98 +174,34 @@ export const loader = async ({ request }) => {
   const openRouterKey = getResolvedOpenRouterKey(storedConfig);
   const hasOpenRouterKeyFromDb = Boolean(openRouterKey);
 
-  const reviews = await db.review.findMany({
+  const url = new URL(request.url);
+  const rangeKey = parseDashboardRange(url.searchParams);
+
+  const reviewsAll = await db.review.findMany({
     where: { shop },
     orderBy: { createdAt: "desc" },
   });
 
   const now = new Date();
-  const thirtyAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const sixtyAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-  const sevenAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const rangeStart = rangeStartFromKey(now, rangeKey);
+  const scopedReviews = filterReviewsByRangeStart(reviewsAll, rangeStart);
 
-  const last30 = reviews.filter((r) => new Date(r.createdAt) >= thirtyAgo);
-  const prev30 = reviews.filter((r) => {
-    const d = new Date(r.createdAt);
-    return d >= sixtyAgo && d < thirtyAgo;
+  const {
+    kpis,
+    products,
+    urgentCandidates,
+    urgentNeedsCount,
+    spotlightCandidate,
+    digestFingerprint: digestFp,
+  } = computeDashboardMetrics({
+    shop,
+    scopedReviews,
+    reviewsAll,
+    now,
+    rangeKey,
   });
 
-  const totalReviews = reviews.length;
-  const totalLast30 = last30.length;
-  const totalPrev30 = prev30.length;
-  const totalTrendPct =
-    totalPrev30 === 0
-      ? totalLast30 > 0
-        ? 100
-        : 0
-      : Math.round(((totalLast30 - totalPrev30) / totalPrev30) * 100);
-  const totalTrend = `${totalTrendPct >= 0 ? "+" : ""}${totalTrendPct}%`;
-
-  const avgRating =
-    totalReviews > 0
-      ? (reviews.reduce((a, r) => a + r.rating, 0) / totalReviews).toFixed(1)
-      : "0.0";
-
-  const avgLast30 =
-    last30.length > 0 ? last30.reduce((a, r) => a + r.rating, 0) / last30.length : 0;
-  const avgPrev30 =
-    prev30.length > 0 ? prev30.reduce((a, r) => a + r.rating, 0) / prev30.length : 0;
-  const avgDeltaVal =
-    prev30.length === 0 ? 0 : Math.round((avgLast30 - avgPrev30) * 10) / 10;
-  const avgDelta = `${avgDeltaVal >= 0 ? "+" : ""}${avgDeltaVal}`;
-
-  const positive = reviews.filter((r) => r.rating >= 4).length;
-  const negative = reviews.filter((r) => r.rating <= 2).length;
-  const neutral = reviews.length - positive - negative;
-  const sentiment = {
-    positivePct: totalReviews ? String(Math.round((positive / totalReviews) * 100)) : "0",
-    neutralPct: totalReviews ? String(Math.round((neutral / totalReviews) * 100)) : "0",
-    negativePct: totalReviews ? String(Math.round((negative / totalReviews) * 100)) : "0",
-  };
-
-  const last7 = reviews.filter((r) => new Date(r.createdAt) >= sevenAgo);
-  const velocityPerWeek = String(last7.length);
-
-  const grouped = {};
-  for (const review of reviews) {
-    const key = review.productName || review.productId || "Unknown";
-    if (!grouped[key]) {
-      grouped[key] = { productName: key, productId: review.productId, list: [] };
-    }
-    grouped[key].list.push(review);
-  }
-
-  const products = Object.values(grouped).map((g) => {
-    const list = [...g.list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    const avg = list.reduce((a, r) => a + r.rating, 0) / list.length;
-    const pos = list.filter((r) => r.rating >= 4).length;
-    const neg = list.filter((r) => r.rating <= 2).length;
-    let sentimentLabel = "Mixed";
-    let iconTone = "indigo";
-    if (pos / list.length >= 0.5) {
-      sentimentLabel = "Positive";
-      iconTone = "teal";
-    } else if (neg / list.length >= 0.5) {
-      sentimentLabel = "Negative";
-      iconTone = "orange";
-    }
-    const latest = list[0];
-    return {
-      id: `${g.productId}-${g.productName}`,
-      productName: g.productName,
-      sku: "—",
-      avgRating: avg.toFixed(1),
-      reviewCount: list.length,
-      sentiment: sentimentLabel,
-      lastReview: new Date(latest.createdAt).toLocaleDateString(),
-      iconTone,
-    };
-  });
-
-  const digestFp = fingerprintAiDigest(shop, reviews);
-  const urgentCandidates = pickUrgentCandidates(reviews);
-  const urgentNeedsCount = countUrgentNeeds(reviews);
-  const spotlightCandidate = pickSpotlight(reviews);
+  const totalReviews = scopedReviews.length;
 
   let aiPanel = null;
   let aiError = null;
@@ -264,87 +209,296 @@ export const loader = async ({ request }) => {
   if (hasOpenRouterKeyFromDb && totalReviews > 0) {
     const cached = storedConfig.aiDigestCache;
     if (cached?.fingerprint === digestFp && cached?.panel) {
+      // Cache hit — use immediately, no API call
       aiPanel = cached.panel;
     } else {
-      const stats = {
-        totalReviews,
-        avgRating,
-        negativeCount: reviews.filter((r) => r.rating <= 2).length,
-      };
-      const { digest, error } = await generateReviewDigest({
-        apiKey: openRouterKey,
-        urgentCandidates,
-        spotlightCandidate: spotlightCandidate
-          ? {
-              excerpt: spotlightCandidate.quote,
-              author: spotlightCandidate.author,
-              rating: spotlightCandidate.rating,
-            }
-          : null,
-        stats,
-      });
-      if (error) {
-        aiError = error;
-      } else if (digest) {
-        const snippetRows = digest.urgent.pickIds
-          .map((id) => urgentCandidates.find((c) => c.id === id))
-          .filter(Boolean)
-          .map((c) => ({
+      // Cache miss — try the AI call but with a strict timeout so we never
+      // block the page render (the React stream timeout is only 5 s).
+      try {
+        const AI_LOADER_TIMEOUT_MS = 4000;
+        const aiPromise = (async () => {
+          const stats = {
+            totalReviews,
+            avgRating: kpis.avgRating,
+            negativeCount: scopedReviews.filter((r) => r.rating <= 2).length,
+          };
+          const { digest, error } = await generateReviewDigest({
+            apiKey: openRouterKey,
+            urgentCandidates,
+            spotlightCandidate: spotlightCandidate
+              ? {
+                  excerpt: spotlightCandidate.quote,
+                  author: spotlightCandidate.author,
+                  rating: spotlightCandidate.rating,
+                }
+              : null,
+            stats,
+          });
+          return { digest, error };
+        })();
+
+        const timeoutPromise = new Promise((resolve) =>
+          setTimeout(() => resolve({ digest: null, error: "AI timed out" }), AI_LOADER_TIMEOUT_MS),
+        );
+
+        const { digest, error } = await Promise.race([aiPromise, timeoutPromise]);
+
+        if (error) {
+          aiError = error;
+        } else if (digest) {
+          const snippetRows = digest.urgent.pickIds
+            .map((id) => urgentCandidates.find((c) => c.id === id))
+            .filter(Boolean)
+            .map((c) => ({
+              id: c.id,
+              text: c.excerpt,
+              authorInitial: c.authorInitial,
+            }));
+          const fallbackSnippets = urgentCandidates.slice(0, 2).map((c) => ({
             id: c.id,
             text: c.excerpt,
             authorInitial: c.authorInitial,
           }));
-        const fallbackSnippets = urgentCandidates.slice(0, 2).map((c) => ({
-          id: c.id,
-          text: c.excerpt,
-          authorInitial: c.authorInitial,
-        }));
-        aiPanel = {
-          topInsight: digest.topInsight,
-          urgent: {
-            headline: digest.urgent.headline,
-            count: urgentNeedsCount,
-            snippets: snippetRows.length > 0 ? snippetRows : fallbackSnippets,
-          },
-          spotlight:
-            spotlightCandidate || {
-              quote: "Once five-star reviews come in, a standout quote will appear here.",
-              author: "Your customers",
-              rating: 5,
-              verified: false,
+          aiPanel = {
+            topInsight: digest.topInsight,
+            urgent: {
+              headline: digest.urgent.headline,
+              count: urgentNeedsCount,
+              snippets: snippetRows.length > 0 ? snippetRows : fallbackSnippets,
             },
-          spotlightNote: digest.spotlightNote,
-        };
-        const newConfig = {
-          ...storedConfig,
-          aiDigestCache: { fingerprint: digestFp, panel: aiPanel },
-        };
-        await db.settings.upsert({
-          where: { shop },
-          update: { config: JSON.stringify(newConfig) },
-          create: { shop, config: JSON.stringify(newConfig) },
-        });
+            spotlight:
+              spotlightCandidate || {
+                quote: "Once five-star reviews come in, a standout quote will appear here.",
+                author: "Your customers",
+                rating: 5,
+                verified: false,
+              },
+            spotlightNote: digest.spotlightNote,
+          };
+          const newConfig = {
+            ...storedConfig,
+            aiDigestCache: { fingerprint: digestFp, panel: aiPanel },
+          };
+          await db.settings.upsert({
+            where: { shop },
+            update: { config: JSON.stringify(newConfig) },
+            create: { shop, config: JSON.stringify(newConfig) },
+          });
+        }
+      } catch (aiErr) {
+        // Never let AI failures crash the page
+        aiError = aiErr instanceof Error ? aiErr.message : "AI analysis failed";
+        console.error("[dashboard-loader] AI digest error:", aiErr);
       }
     }
   }
 
   return {
-    kpis: {
-      totalReviews: String(totalReviews),
-      totalTrend,
-      avgRating,
-      avgDelta,
-      sentiment,
-      velocityPerWeek,
-    },
+    kpis,
     products,
     hasOpenRouterKeyFromDb,
     totalReviews,
     aiPanel,
     aiError,
     urgentNeedsCount,
+    rangeKey,
+    metricsRangeLabel: rangeLabel(rangeKey),
+    shop,
   };
 };
+
+function parseFilenameFromContentDisposition(header) {
+  if (!header || typeof header !== "string") return null;
+  const utf8 = /filename\*=UTF-8''([^;\n]+)/i.exec(header);
+  if (utf8) {
+    try {
+      return decodeURIComponent(utf8[1].trim());
+    } catch {
+      return utf8[1].trim();
+    }
+  }
+  const quoted = /filename="([^"]+)"/i.exec(header);
+  if (quoted) return quoted[1];
+  const loose = /filename=([^;\n]+)/i.exec(header);
+  if (loose) return loose[1].trim().replace(/^"|"$/g, "");
+  return null;
+}
+
+async function blobLooksLikePdf(blob) {
+  if (!blob || blob.size === 0) return false;
+  const head = new Uint8Array(await blob.slice(0, 5).arrayBuffer());
+  return head[0] === 0x25 && head[1] === 0x50 && head[2] === 0x44 && head[3] === 0x46;
+}
+
+function scheduleRevokeObjectURL(url, ms = 120_000) {
+  setTimeout(() => {
+    try {
+      URL.revokeObjectURL(url);
+    } catch {
+      /* ignore */
+    }
+  }, ms);
+}
+
+function notifyExport(shopify, message, isError) {
+  try {
+    shopify?.toast?.show?.(message, isError ? { isError: true } : undefined);
+  } catch {
+    /* ignore */
+  }
+  if (isError && typeof window !== "undefined") {
+    window.console?.error?.("[export-pdf]", message);
+  }
+}
+
+/**
+ * Saves PDF bytes without `blob:` in a child window (blocked by Shopify admin CSP) or
+ * `about:blank` popups (stuck tab). Prefer native save picker when available.
+ */
+async function savePdfBlobToDisk(blob, filename, shopify) {
+  if (typeof window !== "undefined" && typeof window.showSaveFilePicker === "function") {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [
+          {
+            description: "PDF",
+            accept: { "application/pdf": [".pdf"] },
+          },
+        ],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(await blob.arrayBuffer());
+      await writable.close();
+      notifyExport(shopify, "PDF saved.");
+      return;
+    } catch (e) {
+      if (e && e.name === "AbortError") return;
+      window.console?.warn?.("[export-pdf] showSaveFilePicker failed, falling back", e);
+    }
+  }
+
+  if (typeof navigator !== "undefined" && typeof navigator.msSaveOrOpenBlob === "function") {
+    navigator.msSaveOrOpenBlob(blob, filename);
+    notifyExport(shopify, "PDF saved.");
+    return;
+  }
+
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  scheduleRevokeObjectURL(objectUrl);
+  notifyExport(shopify, "PDF download started.");
+}
+
+function ExportPdfLink({ rangeKey, disabled }) {
+  const { search } = useLocation();
+  const shopify = useAppBridge();
+  const [busy, setBusy] = useState(false);
+  const [exportError, setExportError] = useState(null);
+
+  const path = mergeShopifyEmbedParams(
+    `/app/export-report?range=${encodeURIComponent(rangeKey)}&includePlaybook=1`,
+    search,
+  );
+
+  if (disabled) {
+    return (
+      <span
+        style={{
+          ...s.pill,
+          opacity: 0.55,
+          cursor: "not-allowed",
+          pointerEvents: "none",
+        }}
+        aria-disabled="true"
+      >
+        <Download size={14} /> Export PDF
+      </span>
+    );
+  }
+
+  return (
+    <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+      <button
+        type="button"
+        disabled={busy}
+        aria-busy={busy}
+        onClick={() => {
+          setExportError(null);
+          void (async () => {
+            setBusy(true);
+            try {
+              const url =
+                typeof window !== "undefined"
+                  ? new URL(path, window.location.origin).href
+                  : path;
+
+              /** App Bridge intercepts global `fetch` and adds the ID token for same-app requests. */
+              const res = await fetch(url, {
+                method: "GET",
+                credentials: "same-origin",
+              });
+
+              if (!res.ok) {
+                const msg =
+                  res.status === 401 || res.status === 403
+                    ? "Could not authorize PDF export. Reload the app and try again."
+                    : `Export failed (${res.status}). Try again.`;
+                setExportError(msg);
+                notifyExport(shopify, msg, true);
+                return;
+              }
+
+              const blob = await res.blob();
+              const contentType = (res.headers.get("Content-Type") || "").toLowerCase();
+              const looksPdf =
+                contentType.includes("application/pdf") || (await blobLooksLikePdf(blob));
+
+              if (!looksPdf) {
+                const msg = "Server did not return a PDF (try reloading the app).";
+                setExportError(msg);
+                notifyExport(shopify, msg, true);
+                return;
+              }
+
+              const filename =
+                parseFilenameFromContentDisposition(res.headers.get("Content-Disposition")) ||
+                `review-report-${rangeKey}.pdf`;
+
+              await savePdfBlobToDisk(blob, filename, shopify);
+            } catch (err) {
+              const message =
+                err instanceof Error ? err.message : "Could not download the PDF.";
+              setExportError(message);
+              notifyExport(shopify, message, true);
+            } finally {
+              setBusy(false);
+            }
+          })();
+        }}
+        style={{
+          ...s.pill,
+          fontFamily: "inherit",
+          border: "none",
+          ...(busy ? { opacity: 0.75, cursor: "wait" } : {}),
+        }}
+      >
+        <Download size={14} /> {busy ? "Exporting…" : "Export PDF"}
+      </button>
+      {exportError ? (
+        <span style={{ fontSize: 12, color: "#b91c1c", maxWidth: 280, textAlign: "right" }} role="alert">
+          {exportError}
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const {
@@ -355,23 +509,49 @@ export default function Dashboard() {
     aiPanel,
     aiError,
     urgentNeedsCount,
+    rangeKey,
+    metricsRangeLabel,
   } = useLoaderData();
+  const [, setSearchParams] = useSearchParams();
   const openRouterFetcher = useFetcher();
   const playbookFetcher = useFetcher();
-  const revalidator = useRevalidator();
   const [playbookOpen, setPlaybookOpen] = useState(false);
-
-  useEffect(() => {
-    if (openRouterFetcher.data?.openRouterSaved) revalidator.revalidate();
-  }, [openRouterFetcher.data?.openRouterSaved, revalidator]);
+  const [tableSearch, setTableSearch] = useState("");
+  const [sortKey, setSortKey] = useState("lastReview");
+  const [sortDir, setSortDir] = useState("desc");
+  // Whether to show the change-key form when a key is already configured
+  const [showChangeKey, setShowChangeKey] = useState(false);
 
   const OpenRouterForm = openRouterFetcher.Form;
   const playbookBusy = playbookFetcher.state !== "idle";
   const totalReviewBars = buildTotalReviewBars(kpis.totalReviews);
 
+  const filteredProducts = useMemo(() => {
+    const q = tableSearch.trim().toLowerCase();
+    let list = products;
+    if (q) {
+      list = products.filter((p) => {
+        const name = String(p.productName ?? "").toLowerCase();
+        const pid = String(p.productId ?? "").toLowerCase();
+        const sku = String(p.sku ?? "").toLowerCase();
+        return name.includes(q) || pid.includes(q) || sku.includes(q);
+      });
+    }
+    const mul = sortDir === "asc" ? 1 : -1;
+    return [...list].sort((a, b) => {
+      if (sortKey === "name") return mul * String(a.productName).localeCompare(String(b.productName));
+      if (sortKey === "rating") return mul * (Number.parseFloat(a.avgRating) - Number.parseFloat(b.avgRating));
+      if (sortKey === "count") return mul * (a.reviewCount - b.reviewCount);
+      return mul * (new Date(a.lastReviewAt).getTime() - new Date(b.lastReviewAt).getTime());
+    });
+  }, [products, tableSearch, sortKey, sortDir]);
+
   const runPlaybook = () => {
     setPlaybookOpen(true);
-    playbookFetcher.submit({ _intent: "aiPlaybook" }, { method: "post" });
+    playbookFetcher.submit(
+      { _intent: "aiPlaybook", range: rangeKey },
+      { method: "post" },
+    );
   };
 
   const closePlaybook = () => {
@@ -386,10 +566,34 @@ export default function Dashboard() {
         <div>
           <div style={s.eyebrow}>Insights Dashboard</div>
           <h1 style={s.h1}>Dashboard</h1>
+          <p style={s.metricsRangeHint}>Showing {metricsRangeLabel}</p>
         </div>
         <div style={s.headerActions}>
-          <Pill><CalendarDays size={14} /> Last 30 days <ChevronDown size={14} /></Pill>
-          <Pill><Download size={14} /> Export</Pill>
+          <label style={s.rangeWrap}>
+            <CalendarDays size={14} aria-hidden />
+            <select
+              aria-label="Report date range"
+              value={rangeKey}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSearchParams(
+                  (prev) => {
+                    const next = new URLSearchParams(prev);
+                    next.set("range", v);
+                    return next;
+                  },
+                  { replace: true },
+                );
+              }}
+              style={s.rangeSelect}
+            >
+              <option value="7">Last 7 days</option>
+              <option value="30">Last 30 days</option>
+              <option value="90">Last 90 days</option>
+              <option value="all">All time</option>
+            </select>
+          </label>
+          <ExportPdfLink rangeKey={rangeKey} disabled={totalReviews === 0} />
         </div>
       </div>
 
@@ -447,11 +651,41 @@ export default function Dashboard() {
             <div style={s.tableTop}>
               <div>
                 <span style={s.tableH}>Product Reviews</span>
-                <span style={s.totalBadge}>{kpis.totalReviews} total</span>
+                <span style={s.totalBadge}>{kpis.totalReviews} in range</span>
               </div>
               <div style={s.tableTools}>
-                <div style={s.searchBox}><Search size={14} /><input placeholder="Search reviews…" style={s.searchInput} /></div>
-                <Pill>Sort</Pill>
+                <div style={s.searchBox}>
+                  <Search size={14} />
+                  <input
+                    placeholder="Search products…"
+                    style={{ ...s.searchInput, width: 160 }}
+                    value={tableSearch}
+                    onChange={(e) => setTableSearch(e.target.value)}
+                    aria-label="Search products"
+                  />
+                </div>
+                <label style={s.sortLabel}>
+                  <span style={s.sortLabelText}>Sort</span>
+                  <select
+                    value={`${sortKey}:${sortDir}`}
+                    onChange={(e) => {
+                      const [k, d] = String(e.target.value).split(":");
+                      setSortKey(k);
+                      setSortDir(d);
+                    }}
+                    style={s.sortSelect}
+                    aria-label="Sort products"
+                  >
+                    <option value="lastReview:desc">Newest activity</option>
+                    <option value="lastReview:asc">Oldest activity</option>
+                    <option value="name:asc">Product A–Z</option>
+                    <option value="name:desc">Product Z–A</option>
+                    <option value="rating:desc">Rating high → low</option>
+                    <option value="rating:asc">Rating low → high</option>
+                    <option value="count:desc">Most reviews</option>
+                    <option value="count:asc">Fewest reviews</option>
+                  </select>
+                </label>
               </div>
             </div>
             <table style={s.table}>
@@ -466,7 +700,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {products.map((p) => (
+                {filteredProducts.map((p) => (
                   <tr key={p.id} style={s.tr}>
                     <td style={s.td}>
                       <div style={s.prodCell}>
@@ -483,11 +717,17 @@ export default function Dashboard() {
                     <td style={s.td}>{p.reviewCount}</td>
                     <td style={s.td}><SentimentChip v={p.sentiment} /></td>
                     <td style={{ ...s.td, color: "#94a3b8" }}>{p.lastReview}</td>
-                    <td style={{ ...s.td, textAlign: "right" }}>
+                    <td style={{ ...s.td, textAlign: "right", position: "relative", zIndex: 2 }}>
                       <div style={s.actRow}>
-                        <ActionBtn>View</ActionBtn>
-                        <ActionBtn>Reply</ActionBtn>
-                        <ActionBtn feature>Feature</ActionBtn>
+                        <ActionLink to={reviewsHref(p.productName, p.productId)}>
+                          View
+                        </ActionLink>
+                        <ActionLink to={reviewsHref(p.productName, p.productId, { mode: "reply" })}>
+                          Reply
+                        </ActionLink>
+                        <ActionLink to="/app/editor" feature>
+                          Feature
+                        </ActionLink>
                       </div>
                     </td>
                   </tr>
@@ -498,7 +738,9 @@ export default function Dashboard() {
         </div>
 
         <aside style={s.aside} className="dAside">
+          {/* ── API key card ─────────────────────────────────────── */}
           {!hasOpenRouterKeyFromDb ? (
+            /* No key yet → show the add-key form */
             <div style={s.byokCard}>
               <div style={s.byokHead}>
                 <Sparkles size={16} />
@@ -532,7 +774,77 @@ export default function Dashboard() {
                 </button>
               </OpenRouterForm>
             </div>
-          ) : null}
+          ) : showChangeKey ? (
+            /* Key is set but user clicked Change — show update form */
+            <div style={s.byokCard}>
+              <div style={s.byokHead}>
+                <Sparkles size={16} />
+                <span style={s.byokHeadText}>Update API key</span>
+                <button
+                  type="button"
+                  onClick={() => setShowChangeKey(false)}
+                  style={s.byokCancelBtn}
+                  aria-label="Cancel"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <OpenRouterForm method="post" style={s.byokForm}>
+                <input type="hidden" name="_intent" value="openRouter" />
+                <input
+                  id="dash-openrouter-key-change"
+                  name="openRouterApiKey"
+                  type="password"
+                  autoComplete="off"
+                  placeholder="Paste new OpenRouter key…"
+                  style={s.byokInput}
+                  aria-label="New OpenRouter API key"
+                />
+                <a
+                  href="https://openrouter.ai/docs/quickstart"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={s.byokGuideLink}
+                >
+                  How to get an OpenRouter API key →
+                </a>
+                <button
+                  type="submit"
+                  style={s.byokBtn}
+                  disabled={openRouterFetcher.state !== "idle"}
+                >
+                  {openRouterFetcher.state !== "idle" ? "Saving…" : "Update key"}
+                </button>
+              </OpenRouterForm>
+              {/* Remove key */}
+              <OpenRouterForm method="post" style={{ marginTop: 8 }}>
+                <input type="hidden" name="_intent" value="openRouter" />
+                <input type="hidden" name="clearOpenRouterKey" value="on" />
+                <button
+                  type="submit"
+                  style={s.byokRemoveBtn}
+                  disabled={openRouterFetcher.state !== "idle"}
+                >
+                  Remove key &amp; disable AI
+                </button>
+              </OpenRouterForm>
+            </div>
+          ) : (
+            /* Key is set and not editing → show status + change button */
+            <div style={{ ...s.byokCard, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", flexShrink: 0 }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>AI key configured</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowChangeKey(true)}
+                style={s.byokChangeBtn}
+              >
+                Change key
+              </button>
+            </div>
+          )}
 
           <div style={s.asideStack}>
             {!hasOpenRouterKeyFromDb ? (
@@ -641,6 +953,7 @@ function TopInsightCard({ panel, onViewFullAnalysis, disabled }) {
 }
 
 function UrgentCard({ panel, urgentNeedsCount }) {
+  const { search } = useLocation();
   const snippets = panel.urgent.snippets || [];
   const headline =
     urgentNeedsCount > 0
@@ -671,7 +984,7 @@ function UrgentCard({ panel, urgentNeedsCount }) {
           ))
         )}
       </div>
-      <Link to="/app/reviews" style={s.aiUrgentCta}>
+      <Link to={mergeShopifyEmbedParams("/app/reviews", search)} style={s.aiUrgentCta}>
         <MessageCircle size={18} color="#fff" />
         Respond now
       </Link>
@@ -776,10 +1089,6 @@ function Card({ children, noPad, style, compact }) {
   );
 }
 
-function Pill({ children, primary }) {
-  return <button type="button" style={primary ? s.pillPrimary : s.pill}>{children}</button>;
-}
-
 function Badge({ children, tone }) {
   const bg = tone === "green" ? "#ecfdf5" : tone === "red" ? "#fef2f2" : "#f1f5f9";
   const fg = tone === "green" ? "#16a34a" : tone === "red" ? "#ef4444" : "#475569";
@@ -787,8 +1096,42 @@ function Badge({ children, tone }) {
   return <span style={{ ...s.badge, background: bg, color: fg, borderColor: bd }}>{children}</span>;
 }
 
-function ActionBtn({ children, feature }) {
-  return <button type="button" style={feature ? s.actFeature : s.actBtn}>{children}</button>;
+function ActionLink({ children, feature, to }) {
+  const { search } = useLocation();
+  const shopify = useAppBridge();
+  const target = mergeShopifyEmbedParams(to, search);
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof shopify.navigate === "function") {
+          shopify.navigate(target);
+        } else {
+          open(target, "_self");
+        }
+      }}
+      style={{
+        ...(feature ? s.actFeature : s.actBtn),
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        fontFamily: "inherit",
+        fontSize: "inherit",
+        lineHeight: 1.2,
+        boxSizing: "border-box",
+        margin: 0,
+        position: "relative",
+        zIndex: 20,
+        pointerEvents: "auto",
+      }}
+    >
+      {children}
+    </button>
+  );
 }
 
 const NEUTRAL_SEGMENT = "#fbbf24";
@@ -949,7 +1292,31 @@ const s = {
   header: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, marginBottom: 28 },
   eyebrow: { fontSize: 12, fontWeight: 700, color: "#64748b", letterSpacing: "0.04em" },
   h1: { margin: "4px 0 0", fontSize: 30, fontWeight: 900, color: "#0f172a" },
+  metricsRangeHint: { margin: "8px 0 0", fontSize: 13, fontWeight: 600, color: "#64748b" },
   headerActions: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" },
+
+  rangeWrap: {
+    display: "inline-flex",
+    gap: 8,
+    alignItems: "center",
+    padding: "9px 14px",
+    borderRadius: 999,
+    border: "1px solid #e2e8f0",
+    background: "#fff",
+    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+    cursor: "pointer",
+  },
+  rangeSelect: {
+    border: "none",
+    outline: "none",
+    background: "transparent",
+    fontWeight: 700,
+    fontSize: 13,
+    color: "#1e293b",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    maxWidth: 140,
+  },
 
   pill: { display: "inline-flex", gap: 6, alignItems: "center", padding: "9px 16px", borderRadius: 999, border: "1px solid #e2e8f0", background: "#fff", fontWeight: 700, fontSize: 13, color: "#1e293b", cursor: "pointer", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" },
   pillPrimary: { display: "inline-flex", gap: 6, alignItems: "center", padding: "9px 16px", borderRadius: 999, border: "none", background: "#14b8a6", color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer", boxShadow: "0 6px 20px rgba(20,184,166,0.25)" },
@@ -1072,7 +1439,20 @@ const s = {
   tableTop: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "22px 26px", borderBottom: "1px solid #f1f5f9", gap: 16 },
   tableH: { fontSize: 19, fontWeight: 900, color: "#0f172a", marginRight: 12 },
   totalBadge: { padding: "5px 12px", borderRadius: 999, background: "#ecfdf5", color: "#16a34a", fontWeight: 900, fontSize: 12, border: "1px solid #bbf7d0" },
-  tableTools: { display: "flex", gap: 10, alignItems: "center" },
+  tableTools: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" },
+  sortLabel: { display: "inline-flex", gap: 8, alignItems: "center" },
+  sortLabelText: { fontSize: 12, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" },
+  sortSelect: {
+    padding: "9px 12px",
+    borderRadius: 999,
+    border: "1px solid #e2e8f0",
+    background: "#fff",
+    fontWeight: 700,
+    fontSize: 13,
+    color: "#1e293b",
+    cursor: "pointer",
+    fontFamily: "inherit",
+  },
   searchBox: { display: "inline-flex", gap: 8, alignItems: "center", padding: "9px 14px", borderRadius: 999, border: "1px solid #e2e8f0", background: "#fff", color: "#94a3b8" },
   searchInput: { border: "none", outline: "none", fontWeight: 600, fontSize: 13, width: 140, background: "transparent" },
 
@@ -1091,7 +1471,7 @@ const s = {
   chip: { display: "inline-flex", gap: 6, alignItems: "center", padding: "5px 12px", borderRadius: 999, fontWeight: 800, fontSize: 12 },
   chipDot: { width: 7, height: 7, borderRadius: 999 },
 
-  actRow: { display: "inline-flex", gap: 8 },
+  actRow: { display: "inline-flex", gap: 8, position: "relative", zIndex: 2 },
   actBtn: { background: "#fff", border: "1px solid #e2e8f0", padding: "6px 12px", borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: "pointer", color: "#334155" },
   actFeature: { background: "#ecfdf5", border: "1px solid #bbf7d0", padding: "6px 12px", borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: "pointer", color: "#16a34a" },
 
@@ -1134,6 +1514,41 @@ const s = {
     fontSize: 13,
     cursor: "pointer",
     boxShadow: "0 4px 14px rgba(20,184,166,0.25)",
+  },
+  byokChangeBtn: {
+    padding: "7px 14px",
+    borderRadius: 8,
+    border: "1px solid #e2e8f0",
+    background: "#f8fafc",
+    fontWeight: 700,
+    fontSize: 12,
+    color: "#0d9488",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+    fontFamily: "inherit",
+  },
+  byokCancelBtn: {
+    marginLeft: "auto",
+    display: "flex",
+    alignItems: "center",
+    padding: 4,
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    color: "#94a3b8",
+    borderRadius: 6,
+  },
+  byokRemoveBtn: {
+    width: "100%",
+    padding: "9px 14px",
+    borderRadius: 10,
+    border: "1px solid #fecaca",
+    background: "#fef2f2",
+    color: "#dc2626",
+    fontWeight: 700,
+    fontSize: 12,
+    cursor: "pointer",
+    fontFamily: "inherit",
   },
 
   asideStack: { display: "grid", gap: 14 },

@@ -1,6 +1,6 @@
-/* eslint-disable react/prop-types, jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions, react/no-unescaped-entities */
-import { useState } from "react";
-import { useLoaderData, useFetcher } from "react-router";
+/* eslint-disable react/prop-types, jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions, react/no-unescaped-entities, react-hooks/set-state-in-effect */
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFetcher, useLoaderData, useLocation, useSearchParams } from "react-router";
 import {
   Star,
   X,
@@ -13,10 +13,49 @@ import {
   TrendingUp,
   Inbox,
   CheckCircle2,
+  Search,
 } from "lucide-react";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.server";
+
+function normalizeProductLookup(s) {
+  return String(s ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+/** Match `/app/reviews` deep links (`product`, optional `pid`) to loader products. */
+function resolveProductFromUrlParams(products, productNameRaw, pidRaw) {
+  const name = typeof productNameRaw === "string" ? productNameRaw.trim() : "";
+  const pid = typeof pidRaw === "string" ? pidRaw.trim() : "";
+
+  if (pid) {
+    const byPid = products.find((p) =>
+      (p.reviews || []).some((r) => String(r.productId ?? "") === pid),
+    );
+    if (byPid) return byPid;
+  }
+
+  if (name) {
+    const exact = products.find((p) => String(p.productName ?? "") === name);
+    if (exact) return exact;
+
+    const key = normalizeProductLookup(name);
+    const normalized = products.find((p) => normalizeProductLookup(p.productName) === key);
+    if (normalized) return normalized;
+
+    return (
+      products.find((p) => {
+        const pn = normalizeProductLookup(p.productName);
+        return pn && (pn.startsWith(key) || key.startsWith(pn));
+      }) ?? null
+    );
+  }
+
+  return null;
+}
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
@@ -50,7 +89,7 @@ export const loader = async ({ request }) => {
   };
 
   const grouped = reviews.reduce((acc, review) => {
-    const key = review.productName || "Unknown Product";
+    const key = review.productName || review.productId || "Unknown";
     if (!acc[key]) {
       acc[key] = {
         productName: key,
@@ -116,7 +155,74 @@ export const action = async ({ request }) => {
 
 export default function ReviewsManagement() {
   const { products, stats } = useLoaderData();
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const productParam = searchParams.get("product");
+  const pidParam = searchParams.get("pid");
+  const modeReply = searchParams.get("mode") === "reply";
+
+  const urlIntentKey = useMemo(
+    () => `${productParam ?? ""}|${pidParam ?? ""}|${modeReply ? "1" : ""}`,
+    [productParam, pidParam, modeReply],
+  );
+
+  const productFromUrl = useMemo(() => {
+    return resolveProductFromUrlParams(products, productParam, pidParam);
+  }, [productParam, pidParam, products]);
+
+  /** When the iframe URL lags or fails to strip deep-link params, avoid immediately re-opening the modal. */
+  const [urlModalSuppress, setUrlModalSuppress] = useState(null);
+
+  useEffect(() => {
+    setUrlModalSuppress((prev) => {
+      if (!prev) return null;
+      if (prev.navigationKey !== location.key || prev.intentKey !== urlIntentKey) {
+        return null;
+      }
+      return prev;
+    });
+  }, [location.key, urlIntentKey]);
+
+  const productFromUrlVisible = useMemo(() => {
+    if (!productFromUrl) return null;
+    if (
+      urlModalSuppress &&
+      urlModalSuppress.navigationKey === location.key &&
+      urlModalSuppress.intentKey === urlIntentKey
+    ) {
+      return null;
+    }
+    return productFromUrl;
+  }, [productFromUrl, urlModalSuppress, location.key, urlIntentKey]);
+
+  const [pickedProduct, setPickedProduct] = useState(null);
+  const selectedProduct = pickedProduct ?? productFromUrlVisible;
+
+  const [listSearch, setListSearch] = useState("");
+  const filteredProducts = useMemo(() => {
+    const q = listSearch.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => {
+      const name = String(p.productName ?? "").toLowerCase();
+      const pid = String(p.reviews?.[0]?.productId ?? "").toLowerCase();
+      return name.includes(q) || pid.includes(q);
+    });
+  }, [products, listSearch]);
+
+  const closeModal = useCallback(() => {
+    setPickedProduct(null);
+    setUrlModalSuppress({ navigationKey: location.key, intentKey: urlIntentKey });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("product");
+        next.delete("pid");
+        next.delete("mode");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [setSearchParams, location.key, urlIntentKey]);
 
   return (
     <div style={styles.container}>
@@ -154,6 +260,19 @@ export default function ReviewsManagement() {
       </div>
 
       <div style={styles.tableCard}>
+        <div style={styles.tableToolbar}>
+          <div style={styles.searchWrap}>
+            <Search size={16} color="#94a3b8" aria-hidden />
+            <input
+              type="search"
+              placeholder="Search by product name or ID…"
+              value={listSearch}
+              onChange={(e) => setListSearch(e.target.value)}
+              style={styles.searchField}
+              aria-label="Search products"
+            />
+          </div>
+        </div>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead style={{ backgroundColor: "#f8fafc" }}>
             <tr style={{ textAlign: "left" }}>
@@ -164,7 +283,14 @@ export default function ReviewsManagement() {
             </tr>
           </thead>
           <tbody>
-            {products.map((p) => (
+            {filteredProducts.length === 0 ? (
+              <tr>
+                <td colSpan={4} style={{ ...styles.td, textAlign: "center", color: "#94a3b8", padding: "28px" }}>
+                  No products match your search.
+                </td>
+              </tr>
+            ) : (
+            filteredProducts.map((p) => (
               <tr key={p.productName} style={styles.tr}>
                 <td style={styles.td}>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -188,20 +314,21 @@ export default function ReviewsManagement() {
                 <td style={styles.td}>
                   <button
                     type="button"
-                    onClick={() => setSelectedProduct(p)}
+                    onClick={() => setPickedProduct(p)}
                     style={styles.viewBtn}
                   >
                     View All <ChevronRight size={14} />
                   </button>
                 </td>
               </tr>
-            ))}
+            ))
+            )}
           </tbody>
         </table>
       </div>
 
       {selectedProduct && (
-        <ProductReviewsModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
+        <ProductReviewsModal product={selectedProduct} modeReply={modeReply} onClose={closeModal} />
       )}
     </div>
   );
@@ -234,7 +361,27 @@ function StatCard({ title, value, icon, subtitle, trend, isRating }) {
   );
 }
 
-function ProductReviewsModal({ product, onClose }) {
+function ProductReviewsModal({ product, modeReply, onClose }) {
+  const scrollAreaRef = useRef(null);
+
+  useEffect(() => {
+    if (!modeReply || !scrollAreaRef.current || !product.reviews?.length) return;
+    const firstNeedReply = product.reviews.find(
+      (r) => !r.reply || String(r.reply).trim() === "",
+    );
+    if (!firstNeedReply?.id) return;
+    window.requestAnimationFrame(() => {
+      const root = scrollAreaRef.current;
+      if (!root) return;
+      const el = root.querySelector(`[data-review-thread="${firstNeedReply.id}"]`);
+      el?.scrollIntoView({ behavior: "auto", block: "center" });
+      const textarea = el?.querySelector?.("textarea");
+      if (textarea && typeof textarea.focus === "function") {
+        textarea.focus({ preventScroll: true });
+      }
+    });
+  }, [modeReply, product]);
+
   return (
     <div style={modalStyles.overlay} onClick={onClose}>
       <div style={modalStyles.modal} onClick={(e) => e.stopPropagation()}>
@@ -253,9 +400,11 @@ function ProductReviewsModal({ product, onClose }) {
           </button>
         </div>
 
-        <div style={modalStyles.scrollArea}>
+        <div ref={scrollAreaRef} style={modalStyles.scrollArea}>
           {product.reviews.map((rev) => (
-            <ReviewChatItem key={`${rev.id}-${rev.reply ?? ""}`} review={rev} />
+            <div key={`${rev.id}-${rev.reply ?? ""}`} data-review-thread={rev.id}>
+              <ReviewChatItem review={rev} />
+            </div>
           ))}
         </div>
       </div>
@@ -378,6 +527,35 @@ const styles = {
     borderRadius: "16px",
     border: "1px solid #e2e8f0",
     overflow: "hidden",
+  },
+  tableToolbar: {
+    padding: "16px 20px",
+    borderBottom: "1px solid #f1f5f9",
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
+  },
+  searchWrap: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    padding: "10px 16px",
+    borderRadius: "12px",
+    border: "1px solid #e2e8f0",
+    backgroundColor: "#fff",
+    minWidth: "280px",
+    maxWidth: "420px",
+    flex: "1",
+  },
+  searchField: {
+    border: "none",
+    outline: "none",
+    flex: 1,
+    fontSize: "14px",
+    fontWeight: "600",
+    fontFamily: "inherit",
+    color: "#1e293b",
+    minWidth: 0,
   },
   th: {
     padding: "16px 20px",

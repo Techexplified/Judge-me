@@ -55,7 +55,10 @@ export default defineConfig({
       preflightContinue: true,
     },
     port: Number(process.env.PORT || 3000),
-    hmr: hmrConfig,
+    // Disable HMR — in Shopify embedded apps behind Cloudflare tunnels
+    // (and on OneDrive-synced folders), the WebSocket connection frequently
+    // fails or file-sync events trigger constant full-page reloads.
+    hmr: false,
     fs: {
       // See https://vitejs.dev/config/server-options.html#server-fs-allow for more information
       allow: ["app", "node_modules"],
