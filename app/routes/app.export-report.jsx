@@ -10,6 +10,7 @@ import {
 } from "../utils/dashboard-metrics.server.js";
 import { getResolvedOpenRouterKey, generatePlaybook } from "../lib/openrouter.server";
 import { renderDashboardReportPdf } from "../utils/dashboard-pdf.server.js";
+import { getTrialStatus } from "../lib/trial.server";
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
@@ -29,7 +30,8 @@ export const loader = async ({ request }) => {
     }
   }
 
-  const openRouterKey = getResolvedOpenRouterKey(storedConfig);
+  const trialStatus = await getTrialStatus(shop);
+  const openRouterKey = trialStatus.isActive ? getResolvedOpenRouterKey() : null;
 
   const reviewsAll = await db.review.findMany({
     where: { shop },

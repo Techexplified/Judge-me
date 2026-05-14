@@ -51,3 +51,16 @@ model Settings {
   config    String   @db.Text
   updatedAt DateTime @updatedAt
 }
+
+/// Tracks per-shop install timestamp and trial window.
+model Shop {
+  id           String   @id @default(uuid())
+  shop         String   @unique
+  installedAt  DateTime @default(now())
+  trialEndsAt  DateTime
+  /// "trial" | "active" | "expired"
+  planStatus   String   @default("trial")
+  uninstalledAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

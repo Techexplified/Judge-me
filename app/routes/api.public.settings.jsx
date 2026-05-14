@@ -1,5 +1,6 @@
 import db from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.server";
+import { stripSensitiveFromConfig } from "../lib/settings.server";
 
 export const loader = async ({ request }) => {
   const url = new URL(request.url);
@@ -20,7 +21,7 @@ export const loader = async ({ request }) => {
   let config = null;
   if (settings?.config) {
     try {
-      config = JSON.parse(settings.config);
+      config = stripSensitiveFromConfig(JSON.parse(settings.config));
     } catch {
       config = null;
     }
@@ -35,3 +36,4 @@ export const loader = async ({ request }) => {
     },
   });
 };
+

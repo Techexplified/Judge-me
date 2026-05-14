@@ -25,6 +25,7 @@ import {
   generateReviewDigest,
   generatePlaybook,
 } from "../lib/openrouter.server";
+import { getTrialStatus } from "../lib/trial.server";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -66,6 +67,17 @@ export async function action({ request }) {
   const intent = fd.get("_intent");
 
   if (intent === "aiPlaybook") {
+    // Check trial status first
+    const trialStatus = await getTrialStatus(shop);
+    if (!trialStatus.isActive) {
+      return { playbookError: "Your 7-day AI trial has ended. Upgrade to unlock AI insights \u0026 playbooks." };
+    }
+
+    const apiKey = getResolvedOpenRouterKey();
+    if (!apiKey) {
+      return { playbookError: "AI service is temporarily unavailable. Please try again later." };
+    }
+
     const row = await db.settings.findUnique({ where: { shop } });
     let config = {};
     if (row?.config) {
@@ -75,10 +87,7 @@ export async function action({ request }) {
         config = {};
       }
     }
-    const apiKey = getResolvedOpenRouterKey(config);
-    if (!apiKey) {
-      return { playbookError: "Add your OpenRouter API key first." };
-    }
+
     const rangeRaw = fd.get("range");
     const rangeKey = ["7", "30", "90", "all"].includes(String(rangeRaw))
       ? String(rangeRaw)
@@ -125,42 +134,15 @@ export async function action({ request }) {
     return { playbook };
   }
 
-  if (intent !== "openRouter") {
-    return {};
-  }
-
-  const clear = fd.get("clearOpenRouterKey") === "on";
-  const key = fd.get("openRouterApiKey");
-  const row = await db.settings.findUnique({ where: { shop } });
-  let config = {};
-  if (row?.config) {
-    try {
-      config = JSON.parse(row.config);
-    } catch {
-      config = {};
-    }
-  }
-  if (clear) {
-    delete config.openRouterApiKey;
-    delete config.aiDigestCache;
-    delete config.aiPlaybookCache;
-  } else if (typeof key === "string" && key.trim()) {
-    config.openRouterApiKey = key.trim();
-  }
-  await db.settings.upsert({
-    where: { shop },
-    update: { config: JSON.stringify(config) },
-    create: { shop, config: JSON.stringify(config) },
-  });
-  // Return a plain response. React Router automatically revalidates all
-  // active loaders after any fetcher action completes — no redirect or
-  // manual revalidation needed.
-  return { openRouterSaved: true };
+  return {};
 }
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
+
+  // Ensure shop record exists and get trial status
+  const trialStatus = await getTrialStatus(shop);
 
   const settingsRow = await db.settings.findUnique({ where: { shop } });
   let storedConfig = {};
@@ -171,8 +153,10 @@ export const loader = async ({ request }) => {
       storedConfig = {};
     }
   }
-  const openRouterKey = getResolvedOpenRouterKey(storedConfig);
-  const hasOpenRouterKeyFromDb = Boolean(openRouterKey);
+
+  // AI features are available if trial is active AND env key is configured
+  const openRouterKey = trialStatus.isActive ? getResolvedOpenRouterKey() : null;
+  const aiEnabled = Boolean(openRouterKey);
 
   const url = new URL(request.url);
   const rangeKey = parseDashboardRange(url.searchParams);
@@ -206,7 +190,7 @@ export const loader = async ({ request }) => {
   let aiPanel = null;
   let aiError = null;
 
-  if (hasOpenRouterKeyFromDb && totalReviews > 0) {
+  if (aiEnabled && totalReviews > 0) {
     const cached = storedConfig.aiDigestCache;
     if (cached?.fingerprint === digestFp && cached?.panel) {
       // Cache hit — use immediately, no API call
@@ -296,7 +280,7 @@ export const loader = async ({ request }) => {
   return {
     kpis,
     products,
-    hasOpenRouterKeyFromDb,
+    aiEnabled,
     totalReviews,
     aiPanel,
     aiError,
@@ -304,6 +288,12 @@ export const loader = async ({ request }) => {
     rangeKey,
     metricsRangeLabel: rangeLabel(rangeKey),
     shop,
+    trialStatus: {
+      isActive: trialStatus.isActive,
+      daysRemaining: trialStatus.daysRemaining === Infinity ? null : trialStatus.daysRemaining,
+      planStatus: trialStatus.planStatus,
+      trialEndsAt: trialStatus.trialEndsAt.toISOString(),
+    },
   };
 };
 
@@ -504,25 +494,22 @@ export default function Dashboard() {
   const {
     kpis,
     products,
-    hasOpenRouterKeyFromDb,
+    aiEnabled,
     totalReviews,
     aiPanel,
     aiError,
     urgentNeedsCount,
     rangeKey,
     metricsRangeLabel,
+    trialStatus,
   } = useLoaderData();
   const [, setSearchParams] = useSearchParams();
-  const openRouterFetcher = useFetcher();
   const playbookFetcher = useFetcher();
   const [playbookOpen, setPlaybookOpen] = useState(false);
   const [tableSearch, setTableSearch] = useState("");
   const [sortKey, setSortKey] = useState("lastReview");
   const [sortDir, setSortDir] = useState("desc");
-  // Whether to show the change-key form when a key is already configured
-  const [showChangeKey, setShowChangeKey] = useState(false);
 
-  const OpenRouterForm = openRouterFetcher.Form;
   const playbookBusy = playbookFetcher.state !== "idle";
   const totalReviewBars = buildTotalReviewBars(kpis.totalReviews);
 
@@ -738,119 +725,15 @@ export default function Dashboard() {
         </div>
 
         <aside style={s.aside} className="dAside">
-          {/* ── API key card ─────────────────────────────────────── */}
-          {!hasOpenRouterKeyFromDb ? (
-            /* No key yet → show the add-key form */
-            <div style={s.byokCard}>
-              <div style={s.byokHead}>
-                <Sparkles size={16} />
-                <span style={s.byokHeadText}>Your API key</span>
-              </div>
-              <OpenRouterForm method="post" style={s.byokForm}>
-                <input type="hidden" name="_intent" value="openRouter" />
-                <input
-                  id="dash-openrouter-key"
-                  name="openRouterApiKey"
-                  type="password"
-                  autoComplete="off"
-                  placeholder="Paste OpenRouter key…"
-                  style={s.byokInput}
-                  aria-label="OpenRouter API key"
-                />
-                <a
-                  href="https://openrouter.ai/docs/quickstart"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={s.byokGuideLink}
-                >
-                  How to get an OpenRouter API key →
-                </a>
-                <button
-                  type="submit"
-                  style={s.byokBtn}
-                  disabled={openRouterFetcher.state !== "idle"}
-                >
-                  {openRouterFetcher.state !== "idle" ? "Saving…" : "Save key"}
-                </button>
-              </OpenRouterForm>
-            </div>
-          ) : showChangeKey ? (
-            /* Key is set but user clicked Change — show update form */
-            <div style={s.byokCard}>
-              <div style={s.byokHead}>
-                <Sparkles size={16} />
-                <span style={s.byokHeadText}>Update API key</span>
-                <button
-                  type="button"
-                  onClick={() => setShowChangeKey(false)}
-                  style={s.byokCancelBtn}
-                  aria-label="Cancel"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-              <OpenRouterForm method="post" style={s.byokForm}>
-                <input type="hidden" name="_intent" value="openRouter" />
-                <input
-                  id="dash-openrouter-key-change"
-                  name="openRouterApiKey"
-                  type="password"
-                  autoComplete="off"
-                  placeholder="Paste new OpenRouter key…"
-                  style={s.byokInput}
-                  aria-label="New OpenRouter API key"
-                />
-                <a
-                  href="https://openrouter.ai/docs/quickstart"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={s.byokGuideLink}
-                >
-                  How to get an OpenRouter API key →
-                </a>
-                <button
-                  type="submit"
-                  style={s.byokBtn}
-                  disabled={openRouterFetcher.state !== "idle"}
-                >
-                  {openRouterFetcher.state !== "idle" ? "Saving…" : "Update key"}
-                </button>
-              </OpenRouterForm>
-              {/* Remove key */}
-              <OpenRouterForm method="post" style={{ marginTop: 8 }}>
-                <input type="hidden" name="_intent" value="openRouter" />
-                <input type="hidden" name="clearOpenRouterKey" value="on" />
-                <button
-                  type="submit"
-                  style={s.byokRemoveBtn}
-                  disabled={openRouterFetcher.state !== "idle"}
-                >
-                  Remove key &amp; disable AI
-                </button>
-              </OpenRouterForm>
-            </div>
-          ) : (
-            /* Key is set and not editing → show status + change button */
-            <div style={{ ...s.byokCard, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", flexShrink: 0 }} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>AI key configured</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowChangeKey(true)}
-                style={s.byokChangeBtn}
-              >
-                Change key
-              </button>
-            </div>
-          )}
+          {/* ── Trial status banner ─────────────────────────────── */}
+          <TrialBanner trialStatus={trialStatus} />
 
           <div style={s.asideStack}>
-            {!hasOpenRouterKeyFromDb ? (
-              <div style={s.aiEmptyCard}>
-                <p style={s.aiEmptyText}>
-                  Save your OpenRouter key in the card above to generate AI analysis from your reviews.
+            {!trialStatus.isActive ? (
+              <div style={s.aiErrorCard}>
+                <p style={s.aiErrorTitle}>AI trial ended</p>
+                <p style={s.aiErrorBody}>
+                  AI-powered insights, playbooks, and analysis require an upgrade. All other features (reviews, widgets, editor) continue to work.
                 </p>
               </div>
             ) : totalReviews === 0 ? (
@@ -904,7 +787,7 @@ function trendArrow(trend) {
 
 function tagStyle(trend) {
   if (trend === "up") {
-    return { background: "#0d9488", color: "#fff", borderColor: "#0f766e" };
+    return { background: "#23b5b5", color: "#fff", borderColor: "#0f766e" };
   }
   if (trend === "down") {
     return { background: "#fce7f3", color: "#9d174d", borderColor: "#f9a8d4" };
@@ -1031,6 +914,56 @@ function SpotlightCard({ panel }) {
       {panel.spotlightNote ? (
         <p style={s.aiSpotNote}>{panel.spotlightNote}</p>
       ) : null}
+    </div>
+  );
+}
+
+function TrialBanner({ trialStatus }) {
+  if (!trialStatus) return null;
+
+  const { isActive, daysRemaining, planStatus } = trialStatus;
+
+  if (planStatus === "active") {
+    return (
+      <div style={s.trialCard}>
+        <div style={s.trialHead}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", flexShrink: 0 }} />
+          <span style={s.trialHeadText}>AI Pro — Active</span>
+        </div>
+        <p style={s.trialSubtext}>AI insights, playbooks & analysis are enabled.</p>
+      </div>
+    );
+  }
+
+  if (!isActive) {
+    return (
+      <div style={s.trialExpiredCard}>
+        <div style={s.trialHead}>
+          <AlertTriangle size={16} color="#dc2626" />
+          <span style={{ ...s.trialHeadText, color: "#991b1b" }}>AI trial ended</span>
+        </div>
+        <p style={{ ...s.trialSubtext, color: "#7f1d1d" }}>
+          Your 7-day AI trial has ended. Reviews, widgets & all other features still work — only AI insights & playbooks are disabled.
+        </p>
+      </div>
+    );
+  }
+
+  const daysText = daysRemaining === 1 ? "1 day" : `${daysRemaining} days`;
+
+  return (
+    <div style={s.trialActiveCard}>
+      <div style={s.trialHead}>
+        <Sparkles size={16} color="#0d9488" />
+        <span style={s.trialHeadText}>AI trial</span>
+        <span style={s.trialBadge}>{daysText} left</span>
+      </div>
+      <p style={s.trialSubtext}>
+        AI insights, playbooks & analysis are active. All other features are always free.
+      </p>
+      <div style={s.trialBarTrack}>
+        <div style={{ ...s.trialBarFill, width: `${Math.max(5, (daysRemaining / 7) * 100)}%` }} />
+      </div>
     </div>
   );
 }
@@ -1165,7 +1098,7 @@ function SentimentCard({ sentiment }) {
           </div>
         </div>
         <div style={s.sentLegendSent}>
-          <Dot color="#23b5b5" label={`Positive ${sentiment.positivePct}%`} compact />
+          <Dot color="#0d9488" label={`Positive ${sentiment.positivePct}%`} compact />
           <Dot color={NEUTRAL_SEGMENT} label={`Neutral ${sentiment.neutralPct}%`} compact />
           <Dot color="#ef4444" label={`Negative ${sentiment.negativePct}%`} compact />
         </div>
@@ -1500,7 +1433,7 @@ const s = {
   byokGuideLink: {
     fontSize: 12,
     fontWeight: 700,
-    color: "#0d9488",
+    color: "#23b5b5",
     textDecoration: "none",
   },
   byokBtn: {
@@ -1508,7 +1441,7 @@ const s = {
     padding: "10px 14px",
     borderRadius: 10,
     border: "none",
-    background: "#14b8a6",
+    background: "#23b5b5",
     color: "#fff",
     fontWeight: 800,
     fontSize: 13,
@@ -1522,7 +1455,7 @@ const s = {
     background: "#f8fafc",
     fontWeight: 700,
     fontSize: 12,
-    color: "#0d9488",
+    color: "#23b5b5",
     cursor: "pointer",
     whiteSpace: "nowrap",
     fontFamily: "inherit",
@@ -1620,7 +1553,7 @@ const s = {
     cursor: "pointer",
     fontSize: 13,
     fontWeight: 800,
-    color: "#0d9488",
+    color: "#23b5b5",
     textAlign: "left",
   },
 
@@ -1730,7 +1663,7 @@ const s = {
     height: 28,
     borderRadius: 999,
     background: "#ccfbf1",
-    color: "#0d9488",
+    color: "#23b5b5",
     fontWeight: 900,
     fontSize: 12,
     display: "grid",
@@ -1789,4 +1722,77 @@ const s = {
   modalSectionTitle: { fontSize: 15, fontWeight: 900, color: "#0f172a", margin: 0 },
   modalList: { margin: 0, paddingLeft: 20, display: "grid", gap: 8 },
   modalLi: { fontSize: 13, fontWeight: 600, color: "#475569", lineHeight: 1.45 },
+
+  /* ── Trial banner styles ──────────────────────────────── */
+  trialCard: {
+    background: "#fff",
+    borderRadius: R,
+    border: "1px solid #e6edf5",
+    boxShadow: shadow,
+    padding: "16px 20px",
+    marginBottom: 16,
+    display: "grid",
+    gap: 6,
+  },
+  trialActiveCard: {
+    background: "linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 100%)",
+    borderRadius: R,
+    border: "1px solid #99f6e4",
+    boxShadow: shadow,
+    padding: "16px 20px",
+    marginBottom: 16,
+    display: "grid",
+    gap: 8,
+  },
+  trialExpiredCard: {
+    background: "#fef2f2",
+    borderRadius: R,
+    border: "1px solid #fecaca",
+    boxShadow: shadow,
+    padding: "16px 20px",
+    marginBottom: 16,
+    display: "grid",
+    gap: 6,
+  },
+  trialHead: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
+  trialHeadText: {
+    fontSize: 14,
+    fontWeight: 900,
+    color: "#0f172a",
+  },
+  trialSubtext: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#64748b",
+    margin: 0,
+    lineHeight: 1.45,
+  },
+  trialBadge: {
+    marginLeft: "auto",
+    fontSize: 11,
+    fontWeight: 900,
+    color: "#0d9488",
+    background: "#ccfbf1",
+    border: "1px solid #5eead4",
+    padding: "3px 10px",
+    borderRadius: 999,
+  },
+  trialBarTrack: {
+    width: "100%",
+    height: 6,
+    borderRadius: 999,
+    background: "#e2e8f0",
+    overflow: "hidden",
+    marginTop: 2,
+  },
+  trialBarFill: {
+    height: "100%",
+    borderRadius: 999,
+    background: "linear-gradient(90deg, #14b8a6, #0d9488)",
+    transition: "width 0.4s ease",
+  },
 };

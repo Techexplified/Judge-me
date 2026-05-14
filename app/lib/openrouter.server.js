@@ -1,9 +1,12 @@
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
 
-/** BYOK: OpenRouter key only from shop `Settings.config` (set in admin UI). */
-export function getResolvedOpenRouterKey(settingsConfig) {
-  const k = settingsConfig?.openRouterApiKey;
+/**
+ * Returns the backend-managed OpenRouter API key from the environment.
+ * No longer reads from per-shop settings (BYOK removed).
+ */
+export function getResolvedOpenRouterKey() {
+  const k = process.env.OPENROUTER_API_KEY;
   return typeof k === "string" && k.trim() ? k.trim() : null;
 }
 
