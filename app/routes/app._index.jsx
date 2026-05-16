@@ -96,7 +96,7 @@ export async function action({ request }) {
     const rangeRaw = fd.get("range");
     const rangeKey = ["7", "30", "90", "all"].includes(String(rangeRaw))
       ? String(rangeRaw)
-      : "30";
+      : "all";
     const now = new Date();
     const rangeStart = rangeStartFromKey(now, rangeKey);
     const reviewRows = await db.review.findMany({
@@ -214,9 +214,9 @@ export const loader = async ({ request }) => {
       aiPanel = cached.panel;
     } else {
       // Cache miss — try the AI call but with a strict timeout so we never
-      // block the page render (the React stream timeout is only 5 s).
+      // block the page render (the React stream timeout is 10 s).
       try {
-        const AI_LOADER_TIMEOUT_MS = 4000;
+        const AI_LOADER_TIMEOUT_MS = 8000;
         const aiPromise = (async () => {
           const stats = {
             totalReviews,

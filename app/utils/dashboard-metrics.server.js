@@ -10,7 +10,7 @@ export function parseDashboardRange(searchParams) {
       : searchParams;
   const r = sp.get("range");
   if (RANGE_KEYS.has(r)) return r;
-  return "30";
+  return "all";
 }
 
 /** @returns {number | null} days, or null for all-time */
@@ -18,14 +18,14 @@ export function rangeDaysForKey(rangeKey) {
   if (rangeKey === "7") return 7;
   if (rangeKey === "90") return 90;
   if (rangeKey === "all") return null;
-  return 30;
+  return null;
 }
 
 export function rangeLabel(rangeKey) {
   if (rangeKey === "7") return "Last 7 days";
   if (rangeKey === "90") return "Last 90 days";
   if (rangeKey === "all") return "All time";
-  return "Last 30 days";
+  return "All time";
 }
 
 /** @param {Date | null} rangeStart */
