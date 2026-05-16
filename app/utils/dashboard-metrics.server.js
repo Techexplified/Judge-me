@@ -167,7 +167,7 @@ export function computeDashboardMetrics({ shop, scopedReviews, reviewsAll, now, 
   for (const review of reviews) {
     const key = review.productName || review.productId || "Unknown";
     if (!grouped[key]) {
-      grouped[key] = { productName: key, productId: review.productId, list: [] };
+      grouped[key] = { productName: key, productId: review.productId, productImage: review.productImage, list: [] };
     }
     grouped[key].list.push(review);
   }
@@ -192,6 +192,7 @@ export function computeDashboardMetrics({ shop, scopedReviews, reviewsAll, now, 
       id: `${g.productId}-${g.productName}`,
       productName: g.productName,
       productId: g.productId ?? null,
+      productImage: g.productImage ?? null,
       sku: "—",
       avgRating: avg.toFixed(1),
       reviewCount: list.length,

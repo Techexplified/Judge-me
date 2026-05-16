@@ -708,7 +708,13 @@ export default function Dashboard() {
                   <tr key={p.id} style={s.tr}>
                     <td style={s.td}>
                       <div style={s.prodCell}>
-                        <div style={{ ...s.prodDot, ...dotColor(p.iconTone) }} />
+                        {p.productImage ? (
+                          <div style={{ ...s.prodDot, overflow: "hidden", backgroundColor: "#f1f5f9" }}>
+                            <img src={p.productImage} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" />
+                          </div>
+                        ) : (
+                          <div style={{ ...s.prodDot, ...dotColor(p.iconTone) }} />
+                        )}
                         <div>
                           <div style={s.prodName}>{p.productName}</div>
                           <div style={s.prodSku}>{p.sku}</div>
