@@ -27,6 +27,11 @@ import {
 } from "../lib/openrouter.server";
 import { getTrialStatus } from "../lib/trial.server";
 import {
+  syncExistingReviews,
+  hasRunInitialSync,
+  markInitialSyncDone,
+} from "../lib/review-sync.server";
+import {
   AlertTriangle,
   ArrowUpRight,
   CalendarDays,
@@ -61,7 +66,7 @@ function clipText(text, max) {
 }
 
 export async function action({ request }) {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
   const fd = await request.formData();
   const intent = fd.get("_intent");
@@ -138,8 +143,20 @@ export async function action({ request }) {
 }
 
 export const loader = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
+
+  // Auto-sync existing reviews on first install (fire-and-forget, runs once)
+  try {
+    const alreadySynced = await hasRunInitialSync(shop);
+    if (!alreadySynced) {
+      syncExistingReviews(admin, shop)
+        .then(() => markInitialSyncDone(shop))
+        .catch((err) => console.error("[review-sync] error:", err));
+    }
+  } catch (syncErr) {
+    console.error("[review-sync] check failed:", syncErr);
+  }
 
   // Ensure shop record exists and get trial status
   const trialStatus = await getTrialStatus(shop);
