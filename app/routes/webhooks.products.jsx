@@ -1,6 +1,7 @@
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.server";
+import { syncReviewsForProduct } from "../lib/review-sync.server";
 
 export const action = async ({ request }) => {
   const { topic, shop: shopRaw, admin, payload } = await authenticate.webhook(request);
@@ -45,6 +46,11 @@ export const action = async ({ request }) => {
         }
       });
       console.log(`[ProductIndex] Upserted ${payload.id} (${primarySku}) from ${shop}`);
+
+      // Import review metafields on new/updated products (not only on first app install)
+      syncReviewsForProduct(admin, shop, payload.id.toString()).catch((err) =>
+        console.error(`[review-sync] webhook product ${payload.id} for ${shop}:`, err),
+      );
     }
 
     return new Response("Success", { status: 200 });

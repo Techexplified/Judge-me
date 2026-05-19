@@ -13,6 +13,35 @@ import db from "../db.server.js";
 
 // ─── GraphQL ────────────────────────────────────────────────────────────────
 
+const PRODUCT_BY_ID_QUERY = `
+  query GetProductReviewsMetafields($id: ID!) {
+    product(id: $id) {
+      id
+      title
+      handle
+      images(first: 1) {
+        edges {
+          node {
+            url
+          }
+        }
+      }
+      spr: metafield(namespace: "spr", key: "reviews") {
+        value
+      }
+      judgeme: metafield(namespace: "judgeme", key: "widget") {
+        value
+      }
+      loox: metafield(namespace: "loox", key: "reviews") {
+        value
+      }
+      generic: metafield(namespace: "reviews", key: "data") {
+        value
+      }
+    }
+  }
+`;
+
 const PRODUCTS_QUERY = `
   query GetProductsWithMetafields($cursor: String) {
     products(first: 50, after: $cursor) {
@@ -131,6 +160,89 @@ function parseLooxMetafield(raw, productId, productName, productImage, shop) {
   }
 }
 
+function collectCandidatesFromProductNode(node, shop) {
+  const gid = node.id;
+  const productId = gid.split("/").pop();
+  const productName = node.title;
+  const productImage = node.images?.edges?.[0]?.node?.url ?? null;
+
+  const candidates = [
+    ...(node.spr?.value
+      ? parseSprMetafield(node.spr.value, productId, productName, productImage, shop)
+      : []),
+    ...(node.judgeme?.value
+      ? parseJudgemeMetafield(node.judgeme.value, productId, productName, productImage, shop)
+      : []),
+    ...(node.loox?.value
+      ? parseLooxMetafield(node.loox.value, productId, productName, productImage, shop)
+      : []),
+    ...(node.generic?.value
+      ? parseSprMetafield(node.generic.value, productId, productName, productImage, shop)
+      : []),
+  ];
+
+  return { productId, candidates };
+}
+
+/**
+ * @returns {{ imported: number, skipped: number }}
+ */
+async function insertReviewCandidates(shop, productId, candidates) {
+  if (candidates.length === 0) {
+    return { imported: 0, skipped: 0 };
+  }
+
+  const existing = await db.review.findMany({
+    where: { shop, productId },
+    select: { author: true, comment: true },
+  });
+
+  const existingSet = new Set(
+    existing.map((r) => `${r.author.toLowerCase()}::${r.comment.slice(0, 60).toLowerCase()}`),
+  );
+
+  const toInsert = candidates.filter((r) => {
+    const key = `${r.author.toLowerCase()}::${r.comment.slice(0, 60).toLowerCase()}`;
+    return !existingSet.has(key);
+  });
+
+  if (toInsert.length > 0) {
+    await db.review.createMany({ data: toInsert });
+  }
+
+  return {
+    imported: toInsert.length,
+    skipped: candidates.length - toInsert.length,
+  };
+}
+
+/**
+ * Import review metafields for one product (e.g. after products/create or products/update).
+ * @param {object} admin
+ * @param {string} shop
+ * @param {string} productIdNumeric - Shopify numeric product id
+ */
+export async function syncReviewsForProduct(admin, shop, productIdNumeric) {
+  const id = String(productIdNumeric).trim();
+  if (!id) return { imported: 0, skipped: 0 };
+
+  const response = await admin.graphql(PRODUCT_BY_ID_QUERY, {
+    variables: { id: `gid://shopify/Product/${id}` },
+  });
+  const data = await response.json();
+  const node = data?.data?.product;
+  if (!node) return { imported: 0, skipped: 0 };
+
+  const { productId, candidates } = collectCandidatesFromProductNode(node, shop);
+  const result = await insertReviewCandidates(shop, productId, candidates);
+  if (result.imported > 0) {
+    console.log(
+      `[review-sync] product=${productId} shop=${shop} imported=${result.imported} skipped=${result.skipped}`,
+    );
+  }
+  return result;
+}
+
 // ─── Main sync function ───────────────────────────────────────────────────────
 
 /**
@@ -165,51 +277,12 @@ export async function syncExistingReviews(admin, shop) {
       const node = edge.node;
       totalProducts++;
 
-      // Extract a clean Shopify GID → numeric product ID
-      const gid = node.id; // "gid://shopify/Product/12345678"
-      const productId = gid.split("/").pop();
-      const productName = node.title;
-      const productImage = node.images?.edges?.[0]?.node?.url ?? null;
-
-      // Collect reviews from all known metafield sources
-      const candidates = [
-        ...(node.spr?.value
-          ? parseSprMetafield(node.spr.value, productId, productName, productImage, shop)
-          : []),
-        ...(node.judgeme?.value
-          ? parseJudgemeMetafield(node.judgeme.value, productId, productName, productImage, shop)
-          : []),
-        ...(node.loox?.value
-          ? parseLooxMetafield(node.loox.value, productId, productName, productImage, shop)
-          : []),
-        ...(node.generic?.value
-          ? parseSprMetafield(node.generic.value, productId, productName, productImage, shop)
-          : []),
-      ];
-
+      const { productId, candidates } = collectCandidatesFromProductNode(node, shop);
       if (candidates.length === 0) continue;
 
-      // Deduplicate against what's already in DB by (shop + productId + author + comment prefix)
-      const existing = await db.review.findMany({
-        where: { shop, productId },
-        select: { author: true, comment: true },
-      });
-
-      const existingSet = new Set(
-        existing.map((r) => `${r.author.toLowerCase()}::${r.comment.slice(0, 60).toLowerCase()}`)
-      );
-
-      const toInsert = candidates.filter((r) => {
-        const key = `${r.author.toLowerCase()}::${r.comment.slice(0, 60).toLowerCase()}`;
-        return !existingSet.has(key);
-      });
-
-      skipped += candidates.length - toInsert.length;
-
-      if (toInsert.length > 0) {
-        await db.review.createMany({ data: toInsert });
-        imported += toInsert.length;
-      }
+      const result = await insertReviewCandidates(shop, productId, candidates);
+      imported += result.imported;
+      skipped += result.skipped;
     }
   }
 
