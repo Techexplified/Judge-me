@@ -1,0 +1,66 @@
+// vite.config.js
+import { config as loadEnv } from "file:///C:/Users/HP/OneDrive/Documents/Shopify-Explified/Judge-meV2/node_modules/dotenv/lib/main.js";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import { reactRouter } from "file:///C:/Users/HP/OneDrive/Documents/Shopify-Explified/Judge-meV2/node_modules/@react-router/dev/dist/vite.js";
+import { defineConfig } from "file:///C:/Users/HP/OneDrive/Documents/Shopify-Explified/Judge-meV2/node_modules/vite/dist/node/index.js";
+import tsconfigPaths from "file:///C:/Users/HP/OneDrive/Documents/Shopify-Explified/Judge-meV2/node_modules/vite-tsconfig-paths/dist/index.js";
+var __vite_injected_original_import_meta_url = "file:///C:/Users/HP/OneDrive/Documents/Shopify-Explified/Judge-meV2/vite.config.js";
+var __dirname = path.dirname(fileURLToPath(__vite_injected_original_import_meta_url));
+loadEnv({ path: path.join(__dirname, ".env.judgeme") });
+if (process.env.HOST && (!process.env.SHOPIFY_APP_URL || process.env.SHOPIFY_APP_URL === process.env.HOST)) {
+  process.env.SHOPIFY_APP_URL = process.env.HOST;
+  delete process.env.HOST;
+}
+var host = new URL(process.env.SHOPIFY_APP_URL || "http://localhost").hostname;
+var allowedHosts = Array.from(
+  /* @__PURE__ */ new Set([
+    host,
+    // Allow Cloudflare quick tunnel subdomains used during local development.
+    ".trycloudflare.com"
+  ])
+);
+var hmrConfig;
+if (host === "localhost") {
+  hmrConfig = {
+    protocol: "ws",
+    host: "localhost",
+    port: 64999,
+    clientPort: 64999
+  };
+} else {
+  hmrConfig = {
+    protocol: "wss",
+    host,
+    port: parseInt(process.env.FRONTEND_PORT) || 8002,
+    clientPort: 443
+  };
+}
+var vite_config_default = defineConfig({
+  server: {
+    allowedHosts,
+    cors: {
+      preflightContinue: true
+    },
+    port: Number(process.env.PORT || 3e3),
+    // Disable HMR — in Shopify embedded apps behind Cloudflare tunnels
+    // (and on OneDrive-synced folders), the WebSocket connection frequently
+    // fails or file-sync events trigger constant full-page reloads.
+    hmr: false,
+    fs: {
+      // See https://vitejs.dev/config/server-options.html#server-fs-allow for more information
+      allow: ["app", "node_modules"]
+    }
+  },
+  plugins: [reactRouter(), tsconfigPaths()],
+  build: {
+    assetsInlineLimit: 0
+  },
+  optimizeDeps: {
+    include: ["@shopify/app-bridge-react"]
+  }
+});
+export {
+  vite_config_default as default
+};
+//# sourceMappingURL=data:application/json;base64,ewogICJ2ZXJzaW9uIjogMywKICAic291cmNlcyI6IFsidml0ZS5jb25maWcuanMiXSwKICAic291cmNlc0NvbnRlbnQiOiBbImNvbnN0IF9fdml0ZV9pbmplY3RlZF9vcmlnaW5hbF9kaXJuYW1lID0gXCJDOlxcXFxVc2Vyc1xcXFxIUFxcXFxPbmVEcml2ZVxcXFxEb2N1bWVudHNcXFxcU2hvcGlmeS1FeHBsaWZpZWRcXFxcSnVkZ2UtbWVWMlwiO2NvbnN0IF9fdml0ZV9pbmplY3RlZF9vcmlnaW5hbF9maWxlbmFtZSA9IFwiQzpcXFxcVXNlcnNcXFxcSFBcXFxcT25lRHJpdmVcXFxcRG9jdW1lbnRzXFxcXFNob3BpZnktRXhwbGlmaWVkXFxcXEp1ZGdlLW1lVjJcXFxcdml0ZS5jb25maWcuanNcIjtjb25zdCBfX3ZpdGVfaW5qZWN0ZWRfb3JpZ2luYWxfaW1wb3J0X21ldGFfdXJsID0gXCJmaWxlOi8vL0M6L1VzZXJzL0hQL09uZURyaXZlL0RvY3VtZW50cy9TaG9waWZ5LUV4cGxpZmllZC9KdWRnZS1tZVYyL3ZpdGUuY29uZmlnLmpzXCI7aW1wb3J0IHsgY29uZmlnIGFzIGxvYWRFbnYgfSBmcm9tIFwiZG90ZW52XCI7XG5pbXBvcnQgeyBmaWxlVVJMVG9QYXRoIH0gZnJvbSBcIm5vZGU6dXJsXCI7XG5pbXBvcnQgcGF0aCBmcm9tIFwibm9kZTpwYXRoXCI7XG5pbXBvcnQgeyByZWFjdFJvdXRlciB9IGZyb20gXCJAcmVhY3Qtcm91dGVyL2Rldi92aXRlXCI7XG5pbXBvcnQgeyBkZWZpbmVDb25maWcgfSBmcm9tIFwidml0ZVwiO1xuaW1wb3J0IHRzY29uZmlnUGF0aHMgZnJvbSBcInZpdGUtdHNjb25maWctcGF0aHNcIjtcblxuY29uc3QgX19kaXJuYW1lID0gcGF0aC5kaXJuYW1lKGZpbGVVUkxUb1BhdGgoaW1wb3J0Lm1ldGEudXJsKSk7XG5sb2FkRW52KHsgcGF0aDogcGF0aC5qb2luKF9fZGlybmFtZSwgXCIuZW52Lmp1ZGdlbWVcIikgfSk7XG5cbi8vIFJlbGF0ZWQ6IGh0dHBzOi8vZ2l0aHViLmNvbS9yZW1peC1ydW4vcmVtaXgvaXNzdWVzLzI4MzUjaXNzdWVjb21tZW50LTExNDQxMDIxNzZcbi8vIFJlcGxhY2UgdGhlIEhPU1QgZW52IHZhciB3aXRoIFNIT1BJRllfQVBQX1VSTCBzbyB0aGF0IGl0IGRvZXNuJ3QgYnJlYWsgdGhlIFZpdGUgc2VydmVyLlxuLy8gVGhlIENMSSB3aWxsIGV2ZW50dWFsbHkgc3RvcCBwYXNzaW5nIGluIEhPU1QsXG4vLyBzbyB3ZSBjYW4gcmVtb3ZlIHRoaXMgd29ya2Fyb3VuZCBhZnRlciB0aGUgbmV4dCBtYWpvciByZWxlYXNlLlxuaWYgKFxuICBwcm9jZXNzLmVudi5IT1NUICYmXG4gICghcHJvY2Vzcy5lbnYuU0hPUElGWV9BUFBfVVJMIHx8XG4gICAgcHJvY2Vzcy5lbnYuU0hPUElGWV9BUFBfVVJMID09PSBwcm9jZXNzLmVudi5IT1NUKVxuKSB7XG4gIHByb2Nlc3MuZW52LlNIT1BJRllfQVBQX1VSTCA9IHByb2Nlc3MuZW52LkhPU1Q7XG4gIGRlbGV0ZSBwcm9jZXNzLmVudi5IT1NUO1xufVxuXG5jb25zdCBob3N0ID0gbmV3IFVSTChwcm9jZXNzLmVudi5TSE9QSUZZX0FQUF9VUkwgfHwgXCJodHRwOi8vbG9jYWxob3N0XCIpXG4gIC5ob3N0bmFtZTtcbmNvbnN0IGFsbG93ZWRIb3N0cyA9IEFycmF5LmZyb20oXG4gIG5ldyBTZXQoW1xuICAgIGhvc3QsXG4gICAgLy8gQWxsb3cgQ2xvdWRmbGFyZSBxdWljayB0dW5uZWwgc3ViZG9tYWlucyB1c2VkIGR1cmluZyBsb2NhbCBkZXZlbG9wbWVudC5cbiAgICBcIi50cnljbG91ZGZsYXJlLmNvbVwiLFxuICBdKSxcbik7XG5sZXQgaG1yQ29uZmlnO1xuXG5pZiAoaG9zdCA9PT0gXCJsb2NhbGhvc3RcIikge1xuICBobXJDb25maWcgPSB7XG4gICAgcHJvdG9jb2w6IFwid3NcIixcbiAgICBob3N0OiBcImxvY2FsaG9zdFwiLFxuICAgIHBvcnQ6IDY0OTk5LFxuICAgIGNsaWVudFBvcnQ6IDY0OTk5LFxuICB9O1xufSBlbHNlIHtcbiAgaG1yQ29uZmlnID0ge1xuICAgIHByb3RvY29sOiBcIndzc1wiLFxuICAgIGhvc3Q6IGhvc3QsXG4gICAgcG9ydDogcGFyc2VJbnQocHJvY2Vzcy5lbnYuRlJPTlRFTkRfUE9SVCkgfHwgODAwMixcbiAgICBjbGllbnRQb3J0OiA0NDMsXG4gIH07XG59XG5cbmV4cG9ydCBkZWZhdWx0IGRlZmluZUNvbmZpZyh7XG4gIHNlcnZlcjoge1xuICAgIGFsbG93ZWRIb3N0cyxcbiAgICBjb3JzOiB7XG4gICAgICBwcmVmbGlnaHRDb250aW51ZTogdHJ1ZSxcbiAgICB9LFxuICAgIHBvcnQ6IE51bWJlcihwcm9jZXNzLmVudi5QT1JUIHx8IDMwMDApLFxuICAgIC8vIERpc2FibGUgSE1SIFx1MjAxNCBpbiBTaG9waWZ5IGVtYmVkZGVkIGFwcHMgYmVoaW5kIENsb3VkZmxhcmUgdHVubmVsc1xuICAgIC8vIChhbmQgb24gT25lRHJpdmUtc3luY2VkIGZvbGRlcnMpLCB0aGUgV2ViU29ja2V0IGNvbm5lY3Rpb24gZnJlcXVlbnRseVxuICAgIC8vIGZhaWxzIG9yIGZpbGUtc3luYyBldmVudHMgdHJpZ2dlciBjb25zdGFudCBmdWxsLXBhZ2UgcmVsb2Fkcy5cbiAgICBobXI6IGZhbHNlLFxuICAgIGZzOiB7XG4gICAgICAvLyBTZWUgaHR0cHM6Ly92aXRlanMuZGV2L2NvbmZpZy9zZXJ2ZXItb3B0aW9ucy5odG1sI3NlcnZlci1mcy1hbGxvdyBmb3IgbW9yZSBpbmZvcm1hdGlvblxuICAgICAgYWxsb3c6IFtcImFwcFwiLCBcIm5vZGVfbW9kdWxlc1wiXSxcbiAgICB9LFxuICB9LFxuICBwbHVnaW5zOiBbcmVhY3RSb3V0ZXIoKSwgdHNjb25maWdQYXRocygpXSxcbiAgYnVpbGQ6IHtcbiAgICBhc3NldHNJbmxpbmVMaW1pdDogMCxcbiAgfSxcbiAgb3B0aW1pemVEZXBzOiB7XG4gICAgaW5jbHVkZTogW1wiQHNob3BpZnkvYXBwLWJyaWRnZS1yZWFjdFwiXSxcbiAgfSxcbn0pO1xuIl0sCiAgIm1hcHBpbmdzIjogIjtBQUFpWCxTQUFTLFVBQVUsZUFBZTtBQUNuWixTQUFTLHFCQUFxQjtBQUM5QixPQUFPLFVBQVU7QUFDakIsU0FBUyxtQkFBbUI7QUFDNUIsU0FBUyxvQkFBb0I7QUFDN0IsT0FBTyxtQkFBbUI7QUFMaU4sSUFBTSwyQ0FBMkM7QUFPNVIsSUFBTSxZQUFZLEtBQUssUUFBUSxjQUFjLHdDQUFlLENBQUM7QUFDN0QsUUFBUSxFQUFFLE1BQU0sS0FBSyxLQUFLLFdBQVcsY0FBYyxFQUFFLENBQUM7QUFNdEQsSUFDRSxRQUFRLElBQUksU0FDWCxDQUFDLFFBQVEsSUFBSSxtQkFDWixRQUFRLElBQUksb0JBQW9CLFFBQVEsSUFBSSxPQUM5QztBQUNBLFVBQVEsSUFBSSxrQkFBa0IsUUFBUSxJQUFJO0FBQzFDLFNBQU8sUUFBUSxJQUFJO0FBQ3JCO0FBRUEsSUFBTSxPQUFPLElBQUksSUFBSSxRQUFRLElBQUksbUJBQW1CLGtCQUFrQixFQUNuRTtBQUNILElBQU0sZUFBZSxNQUFNO0FBQUEsRUFDekIsb0JBQUksSUFBSTtBQUFBLElBQ047QUFBQTtBQUFBLElBRUE7QUFBQSxFQUNGLENBQUM7QUFDSDtBQUNBLElBQUk7QUFFSixJQUFJLFNBQVMsYUFBYTtBQUN4QixjQUFZO0FBQUEsSUFDVixVQUFVO0FBQUEsSUFDVixNQUFNO0FBQUEsSUFDTixNQUFNO0FBQUEsSUFDTixZQUFZO0FBQUEsRUFDZDtBQUNGLE9BQU87QUFDTCxjQUFZO0FBQUEsSUFDVixVQUFVO0FBQUEsSUFDVjtBQUFBLElBQ0EsTUFBTSxTQUFTLFFBQVEsSUFBSSxhQUFhLEtBQUs7QUFBQSxJQUM3QyxZQUFZO0FBQUEsRUFDZDtBQUNGO0FBRUEsSUFBTyxzQkFBUSxhQUFhO0FBQUEsRUFDMUIsUUFBUTtBQUFBLElBQ047QUFBQSxJQUNBLE1BQU07QUFBQSxNQUNKLG1CQUFtQjtBQUFBLElBQ3JCO0FBQUEsSUFDQSxNQUFNLE9BQU8sUUFBUSxJQUFJLFFBQVEsR0FBSTtBQUFBO0FBQUE7QUFBQTtBQUFBLElBSXJDLEtBQUs7QUFBQSxJQUNMLElBQUk7QUFBQTtBQUFBLE1BRUYsT0FBTyxDQUFDLE9BQU8sY0FBYztBQUFBLElBQy9CO0FBQUEsRUFDRjtBQUFBLEVBQ0EsU0FBUyxDQUFDLFlBQVksR0FBRyxjQUFjLENBQUM7QUFBQSxFQUN4QyxPQUFPO0FBQUEsSUFDTCxtQkFBbUI7QUFBQSxFQUNyQjtBQUFBLEVBQ0EsY0FBYztBQUFBLElBQ1osU0FBUyxDQUFDLDJCQUEyQjtBQUFBLEVBQ3ZDO0FBQ0YsQ0FBQzsiLAogICJuYW1lcyI6IFtdCn0K

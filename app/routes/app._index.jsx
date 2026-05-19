@@ -32,6 +32,12 @@ import {
   markInitialSyncDone,
 } from "../lib/review-sync.server";
 import {
+  syncProductIndex,
+  hasRunProductIndexSync,
+  markProductIndexSyncDone,
+} from "../lib/product-index.server";
+import { getGroupShopList } from "../lib/store-group.server";
+import {
   AlertTriangle,
   ArrowUpRight,
   CalendarDays,
@@ -99,8 +105,9 @@ export async function action({ request }) {
       : "all";
     const now = new Date();
     const rangeStart = rangeStartFromKey(now, rangeKey);
+    const targetShopsPlaybook = await getGroupShopList(shop);
     const reviewRows = await db.review.findMany({
-      where: { shop },
+      where: { shop: { in: targetShopsPlaybook } },
       orderBy: { createdAt: "desc" },
     });
     const scopedReviews = filterReviewsByRangeStart(reviewRows, rangeStart);
@@ -158,6 +165,17 @@ export const loader = async ({ request }) => {
     console.error("[review-sync] check failed:", syncErr);
   }
 
+  try {
+    const indexSynced = await hasRunProductIndexSync(shop);
+    if (!indexSynced) {
+      syncProductIndex(admin, shop)
+        .then(() => markProductIndexSyncDone(shop))
+        .catch((err) => console.error("[product-index] error:", err));
+    }
+  } catch (indexErr) {
+    console.error("[product-index] check failed:", indexErr);
+  }
+
   // Ensure shop record exists and get trial status
   const trialStatus = await getTrialStatus(shop);
 
@@ -178,8 +196,10 @@ export const loader = async ({ request }) => {
   const url = new URL(request.url);
   const rangeKey = parseDashboardRange(url.searchParams);
 
+  const targetShops = await getGroupShopList(shop);
+
   const reviewsAll = await db.review.findMany({
-    where: { shop },
+    where: { shop: { in: targetShops } },
     orderBy: { createdAt: "desc" },
   });
 
@@ -518,6 +538,7 @@ export default function Dashboard() {
     urgentNeedsCount,
     rangeKey,
     metricsRangeLabel,
+    shop,
     trialStatus,
   } = useLoaderData();
   const [, setSearchParams] = useSearchParams();
@@ -568,7 +589,6 @@ export default function Dashboard() {
 
       <div style={s.header}>
         <div>
-          <div style={s.eyebrow}>Insights Dashboard</div>
           <h1 style={s.h1}>Dashboard</h1>
           <p style={s.metricsRangeHint}>Showing {metricsRangeLabel}</p>
         </div>
@@ -622,7 +642,7 @@ export default function Dashboard() {
               <div style={s.kpiTopCell}>
                 <Card compact>
                   <div style={s.cardHeadCompact}>
-                    <span style={{ ...s.cardIcon, ...s.cardIconCompact, background: "#fffbeb", color: "#d97706" }}><Star size={15} /></span>
+                    <span style={{ ...s.cardIcon, ...s.cardIconCompact, background: "#f6f6f7", color: "#b98900" }}><Star size={15} /></span>
                     <Badge tone="red"><ArrowUpRight size={12} />{kpis.avgDelta}</Badge>
                   </div>
                   <div style={s.bigNumCompact}>{kpis.avgRating}</div>
@@ -636,7 +656,7 @@ export default function Dashboard() {
               <div style={s.kpiVelCell}>
                 <Card style={{ ...s.kpiChartCard, ...s.cardChartDense }}>
                   <div style={s.cardHead}>
-                    <span style={{ ...s.cardIcon, background: "rgba(35,181,181,0.14)", color: "#23b5b5" }}><TrendingUp size={16} /></span>
+                    <span style={{ ...s.cardIcon, background: "#ecfdf3", color: SHOPIFY_GREEN }}><TrendingUp size={16} /></span>
                     <Badge tone="green">High</Badge>
                   </div>
                   <div style={s.bigNum}>+{kpis.velocityPerWeek} / week</div>
@@ -709,24 +729,29 @@ export default function Dashboard() {
                     <td style={s.td}>
                       <div style={s.prodCell}>
                         {p.productImage ? (
-                          <div style={{ ...s.prodDot, overflow: "hidden", backgroundColor: "#f1f5f9" }}>
+                          <div style={{ ...s.prodDot, overflow: "hidden", backgroundColor: SURFACE_MUTED }}>
                             <img src={p.productImage} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" />
                           </div>
                         ) : (
                           <div style={{ ...s.prodDot, ...dotColor(p.iconTone) }} />
                         )}
                         <div>
-                          <div style={s.prodName}>{p.productName}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <div style={s.prodName}>{p.productName}</div>
+                            {p.originShop !== shop && (
+                              <Badge tone="blue">{p.originLabel}</Badge>
+                            )}
+                          </div>
                           <div style={s.prodSku}>{p.sku}</div>
                         </div>
                       </div>
                     </td>
                     <td style={s.td}>
-                      <div style={s.ratingCell}><Star size={13} fill="#fbbf24" stroke="#fbbf24" /> {p.avgRating}</div>
+                      <div style={s.ratingCell}><Star size={13} fill="#b98900" stroke="#b98900" /> {p.avgRating}</div>
                     </td>
                     <td style={s.td}>{p.reviewCount}</td>
                     <td style={s.td}><SentimentChip v={p.sentiment} /></td>
-                    <td style={{ ...s.td, color: "#94a3b8" }}>{p.lastReview}</td>
+                    <td style={{ ...s.td, color: "#8c9196" }}>{p.lastReview}</td>
                     <td style={{ ...s.td, textAlign: "right", position: "relative", zIndex: 2 }}>
                       <div style={s.actRow}>
                         <ActionLink to={reviewsHref(p.productName, p.productId)}>
@@ -810,12 +835,12 @@ function trendArrow(trend) {
 
 function tagStyle(trend) {
   if (trend === "up") {
-    return { background: "#23b5b5", color: "#fff", borderColor: "#0f766e" };
+    return { background: "#ecfdf3", color: "#008060", borderColor: "#aee9d1" };
   }
   if (trend === "down") {
-    return { background: "#fce7f3", color: "#9d174d", borderColor: "#f9a8d4" };
+    return { background: "#fff4f4", color: "#d72c0d", borderColor: "#fed3d1" };
   }
-  return { background: "#f1f5f9", color: "#475569", borderColor: "#e2e8f0" };
+  return { background: "#f6f6f7", color: "#5c5f62", borderColor: "#e1e3e5" };
 }
 
 function TopInsightCard({ panel, onViewFullAnalysis, disabled }) {
@@ -825,7 +850,7 @@ function TopInsightCard({ panel, onViewFullAnalysis, disabled }) {
     <div style={s.aiTopCard}>
       <div style={s.aiTopCardHead}>
         <span style={s.aiTopIcon}>
-          <Sparkles size={16} color="#0d9488" />
+          <Sparkles size={16} color="#008060" />
         </span>
         <span style={s.aiTopBadge}>Top Insight</span>
       </div>
@@ -851,7 +876,7 @@ function TopInsightCard({ panel, onViewFullAnalysis, disabled }) {
         onClick={onViewFullAnalysis}
         disabled={disabled}
       >
-        <Lightbulb size={15} color="#0d9488" />
+        <Lightbulb size={15} color="#008060" />
         {disabled ? "Opening playbook…" : "View full analysis"}
       </button>
     </div>
@@ -870,7 +895,7 @@ function UrgentCard({ panel, urgentNeedsCount }) {
     <div style={s.aiUrgentCard}>
       <div style={s.aiUrgentHead}>
         <span style={s.aiUrgentIcon}>
-          <AlertTriangle size={16} color="#dc2626" />
+          <AlertTriangle size={16} color="#d72c0d" />
         </span>
         <span style={s.aiUrgentBadge}>
           <span style={s.aiUrgentDot} />
@@ -910,15 +935,15 @@ function SpotlightCard({ panel }) {
     <div style={s.aiSpotCard}>
       <div style={s.aiSpotHead}>
         <span style={s.aiSpotIcon}>
-          <Crown size={16} color="#ca8a04" />
+          <Crown size={16} color="#b98900" />
         </span>
         <div style={s.aiSpotStars} aria-label={`${n} of 5 stars`}>
           {[1, 2, 3, 4, 5].map((i) => (
             <Star
               key={i}
               size={15}
-              fill={i <= n ? "#fbbf24" : "none"}
-              stroke="#fbbf24"
+              fill={i <= n ? "#b98900" : "none"}
+              stroke="#b98900"
             />
           ))}
         </div>
@@ -950,7 +975,7 @@ function TrialBanner({ trialStatus }) {
     return (
       <div style={s.trialCard}>
         <div style={s.trialHead}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", flexShrink: 0 }} />
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: SHOPIFY_GREEN, flexShrink: 0 }} />
           <span style={s.trialHeadText}>AI Pro — Active</span>
         </div>
         <p style={s.trialSubtext}>AI insights, playbooks & analysis are enabled.</p>
@@ -962,10 +987,10 @@ function TrialBanner({ trialStatus }) {
     return (
       <div style={s.trialExpiredCard}>
         <div style={s.trialHead}>
-          <AlertTriangle size={16} color="#dc2626" />
-          <span style={{ ...s.trialHeadText, color: "#991b1b" }}>AI trial ended</span>
+          <AlertTriangle size={16} color={CRITICAL_RED} />
+          <span style={{ ...s.trialHeadText, color: "#8e1f0b" }}>AI trial ended</span>
         </div>
-        <p style={{ ...s.trialSubtext, color: "#7f1d1d" }}>
+        <p style={{ ...s.trialSubtext, color: "#8e1f0b" }}>
           Your 7-day AI trial has ended. Reviews, widgets & all other features still work — only AI insights & playbooks are disabled.
         </p>
       </div>
@@ -977,7 +1002,7 @@ function TrialBanner({ trialStatus }) {
   return (
     <div style={s.trialActiveCard}>
       <div style={s.trialHead}>
-        <Sparkles size={16} color="#0d9488" />
+        <Sparkles size={16} color="#008060" />
         <span style={s.trialHeadText}>AI trial</span>
         <span style={s.trialBadge}>{daysText} left</span>
       </div>
@@ -1046,9 +1071,9 @@ function Card({ children, noPad, style, compact }) {
 }
 
 function Badge({ children, tone }) {
-  const bg = tone === "green" ? "#ecfdf5" : tone === "red" ? "#fef2f2" : "#f1f5f9";
-  const fg = tone === "green" ? "#16a34a" : tone === "red" ? "#ef4444" : "#475569";
-  const bd = tone === "green" ? "#bbf7d0" : tone === "red" ? "#fecaca" : "#e2e8f0";
+  const bg = tone === "green" ? "#ecfdf3" : tone === "red" ? "#fff4f4" : "#f6f6f7";
+  const fg = tone === "green" ? "#008060" : tone === "red" ? "#d72c0d" : "#5c5f62";
+  const bd = tone === "green" ? "#aee9d1" : tone === "red" ? "#fed3d1" : "#e1e3e5";
   return <span style={{ ...s.badge, background: bg, color: fg, borderColor: bd }}>{children}</span>;
 }
 
@@ -1090,7 +1115,14 @@ function ActionLink({ children, feature, to }) {
   );
 }
 
-const NEUTRAL_SEGMENT = "#fbbf24";
+const SHOPIFY_GREEN = "#008060";
+const SHOPIFY_GREEN_DARK = "#006e52";
+const NEUTRAL_SEGMENT = "#d89b00";
+const CRITICAL_RED = "#d72c0d";
+const PAGE_BG = "#f3f7f5";
+const SURFACE_BG = "#fafcfb";
+const SURFACE_BORDER = "#e5ebe8";
+const SURFACE_MUTED = "#f5f9f7";
 
 function sentimentConicGradient(sentiment) {
   const p = Number.parseFloat(String(sentiment.positivePct).replace(/[^\d.-]/g, ""));
@@ -1098,11 +1130,11 @@ function sentimentConicGradient(sentiment) {
   const neg = Number.parseFloat(String(sentiment.negativePct).replace(/[^\d.-]/g, ""));
   const sum = p + n + neg;
   if (![p, n, neg].every((x) => Number.isFinite(x)) || sum <= 0) {
-    return `conic-gradient(#23b5b5 0 33.33%, ${NEUTRAL_SEGMENT} 33.33% 66.66%, #ef4444 66.66% 100%)`;
+    return `conic-gradient(${SHOPIFY_GREEN} 0 33.33%, ${NEUTRAL_SEGMENT} 33.33% 66.66%, ${CRITICAL_RED} 66.66% 100%)`;
   }
   const a = (p / sum) * 100;
   const b = a + (n / sum) * 100;
-  return `conic-gradient(#23b5b5 0% ${a}%, ${NEUTRAL_SEGMENT} ${a}% ${b}%, #ef4444 ${b}% 100%)`;
+  return `conic-gradient(${SHOPIFY_GREEN} 0% ${a}%, ${NEUTRAL_SEGMENT} ${a}% ${b}%, ${CRITICAL_RED} ${b}% 100%)`;
 }
 
 function SentimentCard({ sentiment }) {
@@ -1111,7 +1143,7 @@ function SentimentCard({ sentiment }) {
     <Card style={{ ...s.kpiChartCard, ...s.cardChartDense }}>
       <div style={s.sentCardHeadCompact}>
         <span style={s.sentTitle}>Sentiment Split</span>
-        <span style={{ ...s.cardIcon, background: "#f1f5f9", color: "#0f172a" }}><Sparkles size={16} /></span>
+        <span style={{ ...s.cardIcon, background: "#f6f6f7", color: "#5c5f62" }}><Sparkles size={16} /></span>
       </div>
       <div style={s.sentRowSent}>
         <div style={{ ...s.donutSent, backgroundImage: c }}>
@@ -1121,9 +1153,9 @@ function SentimentCard({ sentiment }) {
           </div>
         </div>
         <div style={s.sentLegendSent}>
-          <Dot color="#0d9488" label={`Positive ${sentiment.positivePct}%`} compact />
+          <Dot color={SHOPIFY_GREEN} label={`Positive ${sentiment.positivePct}%`} compact />
           <Dot color={NEUTRAL_SEGMENT} label={`Neutral ${sentiment.neutralPct}%`} compact />
-          <Dot color="#ef4444" label={`Negative ${sentiment.negativePct}%`} compact />
+          <Dot color={CRITICAL_RED} label={`Negative ${sentiment.negativePct}%`} compact />
         </div>
       </div>
     </Card>
@@ -1159,10 +1191,10 @@ function VelocitySparkline({ values = [4, 12, 7, 18, 9, 22, 11, 26, 14, 30, 16, 
       style={s.sparkSvgVelocity}
       aria-hidden
     >
-      <line x1={padX} y1={h - padY} x2={w - padX} y2={h - padY} stroke="#e2e8f0" strokeWidth="1" />
+      <line x1={padX} y1={h - padY} x2={w - padX} y2={h - padY} stroke="#e1e3e5" strokeWidth="1" />
       <polyline
         fill="none"
-        stroke="#23b5b5"
+        stroke={SHOPIFY_GREEN}
         strokeWidth="2.5"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -1203,10 +1235,10 @@ function MiniBarGraph({ values }) {
 function SentimentChip({ v }) {
   const t =
     v === "Positive"
-      ? { bg: "#ecfdf5", fg: "#16a34a", dot: "#22c55e" }
+      ? { bg: "#ecfdf3", fg: "#008060", dot: "#008060" }
       : v === "Negative"
-        ? { bg: "#fef2f2", fg: "#ef4444", dot: "#ef4444" }
-        : { bg: "#f1f5f9", fg: "#475569", dot: "#94a3b8" };
+        ? { bg: "#fff4f4", fg: "#d72c0d", dot: "#d72c0d" }
+        : { bg: "#f6f6f7", fg: "#5c5f62", dot: "#8c9196" };
   return (
     <span style={{ ...s.chip, background: t.bg, color: t.fg }}>
       <span style={{ ...s.chipDot, background: t.dot }} />
@@ -1216,19 +1248,19 @@ function SentimentChip({ v }) {
 }
 
 function dotColor(t) {
-  if (t === "teal") return { background: "#ccfbf1", borderColor: "#5eead4" };
-  if (t === "indigo") return { background: "#e0e7ff", borderColor: "#a5b4fc" };
-  if (t === "orange") return { background: "#ffedd5", borderColor: "#fdba74" };
-  return { background: "#f1f5f9", borderColor: "#cbd5e1" };
+  if (t === "teal") return { background: "#e8f5f0", borderColor: "#aee9d1" };
+  if (t === "indigo") return { background: "#f1f2f4", borderColor: "#c9cccf" };
+  if (t === "orange") return { background: "#fff5ea", borderColor: "#e4b06f" };
+  return { background: "#f6f6f7", borderColor: "#c9cccf" };
 }
 
 const responsive = `
   @media(max-width:1180px){
     .dBody{grid-template-columns:1fr!important;}
     .dAside{position:relative!important;top:0!important;}
-    .dKpiWrap{gap:20px!important;}
-    .dKpiTopRow{gap:20px!important;}
-    .dKpiBottomRow{gap:22px!important;}
+    .dKpiWrap{gap:16px!important;}
+    .dKpiTopRow{gap:16px!important;}
+    .dKpiBottomRow{gap:16px!important;}
   }
   @media(max-width:720px){
     .dKpiBottomRow{grid-template-columns:1fr!important;}
@@ -1239,27 +1271,33 @@ const responsive = `
   }
 `;
 
-const R = 20;
-const shadow = "0 8px 32px rgba(15,23,42,0.08), 0 2px 6px rgba(15,23,42,0.04)";
+const R = 8;
+const shadow = "none";
 
 const s = {
-  page: { padding: "36px 40px", background: "#ffffff", minHeight: "100vh", fontFamily: "'Inter',system-ui,-apple-system,sans-serif", fontSize: 14 },
+  page: {
+    padding: "20px 24px 32px",
+    background: PAGE_BG,
+    minHeight: "100vh",
+    fontFamily: "'Inter',system-ui,-apple-system,sans-serif",
+    fontSize: 14,
+    color: "#202223",
+  },
 
-  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, marginBottom: 28 },
-  eyebrow: { fontSize: 12, fontWeight: 700, color: "#64748b", letterSpacing: "0.04em" },
-  h1: { margin: "4px 0 0", fontSize: 30, fontWeight: 900, color: "#0f172a" },
-  metricsRangeHint: { margin: "8px 0 0", fontSize: 13, fontWeight: 600, color: "#64748b" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, marginBottom: 20 },
+  h1: { margin: 0, fontSize: 30, fontWeight: 900, color: "#202223" },
+  metricsRangeHint: { margin: "8px 0 0", fontSize: 13, fontWeight: 600, color: "#6d7175" },
   headerActions: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" },
 
   rangeWrap: {
     display: "inline-flex",
     gap: 8,
     alignItems: "center",
-    padding: "9px 14px",
-    borderRadius: 999,
-    border: "1px solid #e2e8f0",
+    padding: "7px 12px",
+    borderRadius: R,
+    border: "1px solid #c9cccf",
     background: "#fff",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+    boxShadow: "none",
     cursor: "pointer",
   },
   rangeSelect: {
@@ -1268,24 +1306,24 @@ const s = {
     background: "transparent",
     fontWeight: 700,
     fontSize: 13,
-    color: "#1e293b",
+    color: "#202223",
     cursor: "pointer",
     fontFamily: "inherit",
     maxWidth: 140,
   },
 
-  pill: { display: "inline-flex", gap: 6, alignItems: "center", padding: "9px 16px", borderRadius: 999, border: "1px solid #e2e8f0", background: "#fff", fontWeight: 700, fontSize: 13, color: "#1e293b", cursor: "pointer", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" },
-  pillPrimary: { display: "inline-flex", gap: 6, alignItems: "center", padding: "9px 16px", borderRadius: 999, border: "none", background: "#14b8a6", color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer", boxShadow: "0 6px 20px rgba(20,184,166,0.25)" },
+  pill: { display: "inline-flex", gap: 6, alignItems: "center", padding: "7px 12px", borderRadius: R, border: "1px solid #c9cccf", background: "#fff", fontWeight: 700, fontSize: 13, color: "#202223", cursor: "pointer", boxShadow: "none" },
+  pillPrimary: { display: "inline-flex", gap: 6, alignItems: "center", padding: "7px 12px", borderRadius: R, border: "none", background: SHOPIFY_GREEN, color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer", boxShadow: "none" },
 
-  body: { display: "grid", gridTemplateColumns: "1fr 340px", gap: 24, alignItems: "start", minWidth: 0 },
-  left: { display: "grid", gap: 28, minWidth: 0 },
-  aside: { position: "sticky", top: 20 },
+  body: { display: "grid", gridTemplateColumns: "1fr 320px", gap: 16, alignItems: "start", minWidth: 0 },
+  left: { display: "grid", gap: 16, minWidth: 0 },
+  aside: { position: "sticky", top: 16 },
 
   kpiWrap: { display: "flex", flexDirection: "column", gap: 16, minWidth: 0 },
   kpiTopRow: {
     display: "grid",
     gridTemplateColumns: "minmax(0, 1.22fr) minmax(0, 0.82fr)",
-    gap: 24,
+    gap: 16,
     minWidth: 0,
     width: "100%",
     alignItems: "stretch",
@@ -1293,7 +1331,7 @@ const s = {
   kpiBottomRow: {
     display: "grid",
     gridTemplateColumns: "minmax(0, 1.22fr) minmax(0, 0.82fr)",
-    gap: 20,
+    gap: 16,
     minWidth: 0,
     width: "100%",
     alignItems: "stretch",
@@ -1309,24 +1347,31 @@ const s = {
     maxWidth: "100%",
     boxSizing: "border-box",
   },
-  cardChartDense: { padding: "16px 20px" },
+  cardChartDense: { padding: "16px" },
 
-  card: { background: "#fff", borderRadius: R, border: "1px solid #e6edf5", padding: "22px 24px", boxShadow: shadow, boxSizing: "border-box" },
+  card: {
+    background: SURFACE_BG,
+    borderRadius: R,
+    border: `1px solid ${SURFACE_BORDER}`,
+    padding: "16px",
+    boxShadow: shadow,
+    boxSizing: "border-box",
+  },
   cardCompact: {
-    padding: "14px 18px",
+    padding: "16px",
     borderRadius: R,
     width: "100%",
-    minHeight: 126,
+    minHeight: 118,
     display: "flex",
     flexDirection: "column",
   },
 
-  cardHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  cardHeadCompact: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  cardIcon: { width: 32, height: 32, borderRadius: 12, background: "#eff6ff", color: "#2563eb", display: "grid", placeItems: "center" },
-  cardIconCompact: { width: 28, height: 28, borderRadius: 10 },
-  cardLabel: { fontSize: 12, fontWeight: 700, color: "#94a3b8", marginTop: 2 },
-  cardLabelCompact: { fontSize: 11, fontWeight: 700, color: "#94a3b8", marginTop: 1 },
+  cardHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  cardHeadCompact: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  cardIcon: { width: 28, height: 28, borderRadius: 6, background: SURFACE_MUTED, color: "#5c5f62", display: "grid", placeItems: "center" },
+  cardIconCompact: { width: 28, height: 28, borderRadius: 6 },
+  cardLabel: { fontSize: 12, fontWeight: 700, color: "#6d7175", marginTop: 2 },
+  cardLabelCompact: { fontSize: 11, fontWeight: 700, color: "#6d7175", marginTop: 1 },
   kpiMetricRowCompact: {
     display: "flex",
     alignItems: "flex-end",
@@ -1343,25 +1388,25 @@ const s = {
     gap: 6,
     opacity: 0.9,
     flexShrink: 0,
-    borderBottom: "1px solid #ccfbf1",
+    borderBottom: "1px solid #d2e8dc",
     paddingBottom: 2,
   },
   miniBar: {
     width: 12,
     borderRadius: "3px 3px 0 0",
-    background: "#23b5b5",
+    background: SHOPIFY_GREEN,
     display: "block",
   },
 
-  bigNum: { fontSize: 28, fontWeight: 900, color: "#0f172a", lineHeight: 1.1, margin: "6px 0 0" },
-  bigNumCompact: { fontSize: 26, fontWeight: 900, color: "#0f172a", lineHeight: 1.1, margin: "4px 0 0" },
-  starsRow: { color: "#fbbf24", fontSize: 13, letterSpacing: "0.08em", marginBottom: 2 },
-  starsRowCompact: { color: "#fbbf24", fontSize: 12, letterSpacing: "0.08em", marginBottom: 0 },
+  bigNum: { fontSize: 28, fontWeight: 900, color: "#202223", lineHeight: 1.1, margin: "6px 0 0" },
+  bigNumCompact: { fontSize: 26, fontWeight: 900, color: "#202223", lineHeight: 1.1, margin: "4px 0 0" },
+  starsRow: { color: "#b98900", fontSize: 13, letterSpacing: "0.08em", marginBottom: 2 },
+  starsRowCompact: { color: "#b98900", fontSize: 12, letterSpacing: "0.08em", marginBottom: 0 },
 
   badge: { display: "inline-flex", gap: 4, alignItems: "center", padding: "3px 10px", borderRadius: 999, fontWeight: 900, fontSize: 11, border: "1px solid" },
 
   sentCardHeadCompact: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
-  sentTitle: { fontSize: 13, fontWeight: 800, color: "#64748b", letterSpacing: "0.02em" },
+  sentTitle: { fontSize: 13, fontWeight: 800, color: "#6d7175", letterSpacing: "0.02em" },
   sentRowSent: {
     display: "flex",
     gap: 12,
@@ -1376,65 +1421,65 @@ const s = {
     width: 58,
     height: 58,
     borderRadius: "50%",
-    background: "#fff",
-    border: "2px solid #e2e8f0",
+    background: SURFACE_BG,
+    border: `2px solid ${SURFACE_BORDER}`,
     display: "grid",
     placeItems: "center",
     padding: "2px",
   },
-  donutPctSent: { fontSize: 15, fontWeight: 900, color: "#0f172a", lineHeight: 1 },
-  donutLabelSent: { fontSize: 9, fontWeight: 800, color: "#64748b" },
+  donutPctSent: { fontSize: 15, fontWeight: 900, color: "#202223", lineHeight: 1 },
+  donutLabelSent: { fontSize: 9, fontWeight: 800, color: "#6d7175" },
   sentLegendSent: { display: "grid", gap: 5, flex: "1 1 0", minWidth: 0 },
   legendRow: { display: "flex", gap: 10, alignItems: "center", minWidth: 0 },
   legendDot: { width: 9, height: 9, borderRadius: 999, flexShrink: 0 },
-  legendLabel: { fontSize: 13, fontWeight: 700, color: "#334155" },
-  legendLabelSent: { fontSize: 12, fontWeight: 700, color: "#334155", overflowWrap: "anywhere" },
+  legendLabel: { fontSize: 13, fontWeight: 700, color: "#5c5f62" },
+  legendLabelSent: { fontSize: 12, fontWeight: 700, color: "#5c5f62", overflowWrap: "anywhere" },
 
-  sparkSvgVelocity: { marginTop: 8, display: "block", flexShrink: 0, maxWidth: "100%" },
+  sparkSvgVelocity: { marginTop: 12, display: "block", flexShrink: 0, maxWidth: "100%" },
 
-  tableTop: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "22px 26px", borderBottom: "1px solid #f1f5f9", gap: 16 },
-  tableH: { fontSize: 19, fontWeight: 900, color: "#0f172a", marginRight: 12 },
-  totalBadge: { padding: "5px 12px", borderRadius: 999, background: "#ecfdf5", color: "#16a34a", fontWeight: 900, fontSize: 12, border: "1px solid #bbf7d0" },
-  tableTools: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" },
+  tableTop: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", borderBottom: `1px solid ${SURFACE_BORDER}`, gap: 16 },
+  tableH: { fontSize: 19, fontWeight: 900, color: "#202223", marginRight: 12 },
+  totalBadge: { padding: "5px 12px", borderRadius: 999, background: "#ecfdf3", color: "#008060", fontWeight: 900, fontSize: 12, border: "1px solid #aee9d1" },
+  tableTools: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" },
   sortLabel: { display: "inline-flex", gap: 8, alignItems: "center" },
-  sortLabelText: { fontSize: 12, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" },
+  sortLabelText: { fontSize: 12, fontWeight: 800, color: "#6d7175", textTransform: "uppercase", letterSpacing: "0.06em" },
   sortSelect: {
-    padding: "9px 12px",
-    borderRadius: 999,
-    border: "1px solid #e2e8f0",
+    padding: "7px 12px",
+    borderRadius: R,
+    border: "1px solid #c9cccf",
     background: "#fff",
     fontWeight: 700,
     fontSize: 13,
-    color: "#1e293b",
+    color: "#202223",
     cursor: "pointer",
     fontFamily: "inherit",
   },
-  searchBox: { display: "inline-flex", gap: 8, alignItems: "center", padding: "9px 14px", borderRadius: 999, border: "1px solid #e2e8f0", background: "#fff", color: "#94a3b8" },
+  searchBox: { display: "inline-flex", gap: 8, alignItems: "center", padding: "7px 12px", borderRadius: R, border: "1px solid #c9cccf", background: "#fff", color: "#8c9196" },
   searchInput: { border: "none", outline: "none", fontWeight: 600, fontSize: 13, width: 140, background: "transparent" },
 
   table: { width: "100%", borderCollapse: "collapse" },
-  th: { textAlign: "left", padding: "14px 24px", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "#94a3b8", fontWeight: 800, background: "#fafcff" },
-  tr: { borderBottom: "1px solid #f1f5f9" },
-  td: { padding: "16px 24px", fontSize: 13, fontWeight: 700, color: "#1e293b" },
+  th: { textAlign: "left", padding: "14px 24px", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "#6d7175", fontWeight: 800, background: SURFACE_MUTED },
+  tr: { borderBottom: `1px solid ${SURFACE_BORDER}` },
+  td: { padding: "16px 24px", fontSize: 13, fontWeight: 700, color: "#202223" },
 
-  prodCell: { display: "flex", gap: 14, alignItems: "center" },
-  prodDot: { width: 40, height: 40, borderRadius: 12, border: "2px solid", flexShrink: 0 },
-  prodName: { fontSize: 13, fontWeight: 800, color: "#0f172a" },
-  prodSku: { fontSize: 11, fontWeight: 600, color: "#94a3b8", marginTop: 2 },
+  prodCell: { display: "flex", gap: 12, alignItems: "center" },
+  prodDot: { width: 36, height: 36, borderRadius: R, border: "1px solid", flexShrink: 0 },
+  prodName: { fontSize: 13, fontWeight: 800, color: "#202223" },
+  prodSku: { fontSize: 11, fontWeight: 600, color: "#8c9196", marginTop: 2 },
 
   ratingCell: { display: "inline-flex", gap: 6, alignItems: "center", fontWeight: 800 },
 
   chip: { display: "inline-flex", gap: 6, alignItems: "center", padding: "5px 12px", borderRadius: 999, fontWeight: 800, fontSize: 12 },
   chipDot: { width: 7, height: 7, borderRadius: 999 },
 
-  actRow: { display: "inline-flex", gap: 8, position: "relative", zIndex: 2 },
-  actBtn: { background: "#fff", border: "1px solid #e2e8f0", padding: "6px 12px", borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: "pointer", color: "#334155" },
-  actFeature: { background: "#ecfdf5", border: "1px solid #bbf7d0", padding: "6px 12px", borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: "pointer", color: "#16a34a" },
+  actRow: { display: "inline-flex", gap: 6, position: "relative", zIndex: 2 },
+  actBtn: { background: "#fff", border: "1px solid #c9cccf", padding: "6px 12px", borderRadius: R, fontWeight: 800, fontSize: 12, cursor: "pointer", color: "#202223" },
+  actFeature: { background: "#fff", border: "1px solid #c9cccf", padding: "6px 12px", borderRadius: R, fontWeight: 800, fontSize: 12, cursor: "pointer", color: "#008060" },
 
   byokCard: {
     background: "#fff",
     borderRadius: R,
-    border: "1px solid #e6edf5",
+    border: "1px solid #e1e3e5",
     boxShadow: shadow,
     padding: "18px 20px",
     marginBottom: 16,
@@ -1442,21 +1487,21 @@ const s = {
     gap: 10,
   },
   byokHead: { display: "flex", alignItems: "center", gap: 8 },
-  byokHeadText: { fontSize: 14, fontWeight: 900, color: "#0f172a" },
+  byokHeadText: { fontSize: 14, fontWeight: 900, color: "#202223" },
   byokForm: { display: "grid", gap: 8 },
   byokInput: {
     width: "100%",
     boxSizing: "border-box",
     padding: "10px 12px",
     borderRadius: 10,
-    border: "1px solid #e2e8f0",
+    border: "1px solid #c9cccf",
     fontSize: 13,
     fontWeight: 600,
   },
   byokGuideLink: {
     fontSize: 12,
     fontWeight: 700,
-    color: "#23b5b5",
+    color: SHOPIFY_GREEN,
     textDecoration: "none",
   },
   byokBtn: {
@@ -1464,21 +1509,21 @@ const s = {
     padding: "10px 14px",
     borderRadius: 10,
     border: "none",
-    background: "#23b5b5",
+    background: SHOPIFY_GREEN,
     color: "#fff",
     fontWeight: 800,
     fontSize: 13,
     cursor: "pointer",
-    boxShadow: "0 4px 14px rgba(20,184,166,0.25)",
+    boxShadow: "0 4px 12px rgba(0,128,96,0.18)",
   },
   byokChangeBtn: {
     padding: "7px 14px",
     borderRadius: 8,
-    border: "1px solid #e2e8f0",
-    background: "#f8fafc",
+    border: "1px solid #c9cccf",
+    background: "#f6f6f7",
     fontWeight: 700,
     fontSize: 12,
-    color: "#23b5b5",
+    color: SHOPIFY_GREEN,
     cursor: "pointer",
     whiteSpace: "nowrap",
     fontFamily: "inherit",
@@ -1491,73 +1536,73 @@ const s = {
     background: "none",
     border: "none",
     cursor: "pointer",
-    color: "#94a3b8",
+    color: "#8c9196",
     borderRadius: 6,
   },
   byokRemoveBtn: {
     width: "100%",
     padding: "9px 14px",
     borderRadius: 10,
-    border: "1px solid #fecaca",
-    background: "#fef2f2",
-    color: "#dc2626",
+    border: "1px solid #fed3d1",
+    background: "#fff4f4",
+    color: CRITICAL_RED,
     fontWeight: 700,
     fontSize: 12,
     cursor: "pointer",
     fontFamily: "inherit",
   },
 
-  asideStack: { display: "grid", gap: 14 },
+  asideStack: { display: "grid", gap: 16 },
 
   aiEmptyCard: {
-    background: "#fff",
+    background: SURFACE_BG,
     borderRadius: R,
-    border: "1px solid #e6edf5",
+    border: `1px solid ${SURFACE_BORDER}`,
     boxShadow: shadow,
-    padding: "18px 20px",
+    padding: "16px",
   },
-  aiEmptyTitle: { fontSize: 14, fontWeight: 900, color: "#0f172a", margin: "0 0 8px" },
-  aiEmptyText: { fontSize: 13, fontWeight: 600, color: "#64748b", lineHeight: 1.5, margin: 0 },
+  aiEmptyTitle: { fontSize: 14, fontWeight: 900, color: "#202223", margin: "0 0 8px" },
+  aiEmptyText: { fontSize: 13, fontWeight: 600, color: "#6d7175", lineHeight: 1.5, margin: 0 },
 
   aiErrorCard: {
-    background: "#fef2f2",
+    background: SURFACE_BG,
     borderRadius: R,
-    border: "1px solid #fecaca",
+    border: "1px solid #fed3d1",
     boxShadow: shadow,
-    padding: "18px 20px",
+    padding: "16px",
   },
-  aiErrorTitle: { fontSize: 14, fontWeight: 900, color: "#991b1b", margin: "0 0 8px" },
-  aiErrorBody: { fontSize: 13, fontWeight: 600, color: "#7f1d1d", lineHeight: 1.45, margin: 0 },
+  aiErrorTitle: { fontSize: 14, fontWeight: 900, color: "#8e1f0b", margin: "0 0 8px" },
+  aiErrorBody: { fontSize: 13, fontWeight: 600, color: "#8e1f0b", lineHeight: 1.45, margin: 0 },
 
   aiTopCard: {
-    background: "#f0fdfa",
+    background: SURFACE_BG,
     borderRadius: R,
-    border: "1px solid #99f6e4",
+    border: `1px solid ${SURFACE_BORDER}`,
     boxShadow: shadow,
-    padding: "18px 20px",
+    padding: "16px",
     display: "grid",
     gap: 12,
   },
   aiTopCardHead: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   aiTopIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    background: "#ccfbf1",
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    background: SURFACE_MUTED,
     display: "grid",
     placeItems: "center",
   },
   aiTopBadge: {
     fontSize: 11,
     fontWeight: 900,
-    color: "#0d9488",
-    background: "#ccfbf1",
-    border: "1px solid #5eead4",
+    color: "#6d7175",
+    background: "#f6f6f7",
+    border: "1px solid #e1e3e5",
     padding: "4px 12px",
     borderRadius: 999,
   },
-  aiTopHeadline: { fontSize: 16, fontWeight: 900, color: "#0f172a", lineHeight: 1.35, margin: 0 },
-  aiTagRow: { display: "flex", flexWrap: "wrap", gap: 8 },
+  aiTopHeadline: { fontSize: 16, fontWeight: 900, color: "#202223", lineHeight: 1.35, margin: 0 },
+  aiTagRow: { display: "flex", flexWrap: "wrap", gap: 6 },
   aiTag: {
     fontSize: 11,
     fontWeight: 800,
@@ -1565,7 +1610,7 @@ const s = {
     borderRadius: 999,
     border: "1px solid",
   },
-  aiTopDivider: { height: 1, background: "#99f6e4", margin: "4px 0" },
+  aiTopDivider: { height: 1, background: "#e1e3e5", margin: "2px 0" },
   aiTopLink: {
     display: "inline-flex",
     alignItems: "center",
@@ -1576,25 +1621,26 @@ const s = {
     cursor: "pointer",
     fontSize: 13,
     fontWeight: 800,
-    color: "#23b5b5",
+    color: SHOPIFY_GREEN,
     textAlign: "left",
   },
 
   aiUrgentCard: {
-    background: "#fffafb",
+    background: SURFACE_BG,
     borderRadius: R,
-    border: "1px solid #fbcfe8",
+    border: `1px solid ${SURFACE_BORDER}`,
+    borderLeft: `3px solid ${CRITICAL_RED}`,
     boxShadow: shadow,
-    padding: "18px 20px",
+    padding: "16px",
     display: "grid",
     gap: 12,
   },
   aiUrgentHead: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   aiUrgentIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    background: "#fdf2f8",
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    background: SURFACE_MUTED,
     display: "grid",
     placeItems: "center",
   },
@@ -1604,97 +1650,97 @@ const s = {
     gap: 6,
     fontSize: 11,
     fontWeight: 900,
-    color: "#e11d48",
-    background: "#fffafc",
-    border: "1px solid #fecdd3",
+    color: CRITICAL_RED,
+    background: "#fff4f4",
+    border: "1px solid #fed3d1",
     padding: "4px 12px",
     borderRadius: 999,
   },
-  aiUrgentDot: { width: 6, height: 6, borderRadius: 999, background: "#fb7185" },
-  aiUrgentTitle: { fontSize: 15, fontWeight: 900, color: "#0f172a", lineHeight: 1.35, margin: 0 },
+  aiUrgentDot: { width: 6, height: 6, borderRadius: 999, background: CRITICAL_RED },
+  aiUrgentTitle: { fontSize: 15, fontWeight: 900, color: "#202223", lineHeight: 1.35, margin: 0 },
   aiSnippetStack: { display: "grid", gap: 8 },
   aiSnippet: {
     display: "flex",
     gap: 10,
     alignItems: "flex-start",
     padding: "10px 12px",
-    borderRadius: 12,
-    border: "1px solid #fbcfe8",
-    background: "#fffdff",
+    borderRadius: R,
+    border: `1px solid ${SURFACE_BORDER}`,
+    background: SURFACE_MUTED,
   },
   aiSnippetAv: {
     width: 28,
     height: 28,
     borderRadius: 999,
-    background: "#fdf2f8",
-    color: "#be185d",
+    background: "#f6f6f7",
+    color: "#5c5f62",
     fontWeight: 900,
     fontSize: 12,
     display: "grid",
     placeItems: "center",
     flexShrink: 0,
   },
-  aiSnippetText: { fontSize: 12, fontWeight: 600, color: "#9f1239", lineHeight: 1.4, margin: 0 },
-  aiSnippetEmpty: { fontSize: 12, fontWeight: 600, color: "#be185d", margin: 0, lineHeight: 1.4 },
+  aiSnippetText: { fontSize: 12, fontWeight: 600, color: "#5c5f62", lineHeight: 1.4, margin: 0 },
+  aiSnippetEmpty: { fontSize: 12, fontWeight: 600, color: "#8e1f0b", margin: 0, lineHeight: 1.4 },
   aiUrgentCta: {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: 8,
     marginTop: 4,
     padding: "12px 16px",
-    borderRadius: 12,
-    background: "#f472b6",
+    borderRadius: R,
+    background: CRITICAL_RED,
     color: "#fff",
     fontWeight: 900,
     fontSize: 14,
     textDecoration: "none",
-    boxShadow: "0 4px 14px rgba(244,114,182,0.22)",
+    boxShadow: "none",
   },
 
   aiSpotCard: {
-    background: "#fff",
+    background: SURFACE_BG,
     borderRadius: R,
-    border: "1px solid #bae6fd",
+    border: `1px solid ${SURFACE_BORDER}`,
     boxShadow: shadow,
-    padding: "18px 20px",
+    padding: "16px",
     display: "grid",
     gap: 12,
   },
   aiSpotHead: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   aiSpotIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    background: "#fef9c3",
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    background: "#f6f6f7",
     display: "grid",
     placeItems: "center",
   },
   aiSpotStars: { display: "flex", gap: 2 },
   aiSpotQuoteBox: {
-    border: "1px solid #e2e8f0",
-    borderRadius: 12,
-    padding: "14px 16px",
-    background: "#fafcff",
+    border: `1px solid ${SURFACE_BORDER}`,
+    borderRadius: R,
+    padding: "12px",
+    background: SURFACE_MUTED,
     position: "relative",
   },
-  aiSpotQuoteMark: { fontSize: 28, fontWeight: 900, color: "#7dd3fc", lineHeight: 1, marginBottom: 4 },
-  aiSpotQuote: { fontSize: 13, fontWeight: 600, color: "#334155", lineHeight: 1.5, margin: "0 0 12px" },
+  aiSpotQuoteMark: { fontSize: 28, fontWeight: 900, color: "#c9cccf", lineHeight: 1, marginBottom: 4 },
+  aiSpotQuote: { fontSize: 13, fontWeight: 600, color: "#5c5f62", lineHeight: 1.5, margin: "0 0 10px" },
   aiSpotAttr: { display: "flex", alignItems: "center", gap: 10 },
   aiSpotAv: {
     width: 28,
     height: 28,
     borderRadius: 999,
-    background: "#ccfbf1",
-    color: "#23b5b5",
+    background: "#f6f6f7",
+    color: "#5c5f62",
     fontWeight: 900,
     fontSize: 12,
     display: "grid",
     placeItems: "center",
   },
-  aiSpotName: { fontSize: 12, fontWeight: 800, color: "#0f172a" },
-  aiSpotVerified: { fontWeight: 600, color: "#64748b" },
-  aiSpotNote: { fontSize: 12, fontWeight: 600, color: "#64748b", margin: 0, lineHeight: 1.45 },
+  aiSpotName: { fontSize: 12, fontWeight: 800, color: "#202223" },
+  aiSpotVerified: { fontWeight: 600, color: "#6d7175" },
+  aiSpotNote: { fontSize: 12, fontWeight: 600, color: "#6d7175", margin: 0, lineHeight: 1.45 },
 
   modalRoot: {
     position: "fixed",
@@ -1710,7 +1756,7 @@ const s = {
     border: "none",
     padding: 0,
     margin: 0,
-    background: "rgba(15,23,42,0.45)",
+    background: "rgba(32,34,35,0.45)",
     cursor: "pointer",
   },
   modalPanel: {
@@ -1720,59 +1766,59 @@ const s = {
     overflow: "auto",
     background: "#fff",
     borderRadius: R,
-    boxShadow: "0 24px 48px rgba(15,23,42,0.2)",
-    border: "1px solid #e2e8f0",
+    boxShadow: "0 24px 48px rgba(32,34,35,0.18)",
+    border: "1px solid #e1e3e5",
     padding: "24px 28px",
     zIndex: 1,
   },
   modalHead: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 16 },
-  modalTitle: { fontSize: 20, fontWeight: 950, color: "#0f172a", margin: 0, lineHeight: 1.2 },
+  modalTitle: { fontSize: 20, fontWeight: 950, color: "#202223", margin: 0, lineHeight: 1.2 },
   modalClose: {
     border: "none",
-    background: "#f1f5f9",
+    background: "#f6f6f7",
     borderRadius: 10,
     padding: 8,
     cursor: "pointer",
-    color: "#475569",
+    color: "#5c5f62",
     display: "grid",
     placeItems: "center",
   },
-  modalHint: { fontSize: 13, fontWeight: 600, color: "#64748b", margin: "0 0 12px" },
-  modalError: { fontSize: 13, fontWeight: 700, color: "#b91c1c", margin: "0 0 12px", lineHeight: 1.45 },
+  modalHint: { fontSize: 13, fontWeight: 600, color: "#6d7175", margin: "0 0 12px" },
+  modalError: { fontSize: 13, fontWeight: 700, color: CRITICAL_RED, margin: "0 0 12px", lineHeight: 1.45 },
   modalBody: { display: "grid", gap: 20 },
-  modalSummary: { fontSize: 14, fontWeight: 600, color: "#334155", lineHeight: 1.55, margin: 0 },
+  modalSummary: { fontSize: 14, fontWeight: 600, color: "#5c5f62", lineHeight: 1.55, margin: 0 },
   modalSection: { display: "grid", gap: 10 },
-  modalSectionTitle: { fontSize: 15, fontWeight: 900, color: "#0f172a", margin: 0 },
+  modalSectionTitle: { fontSize: 15, fontWeight: 900, color: "#202223", margin: 0 },
   modalList: { margin: 0, paddingLeft: 20, display: "grid", gap: 8 },
-  modalLi: { fontSize: 13, fontWeight: 600, color: "#475569", lineHeight: 1.45 },
+  modalLi: { fontSize: 13, fontWeight: 600, color: "#5c5f62", lineHeight: 1.45 },
 
   /* ── Trial banner styles ──────────────────────────────── */
   trialCard: {
-    background: "#fff",
+    background: SURFACE_BG,
     borderRadius: R,
-    border: "1px solid #e6edf5",
+    border: `1px solid ${SURFACE_BORDER}`,
     boxShadow: shadow,
-    padding: "16px 20px",
+    padding: "16px",
     marginBottom: 16,
     display: "grid",
     gap: 6,
   },
   trialActiveCard: {
-    background: "linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 100%)",
+    background: SURFACE_BG,
     borderRadius: R,
-    border: "1px solid #99f6e4",
+    border: `1px solid ${SURFACE_BORDER}`,
     boxShadow: shadow,
-    padding: "16px 20px",
+    padding: "16px",
     marginBottom: 16,
     display: "grid",
     gap: 8,
   },
   trialExpiredCard: {
-    background: "#fef2f2",
+    background: SURFACE_BG,
     borderRadius: R,
-    border: "1px solid #fecaca",
+    border: "1px solid #fed3d1",
     boxShadow: shadow,
-    padding: "16px 20px",
+    padding: "16px",
     marginBottom: 16,
     display: "grid",
     gap: 6,
@@ -1785,12 +1831,12 @@ const s = {
   trialHeadText: {
     fontSize: 14,
     fontWeight: 900,
-    color: "#0f172a",
+    color: "#202223",
   },
   trialSubtext: {
     fontSize: 12,
     fontWeight: 600,
-    color: "#64748b",
+    color: "#6d7175",
     margin: 0,
     lineHeight: 1.45,
   },
@@ -1798,9 +1844,9 @@ const s = {
     marginLeft: "auto",
     fontSize: 11,
     fontWeight: 900,
-    color: "#0d9488",
-    background: "#ccfbf1",
-    border: "1px solid #5eead4",
+    color: "#6d7175",
+    background: "#f6f6f7",
+    border: "1px solid #e1e3e5",
     padding: "3px 10px",
     borderRadius: 999,
   },
@@ -1808,14 +1854,14 @@ const s = {
     width: "100%",
     height: 6,
     borderRadius: 999,
-    background: "#e2e8f0",
+    background: "#e1e3e5",
     overflow: "hidden",
     marginTop: 2,
   },
   trialBarFill: {
     height: "100%",
     borderRadius: 999,
-    background: "linear-gradient(90deg, #14b8a6, #0d9488)",
+    background: `linear-gradient(90deg, ${SHOPIFY_GREEN}, ${SHOPIFY_GREEN_DARK})`,
     transition: "width 0.4s ease",
   },
 };

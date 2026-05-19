@@ -18,6 +18,7 @@ import {
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.server";
+import { getGroupShopList } from "../lib/store-group.server";
 
 function normalizeProductLookup(s) {
   return String(s ?? "")
@@ -60,9 +61,10 @@ function resolveProductFromUrlParams(products, productNameRaw, pidRaw) {
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
+  const targetShops = await getGroupShopList(shop);
 
   const reviews = await db.review.findMany({
-    where: { shop },
+    where: { shop: { in: targetShops } },
     orderBy: { createdAt: "desc" },
   });
 
@@ -118,6 +120,7 @@ export const loader = async ({ request }) => {
 
   return {
     products,
+    currentShop: shop,
     stats: {
       totalReviews,
       avgRating,
@@ -139,8 +142,9 @@ export const action = async ({ request }) => {
     return { ok: false };
   }
 
+  const targetShops = await getGroupShopList(shop);
   const existing = await db.review.findFirst({
-    where: { id: reviewId, shop },
+    where: { id: reviewId, shop: { in: targetShops } },
   });
   if (!existing) {
     return { ok: false };
@@ -154,7 +158,7 @@ export const action = async ({ request }) => {
 };
 
 export default function ReviewsManagement() {
-  const { products, stats } = useLoaderData();
+  const { products, stats, currentShop } = useLoaderData();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const productParam = searchParams.get("product");
@@ -328,7 +332,12 @@ export default function ReviewsManagement() {
       </div>
 
       {selectedProduct && (
-        <ProductReviewsModal product={selectedProduct} modeReply={modeReply} onClose={closeModal} />
+        <ProductReviewsModal
+          product={selectedProduct}
+          currentShop={currentShop}
+          modeReply={modeReply}
+          onClose={closeModal}
+        />
       )}
     </div>
   );
@@ -361,7 +370,7 @@ function StatCard({ title, value, icon, subtitle, trend, isRating }) {
   );
 }
 
-function ProductReviewsModal({ product, modeReply, onClose }) {
+function ProductReviewsModal({ product, currentShop, modeReply, onClose }) {
   const scrollAreaRef = useRef(null);
 
   useEffect(() => {
@@ -403,7 +412,7 @@ function ProductReviewsModal({ product, modeReply, onClose }) {
         <div ref={scrollAreaRef} style={modalStyles.scrollArea}>
           {product.reviews.map((rev) => (
             <div key={`${rev.id}-${rev.reply ?? ""}`} data-review-thread={rev.id}>
-              <ReviewChatItem review={rev} />
+              <ReviewChatItem review={rev} currentShop={currentShop} />
             </div>
           ))}
         </div>
@@ -412,7 +421,11 @@ function ProductReviewsModal({ product, modeReply, onClose }) {
   );
 }
 
-function ReviewChatItem({ review }) {
+function ReviewChatItem({ review, currentShop }) {
+  const storeLabel =
+    review.shop && review.shop !== currentShop
+      ? review.shop.replace(".myshopify.com", "")
+      : null;
   const fetcher = useFetcher();
   const [isEditing, setIsEditing] = useState(!review.reply);
   const [replyText, setReplyText] = useState(review.reply || "");
@@ -432,6 +445,9 @@ function ReviewChatItem({ review }) {
         <div style={{ maxWidth: "80%" }}>
           <div style={chatStyles.metaLeft}>
             <span style={chatStyles.name}>{review.author || "Customer"}</span>
+            {storeLabel ? (
+              <span style={chatStyles.storeTag}>{storeLabel}</span>
+            ) : null}
             <span style={chatStyles.time}>{new Date(review.createdAt).toLocaleDateString()}</span>
           </div>
           <div style={chatStyles.bubbleLeft}>
@@ -644,7 +660,15 @@ const chatStyles = {
     justifyContent: "center",
     flexShrink: 0,
   },
-  metaLeft: { display: "flex", gap: "8px", alignItems: "center", marginBottom: "4px" },
+  metaLeft: { display: "flex", gap: "8px", alignItems: "center", marginBottom: "4px", flexWrap: "wrap" },
+  storeTag: {
+    fontSize: "10px",
+    fontWeight: "700",
+    color: "#0369a1",
+    backgroundColor: "#e0f2fe",
+    padding: "2px 6px",
+    borderRadius: "4px",
+  },
   metaRight: {
     display: "flex",
     gap: "8px",

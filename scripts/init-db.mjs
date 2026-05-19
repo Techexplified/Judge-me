@@ -49,7 +49,49 @@ const statements = [
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "Settings_shop_key" ON "Settings"("shop")`,
   `ALTER TABLE "Review" ADD COLUMN IF NOT EXISTS "reply" TEXT`,
-  `ALTER TABLE "Review" ADD COLUMN IF NOT EXISTS "replyDate" TIMESTAMP(3)`
+  `ALTER TABLE "Review" ADD COLUMN IF NOT EXISTS "replyDate" TIMESTAMP(3)`,
+  `CREATE TABLE IF NOT EXISTS "Shop" (
+    "id" TEXT NOT NULL,
+    "shop" TEXT NOT NULL,
+    "installedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "trialEndsAt" TIMESTAMP(3) NOT NULL,
+    "planStatus" TEXT NOT NULL DEFAULT 'trial',
+    "uninstalledAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Shop_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "Shop_shop_key" ON "Shop"("shop")`,
+  `CREATE TABLE IF NOT EXISTS "StoreGroup" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "ownerEmail" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "StoreGroup_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE TABLE IF NOT EXISTS "GroupStoreLink" (
+    "id" TEXT NOT NULL,
+    "groupId" TEXT NOT NULL,
+    "shop" TEXT NOT NULL,
+    "role" TEXT NOT NULL DEFAULT 'MEMBER',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "GroupStoreLink_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "GroupStoreLink_shop_key" ON "GroupStoreLink"("shop")`,
+  `CREATE TABLE IF NOT EXISTS "ProductIndex" (
+    "id" TEXT NOT NULL,
+    "shop" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "handle" TEXT NOT NULL,
+    "sku" TEXT,
+    "title" TEXT NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "ProductIndex_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "ProductIndex_shop_productId_key" ON "ProductIndex"("shop", "productId")`,
+  `CREATE INDEX IF NOT EXISTS "ProductIndex_sku_idx" ON "ProductIndex"("sku")`,
+  `CREATE INDEX IF NOT EXISTS "ProductIndex_handle_idx" ON "ProductIndex"("handle")`
 ];
 
 try {

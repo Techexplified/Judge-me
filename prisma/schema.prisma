@@ -64,3 +64,42 @@ model Shop {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
+
+// Represents a cluster of stores owned by the same merchant
+model StoreGroup {
+  id          String           @id @default(uuid())
+  name        String           // E.g., "TechExplified Global Group"
+  ownerEmail  String           // Merchant's main administrative email
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  
+  // Relations
+  members     GroupStoreLink[]
+}
+
+// Junction table linking Shopify shops to a StoreGroup
+model GroupStoreLink {
+  id           String     @id @default(uuid())
+  groupId      String
+  shop         String     @unique // Shopify domain (e.g., "store-us.myshopify.com")
+  role         String     @default("MEMBER") // "PRIMARY" or "MEMBER"
+  createdAt    DateTime   @default(now())
+
+  // Relations
+  group        StoreGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+// Cached product details to facilitate efficient SKU/Handle matching without making live Shopify API calls
+model ProductIndex {
+  id          String   @id @default(uuid())
+  shop        String   // Shopify domain
+  productId   String   // Shopify Product ID
+  handle      String   // Shopify Product Handle (URL)
+  sku         String?  // Primary SKU (or consolidated list of variant SKUs)
+  title       String
+  updatedAt   DateTime @updatedAt
+
+  @@unique([shop, productId])
+  @@index([sku])
+  @@index([handle])
+}

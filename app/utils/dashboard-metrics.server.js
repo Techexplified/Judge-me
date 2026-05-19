@@ -175,19 +175,22 @@ export function computeDashboardMetrics({ shop, scopedReviews, reviewsAll, now, 
   const products = Object.values(grouped).map((g) => {
     const list = [...g.list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     const avg = list.reduce((a, r) => a + r.rating, 0) / list.length;
-    const pos = list.filter((r) => r.rating >= 4).length;
-    const neg = list.filter((r) => r.rating <= 2).length;
     let sentimentLabel = "Mixed";
     let iconTone = "indigo";
-    if (pos / list.length >= 0.5) {
+    if (avg >= 4) {
       sentimentLabel = "Positive";
       iconTone = "teal";
-    } else if (neg / list.length >= 0.5) {
+    } else if (avg < 3) {
       sentimentLabel = "Negative";
       iconTone = "orange";
     }
     const latest = list[0];
     const lastAt = new Date(latest.createdAt);
+    
+    // Determine the shop name (stripping .myshopify.com for cleaner UI)
+    const originShop = latest.shop || shop;
+    const originLabel = originShop.replace(".myshopify.com", "");
+
     return {
       id: `${g.productId}-${g.productName}`,
       productName: g.productName,
@@ -200,6 +203,8 @@ export function computeDashboardMetrics({ shop, scopedReviews, reviewsAll, now, 
       lastReview: lastAt.toLocaleDateString(),
       lastReviewAt: lastAt.toISOString(),
       iconTone,
+      originShop,
+      originLabel,
     };
   });
 

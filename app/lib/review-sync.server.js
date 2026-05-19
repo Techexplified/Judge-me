@@ -70,7 +70,7 @@ function parseSprMetafield(raw, productId, productName, productImage, shop) {
       comment: String(r.body ?? r.content ?? r.comment ?? "").trim(),
       author: String(r.author ?? r.reviewer?.name ?? "Customer").trim(),
       email: r.email ?? r.reviewer?.email ?? null,
-      status: "APPROVED",
+      status: "PUBLISHED",
       createdAt: r.created_at ? new Date(r.created_at) : new Date(),
     })).filter((r) => r.comment.length > 0);
   } catch {
@@ -97,7 +97,7 @@ function parseJudgemeMetafield(raw, productId, productName, productImage, shop) 
       comment: String(r.body ?? r.review_content ?? "").trim(),
       author: String(r.reviewer?.name ?? r.author ?? "Customer").trim(),
       email: r.reviewer?.email ?? null,
-      status: "APPROVED",
+      status: "PUBLISHED",
       createdAt: r.created_at ? new Date(r.created_at) : new Date(),
     })).filter((r) => r.comment.length > 0);
   } catch {
@@ -123,7 +123,7 @@ function parseLooxMetafield(raw, productId, productName, productImage, shop) {
       comment: String(r.body ?? r.comment ?? "").trim(),
       author: String(r.reviewer_name ?? r.author ?? "Customer").trim(),
       email: r.email ?? null,
-      status: "APPROVED",
+      status: "PUBLISHED",
       createdAt: r.created_at ? new Date(r.created_at) : new Date(),
     })).filter((r) => r.comment.length > 0);
   } catch {

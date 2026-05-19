@@ -18,7 +18,9 @@ export default function App() {
       <s-app-nav>
         
         
-        {/* New Navigation Link */}
+        <s-link href="/app">Dashboard</s-link>
+        <s-link href="/app/reviews">Reviews</s-link>
+        <s-link href="/app/linked-stores">Linked stores</s-link>
         <s-link href="/app/review-form">Review Form</s-link>
         
       </s-app-nav>
