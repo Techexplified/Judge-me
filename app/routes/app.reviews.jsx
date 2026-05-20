@@ -14,7 +14,19 @@ import {
   Inbox,
   CheckCircle2,
   Search,
+  Clock,
+  Mail,
 } from "lucide-react";
+import {
+  Badge,
+  Card,
+  Page,
+  PageHeader,
+  PrimaryButton,
+  SecondaryButton,
+  SHOPIFY_GREEN,
+  Stack,
+} from "../components/admin-ui";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.server";
@@ -162,6 +174,41 @@ export const action = async ({ request }) => {
   return { ok: true, reviewId, reply: trimmed };
 };
 
+function formatDateTime(value) {
+  if (!value) return "—";
+  return new Date(value).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function statusTone(status) {
+  const s = String(status ?? "PENDING").toUpperCase();
+  if (s === "APPROVED" || s === "PUBLISHED") return "green";
+  if (s === "REJECTED" || s === "SPAM") return "red";
+  return "warning";
+}
+
+function StarRating({ rating, size = 14 }) {
+  const r = Math.max(0, Math.min(5, Number(rating) || 0));
+  return (
+    <span style={{ display: "inline-flex", gap: 2, alignItems: "center" }} aria-label={`${r} out of 5 stars`}>
+      {[...Array(5)].map((_, i) => (
+        <Star
+          key={i}
+          size={size}
+          fill={i < r ? "#f59e0b" : "none"}
+          stroke="#f59e0b"
+          aria-hidden
+        />
+      ))}
+    </span>
+  );
+}
+
 export default function ReviewsManagement() {
   const { products, stats, currentShop } = useLoaderData();
   const location = useLocation();
@@ -233,137 +280,179 @@ export default function ReviewsManagement() {
     );
   }, [setSearchParams, location.key, urlIntentKey]);
 
+  const pendingReplyTotal = useMemo(
+    () =>
+      products.reduce(
+        (n, p) =>
+          n + (p.reviews?.filter((r) => !r.reply || !String(r.reply).trim()).length ?? 0),
+        0,
+      ),
+    [products],
+  );
+
   return (
-    <div style={styles.container}>
-      <header style={{ marginBottom: "32px" }}>
-        <h1 style={{ fontSize: "28px", fontWeight: "800", color: "#1e293b", margin: "0" }}>
-          Reviews Management
-        </h1>
-        <p style={{ color: "#64748b", margin: "4px 0 0 0" }}>
-          Monitor and manage your store&apos;s customer feedback.
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Reviews"
+        subtitle="Monitor customer feedback, reply to reviews, and keep your catalog trusted."
+      />
 
-      <div style={styles.statsGrid}>
-        <StatCard
-          title="Total Reviews"
-          value={stats.totalReviews.toLocaleString()}
-          icon={<Inbox size={20} color="#3b82f6" />}
-          subtitle={`${stats.totalGrowth}% vs last month`}
-          trend="up"
-        />
-        <StatCard
-          title="Average Rating"
-          value={stats.avgRating}
-          isRating={true}
-          icon={<Star size={20} color="#f59e0b" fill="#f59e0b" />}
-          subtitle="Across all products"
-        />
-        <StatCard
-          title="New This Month"
-          value={stats.reviewsThisMonth}
-          icon={<TrendingUp size={20} color="#10b981" />}
-          subtitle={`${stats.reviewsGrowth}% growth`}
-          trend={stats.reviewsGrowth >= 0 ? "up" : "down"}
-        />
-      </div>
-
-      <div style={styles.tableCard}>
-        <div style={styles.tableToolbar}>
-          <div style={styles.searchWrap}>
-            <Search size={16} color="#94a3b8" aria-hidden />
-            <input
-              type="search"
-              placeholder="Search by product name or ID…"
-              value={listSearch}
-              onChange={(e) => setListSearch(e.target.value)}
-              style={styles.searchField}
-              aria-label="Search products"
-            />
-          </div>
+      <Stack>
+        <div style={styles.statsGrid}>
+          <StatCard
+            title="Total reviews"
+            value={stats.totalReviews.toLocaleString()}
+            icon={<Inbox size={20} color={SHOPIFY_GREEN} />}
+            subtitle={`${stats.totalGrowth}% vs last month`}
+            trend={Number(stats.totalGrowth) >= 0 ? "up" : "down"}
+          />
+          <StatCard
+            title="Average rating"
+            value={stats.avgRating}
+            isRating
+            icon={<Star size={20} color="#f59e0b" fill="#f59e0b" />}
+            subtitle="Across all products"
+          />
+          <StatCard
+            title="New this month"
+            value={stats.reviewsThisMonth}
+            icon={<TrendingUp size={20} color={SHOPIFY_GREEN} />}
+            subtitle={`${stats.reviewsGrowth}% growth`}
+            trend={stats.reviewsGrowth >= 0 ? "up" : "down"}
+          />
         </div>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead style={{ backgroundColor: "#f8fafc" }}>
-            <tr style={{ textAlign: "left" }}>
-              <th style={styles.th}>Product</th>
-              <th style={styles.th}>Rating</th>
-              <th style={styles.th}>Reviews</th>
-              <th style={styles.th}>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredProducts.length === 0 ? (
-              <tr>
-                <td colSpan={4} style={{ ...styles.td, textAlign: "center", color: "#94a3b8", padding: "28px" }}>
-                  No products match your search.
-                </td>
-              </tr>
-            ) : (
-            filteredProducts.map((p) => (
-              <tr key={p.productName} style={styles.tr}>
-                <td style={styles.td}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <div style={styles.imgPlaceholder}>
-                      {p.productImage ? (
-                        <img src={p.productImage} style={{ width: "100%" }} alt="" />
-                      ) : (
-                        <MessageSquare size={18} color="#94a3b8" />
-                      )}
-                    </div>
-                    <span style={{ fontWeight: "600" }}>{p.productName}</span>
-                  </div>
-                </td>
-                <td style={styles.td}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                    <Star size={14} fill="#f59e0b" stroke="#f59e0b" />
-                    <span style={{ fontWeight: "700" }}>{p.avgRating}</span>
-                  </div>
-                </td>
-                <td style={styles.td}>{p.reviewCount} Reviews</td>
-                <td style={styles.td}>
-                  <button
-                    type="button"
-                    onClick={() => setPickedProduct(p)}
-                    style={styles.viewBtn}
-                  >
-                    View All <ChevronRight size={14} />
-                  </button>
-                </td>
-              </tr>
-            ))
-            )}
-          </tbody>
-        </table>
-      </div>
 
-      {selectedProduct && (
+        {pendingReplyTotal > 0 ? (
+          <div
+            style={{
+              padding: "12px 14px",
+              borderRadius: 8,
+              background: "#fff5ea",
+              border: "1px solid #e4b06f",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#5c5f62",
+            }}
+          >
+            <strong style={{ color: "#b98900" }}>{pendingReplyTotal}</strong> review
+            {pendingReplyTotal === 1 ? "" : "s"} still need a store reply.
+          </div>
+        ) : null}
+
+        <Card>
+          <div style={styles.tableToolbar}>
+            <div style={styles.searchWrap}>
+              <Search size={16} color="#6d7175" aria-hidden />
+              <input
+                type="search"
+                placeholder="Search by product name or ID…"
+                value={listSearch}
+                onChange={(e) => setListSearch(e.target.value)}
+                style={styles.searchField}
+                aria-label="Search products"
+              />
+            </div>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ textAlign: "left", background: "#f5f9f7" }}>
+                  <th style={styles.th}>Product</th>
+                  <th style={styles.th}>Rating</th>
+                  <th style={styles.th}>Reviews</th>
+                  <th style={styles.th}>Latest</th>
+                  <th style={styles.th}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProducts.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      style={{ ...styles.td, textAlign: "center", color: "#6d7175", padding: "32px" }}
+                    >
+                      No products match your search.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredProducts.map((p) => {
+                    const needsReply = p.reviews?.filter(
+                      (r) => !r.reply || !String(r.reply).trim(),
+                    ).length;
+                    return (
+                      <tr key={p.productName} style={styles.tr}>
+                        <td style={styles.td}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <div style={styles.imgPlaceholder}>
+                              {p.productImage ? (
+                                <img src={p.productImage} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" />
+                              ) : (
+                                <MessageSquare size={18} color="#6d7175" />
+                              )}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 700, color: "#202223" }}>{p.productName}</div>
+                              {needsReply > 0 ? (
+                                <span style={{ fontSize: 11, fontWeight: 700, color: "#b98900" }}>
+                                  {needsReply} need{needsReply === 1 ? "s" : ""} reply
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                        </td>
+                        <td style={styles.td}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <StarRating rating={p.avgRating} size={12} />
+                            <span style={{ fontWeight: 800 }}>{p.avgRating}</span>
+                          </div>
+                        </td>
+                        <td style={styles.td}>{p.reviewCount}</td>
+                        <td style={{ ...styles.td, color: "#6d7175", fontSize: 12 }}>
+                          {formatDateTime(p.latestDate)}
+                        </td>
+                        <td style={styles.td}>
+                          <SecondaryButton onClick={() => setPickedProduct(p)}>
+                            View details <ChevronRight size={14} />
+                          </SecondaryButton>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </Stack>
+
+      {selectedProduct ? (
         <ProductReviewsModal
           product={selectedProduct}
           currentShop={currentShop}
           modeReply={modeReply}
           onClose={closeModal}
         />
-      )}
-    </div>
+      ) : null}
+    </Page>
   );
 }
 
 function StatCard({ title, value, icon, subtitle, trend, isRating }) {
   return (
     <div style={styles.statCard}>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <p style={{ color: "#64748b", fontSize: "14px", margin: "0 0 8px 0" }}>{title}</p>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <h3 style={{ fontSize: "28px", fontWeight: "800", margin: 0 }}>{value}</h3>
-            {isRating && <Star size={18} fill="#f59e0b" stroke="#f59e0b" />}
+          <p style={{ color: "#6d7175", fontSize: 13, margin: "0 0 8px", fontWeight: 600 }}>{title}</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <h3 style={{ fontSize: 28, fontWeight: 900, margin: 0, color: "#202223" }}>{value}</h3>
+            {isRating ? <Star size={18} fill="#f59e0b" stroke="#f59e0b" aria-hidden /> : null}
           </div>
           <p
             style={{
-              margin: "8px 0 0 0",
-              fontSize: "12px",
-              color: trend === "up" ? "#10b981" : "#ef4444",
-              fontWeight: "600",
+              margin: "8px 0 0",
+              fontSize: 12,
+              color: trend === "up" ? SHOPIFY_GREEN : "#d72c0d",
+              fontWeight: 700,
             }}
           >
             {subtitle}
@@ -377,6 +466,9 @@ function StatCard({ title, value, icon, subtitle, trend, isRating }) {
 
 function ProductReviewsModal({ product, currentShop, modeReply, onClose }) {
   const scrollAreaRef = useRef(null);
+  const needsReplyCount = product.reviews?.filter(
+    (r) => !r.reply || !String(r.reply).trim(),
+  ).length ?? 0;
 
   useEffect(() => {
     if (!modeReply || !scrollAreaRef.current || !product.reviews?.length) return;
@@ -397,36 +489,63 @@ function ProductReviewsModal({ product, currentShop, modeReply, onClose }) {
   }, [modeReply, product]);
 
   return (
-    <div style={modalStyles.overlay} onClick={onClose}>
-      <div style={modalStyles.modal} onClick={(e) => e.stopPropagation()}>
+    <div style={modalStyles.overlay} onClick={onClose} role="presentation">
+      <div
+        style={modalStyles.modal}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-labelledby="reviews-modal-title"
+      >
         <div style={modalStyles.header}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div style={modalStyles.productIcon}>
-              <MessageSquare size={20} color="#3b82f6" />
+          <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
+            <div style={modalStyles.productThumb}>
+              {product.productImage ? (
+                <img src={product.productImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <MessageSquare size={22} color={SHOPIFY_GREEN} />
+              )}
             </div>
-            <div>
-              <h2 style={modalStyles.productTitle}>{product.productName}</h2>
-              <p style={modalStyles.subTitle}>Messaging History</p>
+            <div style={{ minWidth: 0 }}>
+              <h2 id="reviews-modal-title" style={modalStyles.productTitle}>
+                {product.productName}
+              </h2>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginTop: 6 }}>
+                <StarRating rating={product.avgRating} size={12} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#6d7175" }}>
+                  {product.reviewCount} review{product.reviewCount === 1 ? "" : "s"}
+                </span>
+                {needsReplyCount > 0 ? (
+                  <Badge tone="warning">{needsReplyCount} need reply</Badge>
+                ) : (
+                  <Badge tone="green">All replied</Badge>
+                )}
+              </div>
             </div>
           </div>
-          <button type="button" onClick={onClose} style={modalStyles.closeBtn}>
-            <X size={20} />
+          <button type="button" onClick={onClose} style={modalStyles.closeBtn} aria-label="Close">
+            <X size={20} color="#5c5f62" />
           </button>
         </div>
 
         <div ref={scrollAreaRef} style={modalStyles.scrollArea}>
-          {product.reviews.map((rev) => (
-            <div key={`${rev.id}-${rev.reply ?? ""}`} data-review-thread={rev.id}>
-              <ReviewChatItem review={rev} currentShop={currentShop} />
-            </div>
-          ))}
+          {product.reviews.length === 0 ? (
+            <p style={{ textAlign: "center", color: "#6d7175", fontWeight: 600, margin: "24px 0" }}>
+              No reviews for this product yet.
+            </p>
+          ) : (
+            product.reviews.map((rev) => (
+              <div key={`${rev.id}-${rev.reply ?? ""}`} data-review-thread={rev.id}>
+                <ReviewDetailCard review={rev} currentShop={currentShop} />
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function ReviewChatItem({ review, currentShop }) {
+function ReviewDetailCard({ review, currentShop }) {
   const storeLabel =
     review.shop && review.shop !== currentShop
       ? review.shop.replace(".myshopify.com", "")
@@ -458,131 +577,122 @@ function ReviewChatItem({ review, currentShop }) {
   };
 
   const displayedReply = savedReply || review.reply;
+  const hasReply = Boolean(displayedReply && String(displayedReply).trim());
 
   return (
-    <div style={chatStyles.thread}>
-      <div style={chatStyles.rowLeft}>
-        <div style={chatStyles.avatar}>
-          <User size={16} color="#64748b" />
-        </div>
-        <div style={{ maxWidth: "80%" }}>
-          <div style={chatStyles.metaLeft}>
-            <span style={chatStyles.name}>{review.author || "Customer"}</span>
-            {storeLabel ? (
-              <span style={chatStyles.storeTag}>{storeLabel}</span>
-            ) : null}
-            <span style={chatStyles.time}>{new Date(review.createdAt).toLocaleDateString()}</span>
+    <article style={detailStyles.card}>
+      <div style={detailStyles.cardHeader}>
+        <div style={detailStyles.authorRow}>
+          <div style={detailStyles.avatar}>
+            <User size={16} color="#6d7175" />
           </div>
-          <div style={chatStyles.bubbleLeft}>
-            <div style={chatStyles.starRow}>
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  size={10}
-                  fill={i < review.rating ? "#f59e0b" : "none"}
-                  stroke="#f59e0b"
-                />
-              ))}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              <span style={detailStyles.authorName}>{review.author || "Customer"}</span>
+              <Badge tone={statusTone(review.status)}>
+                {String(review.status ?? "PENDING")}
+              </Badge>
+              {storeLabel ? <Badge tone="blue">{storeLabel}</Badge> : null}
             </div>
-            {review.comment}
-          </div>
-        </div>
-      </div>
-
-      <div style={chatStyles.rowRight}>
-        <div
-          style={{
-            maxWidth: "80%",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-end",
-          }}
-        >
-          <div style={chatStyles.metaRight}>
-            {!isEditing && (
-              <button type="button" onClick={() => setIsEditing(true)} style={chatStyles.editBtn}>
-                <Edit2 size={12} /> Edit
-              </button>
-            )}
-            <span style={{ ...chatStyles.name, color: "#008060" }}>Store Response</span>
-          </div>
-
-          {isEditing ? (
-            <div style={chatStyles.inputContainer}>
-              <textarea
-                style={chatStyles.replyInput}
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Type your reply..."
-              />
-              <button
-                type="button"
-                style={chatStyles.sendBtn}
-                onClick={handleSave}
-                disabled={fetcher.state === "submitting"}
-              >
-                {fetcher.state === "submitting" ? "..." : <Send size={16} />}
-              </button>
-              {saveError ? (
-                <p style={{ margin: "6px 0 0", fontSize: 12, color: "#d72c0d", fontWeight: 600 }}>
-                  {saveError}
-                </p>
+            <div style={detailStyles.metaRow}>
+              <Clock size={12} aria-hidden />
+              <span>{formatDateTime(review.createdAt)}</span>
+              {review.email ? (
+                <>
+                  <Mail size={12} aria-hidden />
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{review.email}</span>
+                </>
               ) : null}
             </div>
-          ) : displayedReply ? (
-            <div style={chatStyles.bubbleRight}>
-              {displayedReply}
-              <div style={{ textAlign: "right", marginTop: "4px" }}>
-                <CheckCircle2 size={12} color="#008060" style={{ opacity: 0.6 }} />
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setIsEditing(true)}
-              style={chatStyles.editBtn}
-            >
-              Write a reply
-            </button>
-          )}
+          </div>
         </div>
-        <div style={{ ...chatStyles.avatar, backgroundColor: "#008060" }}>
-          <Store size={16} color="#fff" />
-        </div>
+        <StarRating rating={review.rating} />
       </div>
-    </div>
+
+      {review.title ? <h3 style={detailStyles.reviewTitle}>{review.title}</h3> : null}
+      <p style={detailStyles.reviewBody}>{review.comment}</p>
+
+      <div style={detailStyles.replySection}>
+        <div style={detailStyles.replyLabel}>
+          <Store size={14} color={SHOPIFY_GREEN} />
+          <span>Store reply</span>
+          {hasReply && review.replyDate ? (
+            <span style={detailStyles.replyDate}>· {formatDateTime(review.replyDate)}</span>
+          ) : null}
+        </div>
+
+        {isEditing ? (
+          <div>
+            <textarea
+              style={detailStyles.replyInput}
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="Write a helpful, on-brand reply for this customer…"
+              rows={4}
+            />
+            <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+              <PrimaryButton
+                onClick={handleSave}
+                disabled={fetcher.state === "submitting"}
+                loading={fetcher.state === "submitting"}
+              >
+                <Send size={14} /> Save reply
+              </PrimaryButton>
+              {hasReply ? (
+                <SecondaryButton onClick={() => { setIsEditing(false); setReplyText(displayedReply); setSaveError(null); }}>
+                  Cancel
+                </SecondaryButton>
+              ) : null}
+            </div>
+            {saveError ? (
+              <p style={{ margin: "8px 0 0", fontSize: 12, color: "#d72c0d", fontWeight: 600 }}>{saveError}</p>
+            ) : null}
+          </div>
+        ) : hasReply ? (
+          <div style={detailStyles.replyBubble}>
+            <p style={{ margin: 0, lineHeight: 1.55 }}>{displayedReply}</p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: SHOPIFY_GREEN, fontWeight: 700 }}>
+                <CheckCircle2 size={12} /> Published
+              </span>
+              <button type="button" onClick={() => setIsEditing(true)} style={detailStyles.textBtn}>
+                <Edit2 size={12} /> Edit reply
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={detailStyles.replyEmpty}>
+            <p style={{ margin: "0 0 10px", fontSize: 13, color: "#6d7175", fontWeight: 600 }}>
+              No reply yet — customers trust stores that respond.
+            </p>
+            <PrimaryButton onClick={() => setIsEditing(true)}>Write reply</PrimaryButton>
+          </div>
+        )}
+      </div>
+    </article>
   );
 }
 
 const styles = {
-  container: {
-    padding: "40px",
-    backgroundColor: "#f8fafc",
-    minHeight: "100vh",
-    fontFamily: "'Inter', sans-serif",
+  statsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: 16,
   },
-  statsGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px", marginBottom: "32px" },
   statCard: {
-    backgroundColor: "#fff",
-    padding: "24px",
-    borderRadius: "16px",
-    border: "1px solid #e2e8f0",
+    backgroundColor: "#fafcfb",
+    padding: 20,
+    borderRadius: 8,
+    border: "1px solid #e5ebe8",
   },
   statIconBox: {
-    padding: "10px",
-    backgroundColor: "#f1f5f9",
-    borderRadius: "12px",
+    padding: 10,
+    backgroundColor: "#ecfdf3",
+    borderRadius: 8,
     height: "fit-content",
   },
-  tableCard: {
-    backgroundColor: "#fff",
-    borderRadius: "16px",
-    border: "1px solid #e2e8f0",
-    overflow: "hidden",
-  },
   tableToolbar: {
-    padding: "16px 20px",
-    borderBottom: "1px solid #f1f5f9",
+    marginBottom: 16,
     display: "flex",
     justifyContent: "flex-end",
     alignItems: "center",
@@ -590,54 +700,46 @@ const styles = {
   searchWrap: {
     display: "flex",
     alignItems: "center",
-    gap: "10px",
-    padding: "10px 16px",
-    borderRadius: "12px",
-    border: "1px solid #e2e8f0",
+    gap: 10,
+    padding: "10px 14px",
+    borderRadius: 8,
+    border: "1px solid #c9cccf",
     backgroundColor: "#fff",
-    minWidth: "280px",
-    maxWidth: "420px",
-    flex: "1",
+    minWidth: 280,
+    maxWidth: 420,
+    flex: 1,
   },
   searchField: {
     border: "none",
     outline: "none",
     flex: 1,
-    fontSize: "14px",
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: 600,
     fontFamily: "inherit",
-    color: "#1e293b",
+    color: "#202223",
     minWidth: 0,
   },
   th: {
-    padding: "16px 20px",
-    fontSize: "12px",
-    color: "#94a3b8",
-    fontWeight: "800",
+    padding: "12px 16px",
+    fontSize: 11,
+    color: "#6d7175",
+    fontWeight: 800,
     textTransform: "uppercase",
+    letterSpacing: "0.04em",
   },
-  td: { padding: "16px 20px", fontSize: "14px", color: "#475569" },
-  tr: { borderBottom: "1px solid #f1f5f9" },
+  td: { padding: "14px 16px", fontSize: 13, color: "#202223", fontWeight: 600 },
+  tr: { borderBottom: "1px solid #e5ebe8" },
   imgPlaceholder: {
-    width: "40px",
-    height: "40px",
-    backgroundColor: "#f1f5f9",
-    borderRadius: "8px",
+    width: 44,
+    height: 44,
+    backgroundColor: "#f5f9f7",
+    borderRadius: 8,
+    border: "1px solid #e5ebe8",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-  },
-  viewBtn: {
-    display: "flex",
-    alignItems: "center",
-    gap: "4px",
-    padding: "8px 16px",
-    borderRadius: "8px",
-    border: "1px solid #e2e8f0",
-    backgroundColor: "#fff",
-    cursor: "pointer",
-    fontWeight: "700",
+    flexShrink: 0,
   },
 };
 
@@ -645,127 +747,169 @@ const modalStyles = {
   overlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(15, 23, 42, 0.6)",
-    backdropFilter: "blur(4px)",
+    background: "rgba(32, 34, 35, 0.55)",
+    backdropFilter: "blur(3px)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 100,
+    padding: 16,
   },
   modal: {
     background: "#fff",
-    borderRadius: "24px",
-    width: "650px",
-    height: "80vh",
+    borderRadius: 12,
+    width: "min(760px, 100%)",
+    maxHeight: "88vh",
     display: "flex",
     flexDirection: "column",
-    boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+    boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+    border: "1px solid #e5ebe8",
   },
   header: {
-    padding: "24px 32px",
-    borderBottom: "1px solid #f1f5f9",
+    padding: "20px 24px",
+    borderBottom: "1px solid #e5ebe8",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: 12,
+    background: "#fafcfb",
   },
-  productIcon: { padding: "10px", backgroundColor: "#eff6ff", borderRadius: "12px" },
-  productTitle: { margin: 0, fontSize: "18px", fontWeight: "800" },
-  subTitle: { margin: 0, fontSize: "13px", color: "#64748b" },
-  scrollArea: { padding: "32px", overflowY: "auto", flex: 1, backgroundColor: "#f8fafc" },
+  productThumb: {
+    width: 52,
+    height: 52,
+    backgroundColor: "#ecfdf3",
+    borderRadius: 8,
+    border: "1px solid #aee9d1",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    flexShrink: 0,
+  },
+  productTitle: { margin: 0, fontSize: 18, fontWeight: 900, color: "#202223" },
+  scrollArea: {
+    padding: 20,
+    overflowY: "auto",
+    flex: 1,
+    backgroundColor: "#f3f7f5",
+    display: "flex",
+    flexDirection: "column",
+    gap: 16,
+  },
   closeBtn: {
-    padding: "8px",
-    borderRadius: "50%",
-    border: "none",
-    backgroundColor: "#f1f5f9",
+    padding: 8,
+    borderRadius: 8,
+    border: "1px solid #c9cccf",
+    backgroundColor: "#fff",
     cursor: "pointer",
+    flexShrink: 0,
   },
 };
 
-const chatStyles = {
-  thread: { display: "flex", flexDirection: "column", gap: "24px", marginBottom: "40px" },
-  rowLeft: { display: "flex", gap: "12px", justifyContent: "flex-start" },
-  rowRight: { display: "flex", gap: "12px", justifyContent: "flex-end" },
+const detailStyles = {
+  card: {
+    background: "#fff",
+    borderRadius: 8,
+    border: "1px solid #e5ebe8",
+    padding: 18,
+    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+  },
+  cardHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 12,
+    flexWrap: "wrap",
+  },
+  authorRow: { display: "flex", gap: 12, flex: 1, minWidth: 0 },
   avatar: {
-    width: "36px",
-    height: "36px",
+    width: 40,
+    height: 40,
     borderRadius: "50%",
-    backgroundColor: "#fff",
-    border: "1px solid #e2e8f0",
+    backgroundColor: "#f5f9f7",
+    border: "1px solid #e5ebe8",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
-  metaLeft: { display: "flex", gap: "8px", alignItems: "center", marginBottom: "4px", flexWrap: "wrap" },
-  storeTag: {
-    fontSize: "10px",
-    fontWeight: "700",
-    color: "#0369a1",
-    backgroundColor: "#e0f2fe",
-    padding: "2px 6px",
-    borderRadius: "4px",
-  },
-  metaRight: {
+  authorName: { fontSize: 14, fontWeight: 800, color: "#202223" },
+  metaRow: {
     display: "flex",
-    gap: "8px",
+    flexWrap: "wrap",
+    gap: "6px 12px",
     alignItems: "center",
-    marginBottom: "4px",
-    flexDirection: "row-reverse",
+    marginTop: 6,
+    fontSize: 11,
+    fontWeight: 600,
+    color: "#6d7175",
   },
-  name: { fontSize: "13px", fontWeight: "700", color: "#1e293b" },
-  time: { fontSize: "11px", color: "#94a3b8" },
-  bubbleLeft: {
-    padding: "12px 16px",
-    backgroundColor: "#fff",
-    border: "1px solid #e2e8f0",
-    borderRadius: "0 16px 16px 16px",
-    fontSize: "14px",
-    lineHeight: "1.5",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+  reviewTitle: {
+    margin: "0 0 8px",
+    fontSize: 15,
+    fontWeight: 800,
+    color: "#202223",
   },
-  bubbleRight: {
-    padding: "12px 16px",
-    backgroundColor: "#e6f3f0",
-    border: "1px solid #00806033",
-    borderRadius: "16px 0 16px 16px",
-    fontSize: "14px",
-    color: "#004d3a",
-    lineHeight: "1.5",
+  reviewBody: {
+    margin: "0 0 16px",
+    fontSize: 14,
+    lineHeight: 1.55,
+    color: "#202223",
+    fontWeight: 500,
   },
-  starRow: { display: "flex", gap: "2px", marginBottom: "4px" },
-  inputContainer: { position: "relative", width: "320px" },
+  replySection: {
+    borderTop: "1px solid #e5ebe8",
+    paddingTop: 14,
+    marginTop: 4,
+  },
+  replyLabel: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    fontSize: 12,
+    fontWeight: 800,
+    color: SHOPIFY_GREEN,
+    marginBottom: 10,
+    textTransform: "uppercase",
+    letterSpacing: "0.03em",
+  },
+  replyDate: { fontWeight: 600, color: "#6d7175", textTransform: "none", letterSpacing: 0 },
   replyInput: {
     width: "100%",
-    padding: "12px 45px 12px 16px",
-    borderRadius: "16px",
-    border: "2px solid #008060",
-    fontSize: "14px",
+    padding: "12px 14px",
+    borderRadius: 8,
+    border: `2px solid ${SHOPIFY_GREEN}`,
+    fontSize: 13,
     outline: "none",
-    resize: "none",
-    height: "80px",
+    resize: "vertical",
+    minHeight: 88,
     fontFamily: "inherit",
+    fontWeight: 600,
+    boxSizing: "border-box",
   },
-  sendBtn: {
-    position: "absolute",
-    right: "10px",
-    bottom: "10px",
-    backgroundColor: "#008060",
-    color: "#fff",
-    border: "none",
-    borderRadius: "50%",
-    width: "32px",
-    height: "32px",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+  replyBubble: {
+    padding: "14px 16px",
+    backgroundColor: "#ecfdf3",
+    border: "1px solid #aee9d1",
+    borderRadius: 8,
+    color: "#004d3a",
   },
-  editBtn: {
+  replyEmpty: {
+    padding: 14,
+    borderRadius: 8,
+    border: "1px dashed #c9cccf",
+    background: "#f6f6f7",
+  },
+  textBtn: {
     background: "none",
     border: "none",
-    color: "#94a3b8",
-    fontSize: "11px",
+    color: "#6d7175",
+    fontSize: 12,
     cursor: "pointer",
-    fontWeight: "600",
+    fontWeight: 700,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
   },
 };
