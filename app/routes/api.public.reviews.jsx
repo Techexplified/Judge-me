@@ -136,7 +136,16 @@ export async function action({ request }) {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  const body = await request.json();
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const { shop, productId, productName, rating, comment, author, title, email } = body;
 
   if (!shop || !productId || !rating || !comment) {

@@ -11,6 +11,7 @@ import {
 import { getResolvedOpenRouterKey, generatePlaybook } from "../lib/openrouter.server";
 import { renderDashboardReportPdf } from "../utils/dashboard-pdf.server.js";
 import { getTrialStatus } from "../lib/trial.server";
+import { getGroupShopList } from "../lib/store-group.server";
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
@@ -33,8 +34,9 @@ export const loader = async ({ request }) => {
   const trialStatus = await getTrialStatus(shop);
   const openRouterKey = trialStatus.isActive ? getResolvedOpenRouterKey() : null;
 
+  const targetShops = await getGroupShopList(shop);
   const reviewsAll = await db.review.findMany({
-    where: { shop },
+    where: { shop: { in: targetShops } },
     orderBy: { createdAt: "desc" },
   });
 

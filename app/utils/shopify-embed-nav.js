@@ -28,3 +28,12 @@ export function mergeShopifyEmbedParams(to, currentSearch) {
   const qs = merged.toString();
   return qs ? `${pathname}?${qs}${hash}` : `${pathname}${hash}`;
 }
+
+export function isStoreProfileComplete(storeProfile) {
+  if (!storeProfile) return false;
+  return Boolean(
+    storeProfile.industry?.trim() &&
+      storeProfile.primaryGoal?.trim() &&
+      storeProfile.hasMultipleStores?.trim(),
+  );
+}

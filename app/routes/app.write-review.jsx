@@ -1,15 +1,25 @@
 //app.write-review.jsx
 /* eslint-disable jsx-a11y/label-has-associated-control, jsx-a11y/alt-text */
-import { useState } from "react";
-import { useSubmit, useNavigation } from "react-router";
+import { useEffect, useState } from "react";
+import {
+  useSubmit,
+  useNavigation,
+  useActionData,
+  useLoaderData,
+} from "react-router";
 import { authenticate } from "../shopify.server";
 import { useAppBridge } from "@shopify/app-bridge-react";
-import { Star, ShoppingBag } from "lucide-react";
+import { Star, ShoppingBag, CheckCircle2 } from "lucide-react";
 import db from "../db.server";
 import { normalizeShopifyProductId } from "../utils/product-id.server";
 import { normalizeShopDomain } from "../utils/shop.server";
+import { Banner, Page, Card } from "../components/admin-ui";
 
-/* ---------------- ACTION ---------------- */
+export const loader = async ({ request }) => {
+  await authenticate.admin(request);
+  return {};
+};
+
 export const action = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
@@ -17,29 +27,47 @@ export const action = async ({ request }) => {
   const rawPid = fd.get("productId");
   const productId =
     normalizeShopifyProductId(rawPid) || String(rawPid ?? "").trim();
+  const author = String(fd.get("author") ?? "").trim();
+  const comment = String(fd.get("comment") ?? "").trim();
+  const rating = Number(fd.get("rating"));
 
-  await db.review.create({
-    data: {
-      shop,
-      productId,
-      productName: fd.get("productName"),
-      productImage: fd.get("productImage"),
-      rating: Number(fd.get("rating")),
-      title: fd.get("title"),
-      comment: fd.get("comment"),
-      author: fd.get("author"),
-      email: fd.get("email"),
-      status: "PUBLISHED",
-    },
-  });
+  if (!productId) {
+    return { ok: false, error: "Select a product first." };
+  }
+  if (!author || !comment) {
+    return { ok: false, error: "Name and comment are required." };
+  }
+  if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+    return { ok: false, error: "Choose a rating from 1 to 5 stars." };
+  }
 
-  return { ok: true };
+  try {
+    await db.review.create({
+      data: {
+        shop,
+        productId,
+        productName: String(fd.get("productName") ?? "").trim() || "Product",
+        productImage: String(fd.get("productImage") ?? "").trim() || null,
+        rating,
+        title: String(fd.get("title") ?? "").trim() || null,
+        comment,
+        author,
+        email: String(fd.get("email") ?? "").trim() || null,
+        status: "PUBLISHED",
+      },
+    });
+    return { ok: true };
+  } catch (err) {
+    console.error("[write-review]", err);
+    return { ok: false, error: "Could not save the review. Try again." };
+  }
 };
 
-/* ---------------- PAGE ---------------- */
 export default function WriteReviewPage() {
   const submit = useSubmit();
   const nav = useNavigation();
+  const actionData = useActionData();
+  useLoaderData();
   const shopify = useAppBridge();
 
   const [product, setProduct] = useState(null);
@@ -50,6 +78,19 @@ export default function WriteReviewPage() {
     author: "",
     email: "",
   });
+
+  useEffect(() => {
+    if (actionData?.ok) {
+      setReview({
+        rating: 5,
+        title: "",
+        comment: "",
+        author: "",
+        email: "",
+      });
+      setProduct(null);
+    }
+  }, [actionData?.ok]);
 
   const openPicker = async () => {
     const res = await shopify.resourcePicker({ type: "product" });
@@ -63,7 +104,7 @@ export default function WriteReviewPage() {
   };
 
   const submitReview = () => {
-    if (!product) return alert("Select product");
+    if (!product) return;
 
     const fd = new FormData();
     Object.entries(review).forEach(([k, v]) => fd.append(k, v));
@@ -74,133 +115,140 @@ export default function WriteReviewPage() {
     submit(fd, { method: "post" });
   };
 
+  const busy = nav.state === "submitting";
+
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <div style={styles.header}>
-          <h2 style={styles.title}>Write a Review</h2>
-        </div>
+    <Page narrow>
+      <Card title="Write a review">
+        {actionData?.ok ? (
+          <div style={{ marginBottom: 16 }}>
+            <Banner tone="success" icon={<CheckCircle2 size={18} />}>
+              Review published.
+            </Banner>
+          </div>
+        ) : null}
+        {actionData?.error ? (
+          <div style={{ marginBottom: 16 }}>
+            <Banner tone="critical">{actionData.error}</Banner>
+          </div>
+        ) : null}
 
-        <div style={styles.form}>
-          <label style={styles.label}>Product</label>
-          {product ? (
-            <div style={styles.selectedProduct}>
-              <img src={product.image} width={40} />
-              <strong>{product.title}</strong>
-              <button onClick={openPicker}>Change</button>
-            </div>
-          ) : (
-            <button style={styles.buttonSecondary} onClick={openPicker}>
-              <ShoppingBag size={16}/> Select Product
+        <label style={styles.label}>Product</label>
+        {product ? (
+          <div style={styles.selectedProduct}>
+            {product.image ? <img src={product.image} width={40} alt="" /> : null}
+            <strong>{product.title}</strong>
+            <button type="button" onClick={openPicker}>
+              Change
             </button>
-          )}
+          </div>
+        ) : (
+          <button type="button" style={styles.buttonSecondary} onClick={openPicker}>
+            <ShoppingBag size={16} /> Select product
+          </button>
+        )}
 
-          <label style={styles.label}>Rating</label>
-          <div style={{ display: "flex", gap: 6 }}>
-            {[1,2,3,4,5].map(i => (
+        <label style={styles.label}>Rating</label>
+        <div style={{ display: "flex", gap: 6 }}>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setReview({ ...review, rating: i })}
+              style={{ border: "none", background: "none", padding: 0, cursor: "pointer" }}
+              aria-label={`${i} stars`}
+            >
               <Star
-                key={i}
                 size={28}
                 fill={i <= review.rating ? "#facc15" : "none"}
                 color="#facc15"
-                onClick={() => setReview({ ...review, rating: i })}
-                style={{ cursor: "pointer" }}
               />
-            ))}
-          </div>
-
-          <input
-            placeholder="Title"
-            style={styles.input}
-            value={review.title}
-            onChange={e => setReview({ ...review, title: e.target.value })}
-          />
-
-          <textarea
-            placeholder="Comment"
-            style={{ ...styles.input, height: 100 }}
-            value={review.comment}
-            onChange={e => setReview({ ...review, comment: e.target.value })}
-          />
-
-          <input
-            placeholder="Name"
-            style={styles.input}
-            value={review.author}
-            onChange={e => setReview({ ...review, author: e.target.value })}
-          />
-
-          <input
-            placeholder="Email"
-            style={styles.input}
-            value={review.email}
-            onChange={e => setReview({ ...review, email: e.target.value })}
-          />
-
-          <button
-            style={styles.buttonPrimary}
-            disabled={nav.state === "submitting"}
-            onClick={submitReview}
-          >
-            Submit Review
-          </button>
+            </button>
+          ))}
         </div>
-      </div>
-    </div>
+
+        <input
+          placeholder="Title (optional)"
+          style={styles.input}
+          value={review.title}
+          onChange={(e) => setReview({ ...review, title: e.target.value })}
+        />
+
+        <textarea
+          placeholder="Comment"
+          style={{ ...styles.input, height: 100 }}
+          value={review.comment}
+          onChange={(e) => setReview({ ...review, comment: e.target.value })}
+        />
+
+        <input
+          placeholder="Customer name"
+          style={styles.input}
+          value={review.author}
+          onChange={(e) => setReview({ ...review, author: e.target.value })}
+        />
+
+        <input
+          placeholder="Email (optional)"
+          style={styles.input}
+          value={review.email}
+          onChange={(e) => setReview({ ...review, email: e.target.value })}
+        />
+
+        <button
+          type="button"
+          style={styles.buttonPrimary}
+          disabled={busy || !product}
+          onClick={submitReview}
+        >
+          {busy ? "Saving…" : "Submit review"}
+        </button>
+      </Card>
+    </Page>
   );
 }
 
-/* ---------------- STYLES ---------------- */
 const styles = {
-  container: {
-    padding: "24px",
-    backgroundColor: "#f3f4f6",
-    minHeight: "100vh",
-    fontFamily: "sans-serif",
-  },
-  card: {
-    maxWidth: "600px",
-    margin: "0 auto",
-    background: "#fff",
-    borderRadius: "8px",
-    border: "1px solid #f3f4f6",
-  },
-  header: {
-    padding: "24px",
-    borderBottom: "1px solid #f3f4f6",
-  },
-  title: { fontSize: "22px", fontWeight: "700" },
-  form: {
-    padding: "24px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "16px",
-  },
-  label: { fontWeight: "600" },
+  label: { fontWeight: 700, fontSize: 13, display: "block", marginBottom: 6 },
   input: {
-    border: "1px solid #d1d5db",
+    border: "1px solid #c9cccf",
     padding: "12px",
-    borderRadius: "6px",
+    borderRadius: 8,
+    width: "100%",
+    boxSizing: "border-box",
+    fontFamily: "inherit",
+    fontSize: 13,
+    marginBottom: 12,
   },
   buttonPrimary: {
-    background: "#0f172a",
+    background: "#008060",
     color: "#fff",
-    padding: "12px",
-    borderRadius: "6px",
+    padding: "12px 16px",
+    borderRadius: 8,
     border: "none",
+    fontWeight: 800,
+    cursor: "pointer",
+    width: "100%",
+    marginTop: 8,
   },
   buttonSecondary: {
-    border: "1px solid #d1d5db",
-    padding: "10px",
-    borderRadius: "6px",
+    border: "1px solid #c9cccf",
+    padding: "10px 14px",
+    borderRadius: 8,
     background: "#fff",
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 16,
   },
   selectedProduct: {
     display: "flex",
     gap: 10,
     alignItems: "center",
-    background: "#f9fafb",
+    background: "#f6f6f7",
     padding: 10,
-    borderRadius: 6,
+    borderRadius: 8,
+    marginBottom: 16,
   },
 };

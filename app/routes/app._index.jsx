@@ -65,6 +65,18 @@ function reviewsHref(productName, productId, extras = {}) {
   return `/app/reviews?${q.toString()}`;
 }
 
+function reviewFormHref(productName, productId) {
+  const q = new URLSearchParams();
+  const pid =
+    productId != null && String(productId).trim() !== ""
+      ? String(productId).trim()
+      : "";
+  if (pid) q.set("productId", pid);
+  if (productName) q.set("productName", String(productName).trim());
+  const qs = q.toString();
+  return qs ? `/app/review-form?${qs}` : "/app/review-form";
+}
+
 function clipText(text, max) {
   const s = text ? String(text).trim() : "";
   if (s.length <= max) return s;
@@ -760,8 +772,11 @@ export default function Dashboard() {
                         <ActionLink to={reviewsHref(p.productName, p.productId, { mode: "reply" })}>
                           Reply
                         </ActionLink>
-                        <ActionLink to="/app/editor" feature>
-                          Feature
+                        <ActionLink
+                          to={reviewFormHref(p.productName, p.productId)}
+                          feature
+                        >
+                          Widget
                         </ActionLink>
                       </div>
                     </td>
@@ -1036,11 +1051,11 @@ function PlaybookModal({ playbook, error, busy, onClose }) {
         {playbook ? (
           <div style={s.modalBody}>
             <p style={s.modalSummary}>{playbook.summary}</p>
-            {playbook.sections.map((sec) => (
+            {(playbook.sections ?? []).map((sec) => (
               <div key={sec.title} style={s.modalSection}>
                 <h3 style={s.modalSectionTitle}>{sec.title}</h3>
                 <ul style={s.modalList}>
-                  {sec.bullets.map((b) => (
+                  {(sec.bullets ?? []).map((b) => (
                     <li key={b} style={s.modalLi}>
                       {b}
                     </li>

@@ -139,7 +139,12 @@ export const action = async ({ request }) => {
   const reply = formData.get("reply");
 
   if (!reviewId || typeof reply !== "string") {
-    return { ok: false };
+    return { ok: false, error: "Missing review or reply." };
+  }
+
+  const trimmed = reply.trim();
+  if (!trimmed) {
+    return { ok: false, error: "Reply cannot be empty." };
   }
 
   const targetShops = await getGroupShopList(shop);
@@ -147,14 +152,14 @@ export const action = async ({ request }) => {
     where: { id: reviewId, shop: { in: targetShops } },
   });
   if (!existing) {
-    return { ok: false };
+    return { ok: false, error: "Review not found." };
   }
 
   await db.review.update({
     where: { id: reviewId },
-    data: { reply, replyDate: new Date() },
+    data: { reply: trimmed, replyDate: new Date() },
   });
-  return { ok: true };
+  return { ok: true, reviewId, reply: trimmed };
 };
 
 export default function ReviewsManagement() {
@@ -429,12 +434,30 @@ function ReviewChatItem({ review, currentShop }) {
   const fetcher = useFetcher();
   const [isEditing, setIsEditing] = useState(!review.reply);
   const [replyText, setReplyText] = useState(review.reply || "");
+  const [savedReply, setSavedReply] = useState(review.reply || "");
+  const [saveError, setSaveError] = useState(null);
+
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    if (fetcher.data.ok && fetcher.data.reviewId === review.id) {
+      setSavedReply(fetcher.data.reply ?? replyText);
+      setIsEditing(false);
+      setSaveError(null);
+    } else if (fetcher.data.error) {
+      setSaveError(fetcher.data.error);
+    }
+  }, [fetcher.state, fetcher.data, review.id, replyText]);
 
   const handleSave = () => {
-    if (!replyText.trim()) return;
+    if (!replyText.trim()) {
+      setSaveError("Reply cannot be empty.");
+      return;
+    }
+    setSaveError(null);
     fetcher.submit({ reviewId: review.id, reply: replyText }, { method: "POST" });
-    setIsEditing(false);
   };
+
+  const displayedReply = savedReply || review.reply;
 
   return (
     <div style={chatStyles.thread}>
@@ -500,14 +523,27 @@ function ReviewChatItem({ review, currentShop }) {
               >
                 {fetcher.state === "submitting" ? "..." : <Send size={16} />}
               </button>
+              {saveError ? (
+                <p style={{ margin: "6px 0 0", fontSize: 12, color: "#d72c0d", fontWeight: 600 }}>
+                  {saveError}
+                </p>
+              ) : null}
             </div>
-          ) : (
+          ) : displayedReply ? (
             <div style={chatStyles.bubbleRight}>
-              {review.reply}
+              {displayedReply}
               <div style={{ textAlign: "right", marginTop: "4px" }}>
                 <CheckCircle2 size={12} color="#008060" style={{ opacity: 0.6 }} />
               </div>
             </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              style={chatStyles.editBtn}
+            >
+              Write a reply
+            </button>
           )}
         </div>
         <div style={{ ...chatStyles.avatar, backgroundColor: "#008060" }}>
