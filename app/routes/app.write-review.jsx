@@ -11,8 +11,8 @@ import { authenticate } from "../shopify.server";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { Star, ShoppingBag, CheckCircle2 } from "lucide-react";
 import db from "../db.server";
-import { normalizeShopifyProductId } from "../utils/product-id.server";
-import { normalizeShopDomain } from "../utils/shop.server";
+import { normalizeShopifyProductId } from "../utils/product-id.shared.js";
+import { normalizeShopDomain } from "../utils/shop.js";
 import { Banner, Page, Card } from "../components/admin-ui";
 
 export const loader = async ({ request }) => {
@@ -21,7 +21,7 @@ export const loader = async ({ request }) => {
 };
 
 export const action = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
   const fd = await request.formData();
   const rawPid = fd.get("productId");
@@ -42,20 +42,28 @@ export const action = async ({ request }) => {
   }
 
   try {
-    await db.review.create({
-      data: {
-        shop,
-        productId,
-        productName: String(fd.get("productName") ?? "").trim() || "Product",
-        productImage: String(fd.get("productImage") ?? "").trim() || null,
-        rating,
-        title: String(fd.get("title") ?? "").trim() || null,
-        comment,
-        author,
-        email: String(fd.get("email") ?? "").trim() || null,
-        status: "PUBLISHED",
-      },
+    let reviewData = {
+      shop,
+      productId,
+      productName: String(fd.get("productName") ?? "").trim() || "Product",
+      productImage: String(fd.get("productImage") ?? "").trim() || null,
+      rating,
+      title: String(fd.get("title") ?? "").trim() || null,
+      comment,
+      author,
+      email: String(fd.get("email") ?? "").trim() || null,
+      status: "PUBLISHED",
+    };
+
+    const { maybeAutoTranslateReviewData } = await import("../lib/review-translation.server.js");
+    const { data: translatedData } = await maybeAutoTranslateReviewData(shop, reviewData);
+    reviewData = translatedData;
+
+    const created = await db.review.create({
+      data: reviewData,
     });
+    const { emitReviewCollectedFlowTrigger } = await import("../lib/flow-review-trigger.server.js");
+    await emitReviewCollectedFlowTrigger(shop, created, { admin });
     return { ok: true };
   } catch (err) {
     console.error("[write-review]", err);

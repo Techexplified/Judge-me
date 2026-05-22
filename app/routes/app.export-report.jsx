@@ -10,7 +10,7 @@ import {
 } from "../utils/dashboard-metrics.server.js";
 import { getResolvedOpenRouterKey, generatePlaybook } from "../lib/openrouter.server";
 import { renderDashboardReportPdf } from "../utils/dashboard-pdf.server.js";
-import { getTrialStatus } from "../lib/trial.server";
+import { getTrialStatus, hasPremiumAccess } from "../lib/trial.server";
 import { getGroupShopList } from "../lib/store-group.server";
 
 export const loader = async ({ request }) => {
@@ -32,7 +32,7 @@ export const loader = async ({ request }) => {
   }
 
   const trialStatus = await getTrialStatus(shop);
-  const openRouterKey = trialStatus.isActive ? getResolvedOpenRouterKey() : null;
+  const openRouterKey = hasPremiumAccess(trialStatus) ? getResolvedOpenRouterKey() : null;
 
   const targetShops = await getGroupShopList(shop);
   const reviewsAll = await db.review.findMany({

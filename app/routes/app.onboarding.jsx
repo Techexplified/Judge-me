@@ -12,7 +12,7 @@ import {
 import { CheckCircle2, Store } from "lucide-react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import { normalizeShopDomain } from "../utils/shop.server";
+import { normalizeShopDomain } from "../utils/shop.js";
 import { linkStore } from "../lib/link-store.server";
 import {
   completeOnboarding,
@@ -29,6 +29,7 @@ import { embedRedirect } from "../utils/shopify-embed-nav.server.js";
 import {
   Banner,
   GOAL_OPTIONS,
+  IMPORT_FROM_APP_OPTIONS,
   INDUSTRY_OPTIONS,
   MULTI_STORE_OPTIONS,
   PrimaryButton,
@@ -38,6 +39,8 @@ import {
   TextField,
   WizardShell,
 } from "../components/admin-ui";
+import { SourceGrid } from "../components/import-wizard-ui";
+import { SOURCE_LIST, SOURCE_PRESETS } from "../lib/csv-import.shared.js";
 
 function parseStep(searchParams) {
   const s = Number.parseInt(searchParams.get("step") ?? "1", 10);
@@ -70,6 +73,8 @@ export const loader = async ({ request }) => {
     industry: "",
     primaryGoal: "",
     hasMultipleStores: "",
+    importingFromOtherApp: "",
+    importSource: "",
   };
 
   const step = resolveOnboardingStep(requestedStep, profile);
@@ -108,15 +113,32 @@ export const action = async ({ request }) => {
     const industry = String(fd.get("industry") ?? "").trim();
     const primaryGoal = String(fd.get("primaryGoal") ?? "").trim();
     const hasMultipleStores = String(fd.get("hasMultipleStores") ?? "").trim();
+    const importingFromOtherApp = String(fd.get("importingFromOtherApp") ?? "").trim();
+    const importSource = String(fd.get("importSource") ?? "").trim();
 
-    if (!industry || !primaryGoal || !hasMultipleStores) {
+    if (!industry || !primaryGoal || !hasMultipleStores || !importingFromOtherApp) {
       return data(
         { error: "Complete all fields to continue.", step: 2 },
         { status: 400 },
       );
     }
 
-    await saveStoreProfile(shop, { industry, primaryGoal, hasMultipleStores });
+    if (importingFromOtherApp === "yes") {
+      if (!importSource || !SOURCE_PRESETS[importSource]) {
+        return data(
+          { error: "Select which app you are importing reviews from.", step: 2 },
+          { status: 400 },
+        );
+      }
+    }
+
+    await saveStoreProfile(shop, {
+      industry,
+      primaryGoal,
+      hasMultipleStores,
+      importingFromOtherApp,
+      importSource,
+    });
     throw embedRedirect("/app/onboarding?step=3", request);
   }
 
@@ -140,7 +162,20 @@ export const action = async ({ request }) => {
   }
 
   if (intent === "finish") {
+    const { storeProfile: profile } = await getOnboardingState(shop);
     await completeOnboarding(shop);
+
+    if (
+      profile?.importingFromOtherApp === "yes" &&
+      profile?.importSource &&
+      SOURCE_PRESETS[profile.importSource]
+    ) {
+      throw embedRedirect(
+        `/app/import-reviews?source=${encodeURIComponent(profile.importSource)}`,
+        request,
+      );
+    }
+
     throw embedRedirect("/app", request);
   }
 
@@ -164,6 +199,12 @@ export default function Onboarding() {
   const [primaryGoal, setPrimaryGoal] = useState(storeProfile.primaryGoal || "");
   const [hasMultipleStores, setHasMultipleStores] = useState(
     storeProfile.hasMultipleStores || "",
+  );
+  const [importingFromOtherApp, setImportingFromOtherApp] = useState(
+    storeProfile.importingFromOtherApp || "",
+  );
+  const [importSource, setImportSource] = useState(
+    storeProfile.importSource || "loox",
   );
   const [targetShop, setTargetShop] = useState("");
   const profileError =
@@ -237,6 +278,9 @@ export default function Onboarding() {
                     industry,
                     primaryGoal,
                     hasMultipleStores,
+                    importingFromOtherApp,
+                    importSource:
+                      importingFromOtherApp === "yes" ? importSource : "",
                   },
                   { method: "post" },
                 );
@@ -274,6 +318,32 @@ export default function Onboarding() {
           onChange={(e) => setHasMultipleStores(e.target.value)}
           options={MULTI_STORE_OPTIONS}
         />
+        <SelectField
+          label="Importing reviews from another app?"
+          value={importingFromOtherApp}
+          onChange={(e) => setImportingFromOtherApp(e.target.value)}
+          options={IMPORT_FROM_APP_OPTIONS}
+        />
+        {importingFromOtherApp === "yes" ? (
+          <div style={{ marginTop: 4 }}>
+            <p
+              style={{
+                margin: "0 0 12px",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#6d7175",
+                lineHeight: 1.45,
+              }}
+            >
+              Loox, Judge.me, Stamped, Yotpo, Okendo, Amazon, Flipkart, or custom CSV.
+            </p>
+            <SourceGrid
+              sources={SOURCE_LIST}
+              selectedId={importSource}
+              onSelect={setImportSource}
+            />
+          </div>
+        ) : null}
       </WizardShell>
     );
   }
@@ -368,6 +438,8 @@ export default function Onboarding() {
     );
   }
 
+  const wantsImport = storeProfile.importingFromOtherApp === "yes";
+
   return (
     <WizardShell
       step={4}
@@ -377,7 +449,7 @@ export default function Onboarding() {
           disabled={isSubmitting}
           onClick={() => submit({ intent: "finish" }, { method: "post" })}
         >
-          Go to dashboard
+          {wantsImport ? "Continue to import" : "Go to dashboard"}
         </PrimaryButton>
       }
     >
@@ -398,7 +470,9 @@ export default function Onboarding() {
         </div>
         <h2 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 900 }}>You&apos;re set up</h2>
         <p style={{ margin: 0, color: "#6d7175", fontWeight: 600, fontSize: 13, lineHeight: 1.5 }}>
-          Add the review widget to your theme, or open Linked stores anytime to connect more shops.
+          {wantsImport
+            ? "Next, we'll help you import your reviews from your previous app."
+            : "Add the review widget to your theme, or open Linked stores anytime to connect more shops."}
         </p>
       </div>
     </WizardShell>

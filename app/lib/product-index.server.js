@@ -89,7 +89,10 @@ export async function syncProductIndex(admin, shop) {
   return { upserted };
 }
 
-export async function hasRunProductIndexSync(shop) {
+export async function hasRunProductIndexSync(shop, preloadedConfig) {
+  if (preloadedConfig !== undefined) {
+    return Boolean(preloadedConfig?.productIndexSyncDone);
+  }
   const row = await db.settings.findUnique({ where: { shop } });
   if (!row?.config) return false;
   try {

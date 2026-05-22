@@ -1,6 +1,7 @@
-/* eslint-disable react/prop-types, jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions, react/no-unescaped-entities, react-hooks/set-state-in-effect */
+/* eslint-disable react/prop-types, jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-element-interactions, react/no-unescaped-entities, react-hooks/set-state-in-effect */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useFetcher, useLoaderData, useLocation, useSearchParams } from "react-router";
+import { useFetcher, useLoaderData, useLocation, useNavigate, useRevalidator, useSearchParams } from "react-router";
+import { useAppBridge } from "@shopify/app-bridge-react";
 import {
   Star,
   X,
@@ -16,9 +17,13 @@ import {
   Search,
   Clock,
   Mail,
+  Upload,
+  Languages,
+  Eye,
 } from "lucide-react";
 import {
   Badge,
+  Banner,
   Card,
   Page,
   PageHeader,
@@ -27,10 +32,19 @@ import {
   SHOPIFY_GREEN,
   Stack,
 } from "../components/admin-ui";
+import { mergeShopifyEmbedParams } from "../utils/shopify-embed-nav.js";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
-import { normalizeShopDomain } from "../utils/shop.server";
+import { normalizeShopDomain } from "../utils/shop.js";
 import { getGroupShopList } from "../lib/store-group.server";
+import { getResolvedOpenRouterKey } from "../lib/openrouter.server";
+import { hasPremiumAccess, serializeTrialStatus } from "../lib/trial.shared.js";
+import { REVIEW_LIST_SELECT } from "../lib/review-query.shared.js";
+import {
+  languageLabel,
+  reviewHasTranslation,
+  getTranslationSettings,
+} from "../lib/review-translation.shared.js";
 
 function normalizeProductLookup(s) {
   return String(s ?? "")
@@ -73,11 +87,13 @@ function resolveProductFromUrlParams(products, productNameRaw, pidRaw) {
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
+  const { getTrialStatus } = await import("../lib/trial.server.js");
   const targetShops = await getGroupShopList(shop);
 
   const reviews = await db.review.findMany({
     where: { shop: { in: targetShops } },
     orderBy: { createdAt: "desc" },
+    select: REVIEW_LIST_SELECT,
   });
 
   const totalReviews = reviews.length;
@@ -130,9 +146,26 @@ export const loader = async ({ request }) => {
 
   const totalGrowth = calculateGrowth(reviewsThisMonth, reviewsLastMonth);
 
+  const trialStatus = await getTrialStatus(shop);
+  const premium = hasPremiumAccess(trialStatus);
+  const settingsRow = await db.settings.findUnique({ where: { shop } });
+  let config = {};
+  if (settingsRow?.config) {
+    try {
+      config = JSON.parse(settingsRow.config);
+    } catch {
+      config = {};
+    }
+  }
+  const translation = getTranslationSettings(config);
+
   return {
     products,
     currentShop: shop,
+    translation,
+    premium,
+    aiAvailable: premium && Boolean(getResolvedOpenRouterKey()),
+    trialStatus: serializeTrialStatus(trialStatus),
     stats: {
       totalReviews,
       avgRating,
@@ -147,7 +180,113 @@ export const action = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
   const formData = await request.formData();
+  const intent = formData.get("_intent");
   const reviewId = formData.get("reviewId");
+
+  const settingsRow = await db.settings.findUnique({ where: { shop } });
+  let config = {};
+  if (settingsRow?.config) {
+    try {
+      config = JSON.parse(settingsRow.config);
+    } catch {
+      config = {};
+    }
+  }
+  const translation = getTranslationSettings(config);
+
+  if (intent === "translateReview") {
+    const { getTrialStatus } = await import("../lib/trial.server.js");
+    const trialStatus = await getTrialStatus(shop);
+    if (!hasPremiumAccess(trialStatus)) {
+      return { ok: false, error: "Premium is required for review translation." };
+    }
+    const apiKey = getResolvedOpenRouterKey();
+    if (!apiKey) {
+      return { ok: false, error: "Translation service is temporarily unavailable." };
+    }
+    if (!reviewId || typeof reviewId !== "string") {
+      return { ok: false, error: "Missing review." };
+    }
+
+    const targetShops = await getGroupShopList(shop);
+    const existing = await db.review.findFirst({
+      where: { id: reviewId, shop: { in: targetShops } },
+    });
+    if (!existing) {
+      return { ok: false, error: "Review not found." };
+    }
+
+    const { translateSingleReview } = await import("../lib/review-translation.server.js");
+    const result = await translateSingleReview(
+      reviewId,
+      existing.shop,
+      translation.targetLanguage,
+      apiKey,
+      translation.sourceLanguage,
+    );
+
+    if (!result.ok) {
+      return { ok: false, error: result.error || "Translation failed." };
+    }
+
+    return {
+      ok: true,
+      intent: "translateReview",
+      reviewId,
+      unchanged: result.unchanged,
+      review: {
+        id: result.review.id,
+        title: result.review.title,
+        comment: result.review.comment,
+        originalTitle: result.review.originalTitle,
+        originalComment: result.review.originalComment,
+        translatedLang: result.review.translatedLang,
+      },
+    };
+  }
+
+  if (intent === "translateReviews") {
+    const { getTrialStatus } = await import("../lib/trial.server.js");
+    const trialStatus = await getTrialStatus(shop);
+    if (!hasPremiumAccess(trialStatus)) {
+      return { ok: false, error: "Premium is required for review translation." };
+    }
+    const apiKey = getResolvedOpenRouterKey();
+    if (!apiKey) {
+      return { ok: false, error: "Translation service is temporarily unavailable." };
+    }
+
+    const rawIds = String(formData.get("reviewIds") || "");
+    const reviewIds = rawIds
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+    if (reviewIds.length === 0) {
+      return { ok: false, error: "Select at least one review." };
+    }
+
+    const { translateReviewIds } = await import("../lib/review-translation.server.js");
+    const result = await translateReviewIds(
+      shop,
+      reviewIds,
+      translation.targetLanguage,
+      apiKey,
+      translation.sourceLanguage,
+    );
+
+    if (result.errors?.length) {
+      return { ok: false, error: result.errors[0] };
+    }
+
+    return {
+      ok: true,
+      intent: "translateReviews",
+      translated: result.translated,
+      skipped: result.skipped,
+      reviewIds,
+    };
+  }
+
   const reply = formData.get("reply");
 
   if (!reviewId || typeof reply !== "string") {
@@ -173,6 +312,12 @@ export const action = async ({ request }) => {
   });
   return { ok: true, reviewId, reply: trimmed };
 };
+
+export function shouldRevalidate({ formData, defaultShouldRevalidate }) {
+  const intent = formData?.get("_intent");
+  if (intent === "translateReview" || intent === "translateReviews") return false;
+  return defaultShouldRevalidate;
+}
 
 function formatDateTime(value) {
   if (!value) return "—";
@@ -210,8 +355,10 @@ function StarRating({ rating, size = 14 }) {
 }
 
 export default function ReviewsManagement() {
-  const { products, stats, currentShop } = useLoaderData();
+  const { products, stats, currentShop, translation, premium, aiAvailable } = useLoaderData();
   const location = useLocation();
+  const navigate = useNavigate();
+  const shopify = useAppBridge();
   const [searchParams, setSearchParams] = useSearchParams();
   const productParam = searchParams.get("product");
   const pidParam = searchParams.get("pid");
@@ -290,14 +437,72 @@ export default function ReviewsManagement() {
     [products],
   );
 
+  const [importBanner, setImportBanner] = useState(null);
+  const importProcessed = useRef(false);
+
+  useEffect(() => {
+    if (importProcessed.current) return;
+    const imported = searchParams.get("imported");
+    if (imported == null) return;
+    importProcessed.current = true;
+    setImportBanner({
+      imported: Number(imported),
+      skipped: Number(searchParams.get("skipped") ?? 0),
+    });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("imported");
+        next.delete("skipped");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [searchParams, setSearchParams]);
+
+  const importHref = mergeShopifyEmbedParams("/app/import-reviews", location.search);
+
+  const goToImport = useCallback(() => {
+    if (typeof shopify?.navigate === "function") {
+      shopify.navigate(importHref);
+    } else {
+      navigate(importHref);
+    }
+  }, [shopify, importHref, navigate]);
+
   return (
     <Page>
-      <PageHeader
-        title="Reviews"
-        subtitle="Monitor customer feedback, reply to reviews, and keep your catalog trusted."
-      />
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        <PageHeader
+          title="Reviews"
+          subtitle="Monitor customer feedback, reply to reviews, and keep your catalog trusted."
+        />
+        <div style={{ marginTop: 8, flexShrink: 0 }}>
+          <PrimaryButton onClick={goToImport}>
+            <Upload size={16} />
+            Import reviews
+          </PrimaryButton>
+        </div>
+      </div>
 
       <Stack>
+        {importBanner ? (
+          <Banner tone="success" icon={<CheckCircle2 size={18} />}>
+            Successfully imported {importBanner.imported.toLocaleString()} review
+            {importBanner.imported === 1 ? "" : "s"}.
+            {importBanner.skipped > 0
+              ? ` ${importBanner.skipped.toLocaleString()} duplicate or skipped row${importBanner.skipped === 1 ? "" : "s"}.`
+              : ""}
+          </Banner>
+        ) : null}
         <div style={styles.statsGrid}>
           <StatCard
             title="Total reviews"
@@ -431,6 +636,9 @@ export default function ReviewsManagement() {
           currentShop={currentShop}
           modeReply={modeReply}
           onClose={closeModal}
+          translation={translation}
+          premium={premium}
+          aiAvailable={aiAvailable}
         />
       ) : null}
     </Page>
@@ -464,11 +672,50 @@ function StatCard({ title, value, icon, subtitle, trend, isRating }) {
   );
 }
 
-function ProductReviewsModal({ product, currentShop, modeReply, onClose }) {
+function ProductReviewsModal({ product, currentShop, modeReply, onClose, translation, premium, aiAvailable }) {
   const scrollAreaRef = useRef(null);
-  const needsReplyCount = product.reviews?.filter(
+  const bulkFetcher = useFetcher();
+  const revalidator = useRevalidator();
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [localReviews, setLocalReviews] = useState(product.reviews ?? []);
+  const needsReplyCount = localReviews.filter(
     (r) => !r.reply || !String(r.reply).trim(),
-  ).length ?? 0;
+  ).length;
+
+  useEffect(() => {
+    setLocalReviews(product.reviews ?? []);
+    setSelectedIds(new Set());
+  }, [product]);
+
+  useEffect(() => {
+    if (bulkFetcher.state !== "idle" || !bulkFetcher.data?.ok) return;
+    if (bulkFetcher.data.intent === "translateReviews") {
+      setSelectedIds(new Set());
+      revalidator.revalidate();
+    }
+  }, [bulkFetcher.state, bulkFetcher.data, revalidator]);
+
+  const toggleReview = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkTranslate = () => {
+    if (selectedIds.size === 0) return;
+    bulkFetcher.submit(
+      {
+        _intent: "translateReviews",
+        reviewIds: [...selectedIds].join(","),
+      },
+      { method: "post" },
+    );
+  };
+
+  const canTranslate = premium && aiAvailable;
 
   useEffect(() => {
     if (!modeReply || !scrollAreaRef.current || !product.reviews?.length) return;
@@ -527,15 +774,65 @@ function ProductReviewsModal({ product, currentShop, modeReply, onClose }) {
           </button>
         </div>
 
+        {canTranslate && localReviews.length > 0 ? (
+          <div
+            style={{
+              padding: "10px 20px",
+              borderBottom: "1px solid #e5ebe8",
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 10,
+              alignItems: "center",
+              background: "#fafcfb",
+            }}
+          >
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#6d7175" }}>
+              {selectedIds.size} selected
+            </span>
+            <SecondaryButton
+              onClick={handleBulkTranslate}
+              disabled={selectedIds.size === 0 || bulkFetcher.state !== "idle"}
+              loading={bulkFetcher.state !== "idle"}
+            >
+              <Languages size={14} />
+              Translate selected to {languageLabel(translation.targetLanguage)}
+            </SecondaryButton>
+            {bulkFetcher.data?.ok && bulkFetcher.data.intent === "translateReviews" ? (
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#008060" }}>
+                {bulkFetcher.data.translated} translated
+              </span>
+            ) : null}
+            {bulkFetcher.data?.error ? (
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#d72c0d" }}>
+                {bulkFetcher.data.error}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+
         <div ref={scrollAreaRef} style={modalStyles.scrollArea}>
-          {product.reviews.length === 0 ? (
+          {localReviews.length === 0 ? (
             <p style={{ textAlign: "center", color: "#6d7175", fontWeight: 600, margin: "24px 0" }}>
               No reviews for this product yet.
             </p>
           ) : (
-            product.reviews.map((rev) => (
+            localReviews.map((rev) => (
               <div key={`${rev.id}-${rev.reply ?? ""}`} data-review-thread={rev.id}>
-                <ReviewDetailCard review={rev} currentShop={currentShop} />
+                <ReviewDetailCard
+                  review={rev}
+                  currentShop={currentShop}
+                  translation={translation}
+                  premium={premium}
+                  aiAvailable={aiAvailable}
+                  selectable={canTranslate}
+                  selected={selectedIds.has(rev.id)}
+                  onToggleSelect={() => toggleReview(rev.id)}
+                  onTranslated={(updated) => {
+                    setLocalReviews((rows) =>
+                      rows.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)),
+                    );
+                  }}
+                />
               </div>
             ))
           )}
@@ -545,7 +842,17 @@ function ProductReviewsModal({ product, currentShop, modeReply, onClose }) {
   );
 }
 
-function ReviewDetailCard({ review, currentShop }) {
+function ReviewDetailCard({
+  review,
+  currentShop,
+  translation,
+  premium,
+  aiAvailable,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
+  onTranslated,
+}) {
   const storeLabel =
     review.shop && review.shop !== currentShop
       ? review.shop.replace(".myshopify.com", "")
@@ -555,9 +862,44 @@ function ReviewDetailCard({ review, currentShop }) {
   const [replyText, setReplyText] = useState(review.reply || "");
   const [savedReply, setSavedReply] = useState(review.reply || "");
   const [saveError, setSaveError] = useState(null);
+  const [showOriginal, setShowOriginal] = useState(true);
+  const [reviewText, setReviewText] = useState({
+    title: review.title,
+    comment: review.comment,
+    originalTitle: review.originalTitle,
+    originalComment: review.originalComment,
+    translatedLang: review.translatedLang,
+  });
+
+  useEffect(() => {
+    setReviewText({
+      title: review.title,
+      comment: review.comment,
+      originalTitle: review.originalTitle,
+      originalComment: review.originalComment,
+      translatedLang: review.translatedLang,
+    });
+  }, [review]);
 
   useEffect(() => {
     if (fetcher.state !== "idle" || !fetcher.data) return;
+    if (fetcher.data.intent === "translateReview" && fetcher.data.reviewId === review.id) {
+      if (fetcher.data.ok && fetcher.data.review) {
+        setReviewText({
+          title: fetcher.data.review.title,
+          comment: fetcher.data.review.comment,
+          originalTitle: fetcher.data.review.originalTitle,
+          originalComment: fetcher.data.review.originalComment,
+          translatedLang: fetcher.data.review.translatedLang,
+        });
+        setShowOriginal(true);
+        setSaveError(null);
+        onTranslated?.(fetcher.data.review);
+      } else if (fetcher.data.error) {
+        setSaveError(fetcher.data.error);
+      }
+      return;
+    }
     if (fetcher.data.ok && fetcher.data.reviewId === review.id) {
       setSavedReply(fetcher.data.reply ?? replyText);
       setIsEditing(false);
@@ -576,6 +918,28 @@ function ReviewDetailCard({ review, currentShop }) {
     fetcher.submit({ reviewId: review.id, reply: replyText }, { method: "POST" });
   };
 
+  const handleTranslate = () => {
+    setSaveError(null);
+    fetcher.submit(
+      { _intent: "translateReview", reviewId: review.id },
+      { method: "POST" },
+    );
+  };
+
+  const hasStoredTranslation = reviewHasTranslation(reviewText);
+  const isTranslatedToTarget = reviewText.translatedLang === translation.targetLanguage;
+  const canTranslate = premium && aiAvailable;
+  const isTranslating =
+    fetcher.state === "submitting" &&
+    fetcher.formData?.get("_intent") === "translateReview";
+
+  const displayTitle = showOriginal
+    ? reviewText.originalTitle ?? reviewText.title
+    : reviewText.title;
+  const displayComment = showOriginal
+    ? reviewText.originalComment ?? reviewText.comment
+    : reviewText.comment;
+
   const displayedReply = savedReply || review.reply;
   const hasReply = Boolean(displayedReply && String(displayedReply).trim());
 
@@ -583,6 +947,15 @@ function ReviewDetailCard({ review, currentShop }) {
     <article style={detailStyles.card}>
       <div style={detailStyles.cardHeader}>
         <div style={detailStyles.authorRow}>
+          {selectable ? (
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={onToggleSelect}
+              aria-label={`Select review by ${review.author || "customer"}`}
+              style={{ marginTop: 4, flexShrink: 0 }}
+            />
+          ) : null}
           <div style={detailStyles.avatar}>
             <User size={16} color="#6d7175" />
           </div>
@@ -593,6 +966,11 @@ function ReviewDetailCard({ review, currentShop }) {
                 {String(review.status ?? "PENDING")}
               </Badge>
               {storeLabel ? <Badge tone="blue">{storeLabel}</Badge> : null}
+              {hasStoredTranslation && reviewText.translatedLang ? (
+                <Badge tone="green">
+                  Translated · {languageLabel(reviewText.translatedLang)}
+                </Badge>
+              ) : null}
             </div>
             <div style={detailStyles.metaRow}>
               <Clock size={12} aria-hidden />
@@ -609,8 +987,41 @@ function ReviewDetailCard({ review, currentShop }) {
         <StarRating rating={review.rating} />
       </div>
 
-      {review.title ? <h3 style={detailStyles.reviewTitle}>{review.title}</h3> : null}
-      <p style={detailStyles.reviewBody}>{review.comment}</p>
+      {displayTitle ? <h3 style={detailStyles.reviewTitle}>{displayTitle}</h3> : null}
+      <p style={detailStyles.reviewBody}>{displayComment}</p>
+
+      {(canTranslate || hasStoredTranslation) ? (
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+            alignItems: "center",
+            marginBottom: 16,
+          }}
+        >
+          {canTranslate ? (
+            <SecondaryButton
+              onClick={handleTranslate}
+              disabled={isTranslating}
+              loading={isTranslating}
+            >
+              <Languages size={14} />
+              {isTranslatedToTarget ? "Re-translate" : "Translate"}
+            </SecondaryButton>
+          ) : null}
+              {hasStoredTranslation ? (
+            <button
+              type="button"
+              onClick={() => setShowOriginal((v) => !v)}
+              style={detailStyles.textBtn}
+            >
+              <Eye size={12} />
+              {showOriginal ? "View storefront translation" : "Show original"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div style={detailStyles.replySection}>
         <div style={detailStyles.replyLabel}>

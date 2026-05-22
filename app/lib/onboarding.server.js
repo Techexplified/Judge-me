@@ -34,10 +34,17 @@ export async function isOnboardingComplete(shop) {
 
 export async function saveStoreProfile(shop, profile) {
   const config = await readConfig(shop);
+  const importingFromOtherApp = String(profile.importingFromOtherApp ?? "").trim();
+  const importSource =
+    importingFromOtherApp === "yes"
+      ? String(profile.importSource ?? "").trim()
+      : "";
   config.storeProfile = {
     industry: String(profile.industry ?? "").trim(),
     primaryGoal: String(profile.primaryGoal ?? "").trim(),
     hasMultipleStores: String(profile.hasMultipleStores ?? "").trim(),
+    importingFromOtherApp,
+    importSource,
   };
   await writeConfig(shop, config);
   return config.storeProfile;

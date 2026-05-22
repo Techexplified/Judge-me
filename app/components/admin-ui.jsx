@@ -472,3 +472,9 @@ export const MULTI_STORE_OPTIONS = [
   { value: "yes", label: "Yes" },
   { value: "no", label: "No" },
 ];
+
+export const IMPORT_FROM_APP_OPTIONS = [
+  { value: "", label: "Select one" },
+  { value: "yes", label: "Yes" },
+  { value: "no", label: "No" },
+];

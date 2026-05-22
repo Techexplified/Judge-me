@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types -- dashboard uses many small presentational helpers */
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   useLoaderData,
   useFetcher,
@@ -10,7 +10,7 @@ import {
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
-import { normalizeShopDomain } from "../utils/shop.server";
+import { normalizeShopDomain } from "../utils/shop.js";
 import { mergeShopifyEmbedParams } from "../utils/shopify-embed-nav.js";
 import {
   computeDashboardMetrics,
@@ -20,12 +20,9 @@ import {
   rangeStartFromKey,
   playbookFingerprint,
 } from "../utils/dashboard-metrics.server.js";
-import {
-  getResolvedOpenRouterKey,
-  generateReviewDigest,
-  generatePlaybook,
-} from "../lib/openrouter.server";
-import { getTrialStatus } from "../lib/trial.server";
+import { hasPremiumAccess, serializeTrialStatus } from "../lib/trial.shared.js";
+import { REVIEW_LIST_SELECT } from "../lib/review-query.shared.js";
+import { PremiumTrialBanner } from "../components/premium-trial-banner";
 import {
   syncExistingReviews,
   hasRunInitialSync,
@@ -37,6 +34,11 @@ import {
   markProductIndexSyncDone,
 } from "../lib/product-index.server";
 import { getGroupShopList } from "../lib/store-group.server";
+import {
+  getTranslationSettings,
+  mergeTranslationIntoConfig,
+  languageLabel,
+} from "../lib/review-translation.shared.js";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -50,6 +52,7 @@ import {
   Sparkles,
   Star,
   TrendingUp,
+  Languages,
   X,
 } from "lucide-react";
 
@@ -90,10 +93,11 @@ export async function action({ request }) {
   const intent = fd.get("_intent");
 
   if (intent === "aiPlaybook") {
-    // Check trial status first
+    const { getTrialStatus } = await import("../lib/trial.server.js");
+    const { getResolvedOpenRouterKey, generatePlaybook } = await import("../lib/openrouter.server.js");
     const trialStatus = await getTrialStatus(shop);
-    if (!trialStatus.isActive) {
-      return { playbookError: "Your 7-day AI trial has ended. Upgrade to unlock AI insights \u0026 playbooks." };
+    if (!hasPremiumAccess(trialStatus)) {
+      return { playbookError: "Your 7-day AI trial has ended. Upgrade to unlock AI insights & playbooks." };
     }
 
     const apiKey = getResolvedOpenRouterKey();
@@ -121,6 +125,7 @@ export async function action({ request }) {
     const reviewRows = await db.review.findMany({
       where: { shop: { in: targetShopsPlaybook } },
       orderBy: { createdAt: "desc" },
+      select: REVIEW_LIST_SELECT,
     });
     const scopedReviews = filterReviewsByRangeStart(reviewRows, rangeStart);
     if (!scopedReviews.length) {
@@ -158,38 +163,185 @@ export async function action({ request }) {
     return { playbook };
   }
 
+  if (intent === "aiDigest") {
+    const { getTrialStatus } = await import("../lib/trial.server.js");
+    const { getResolvedOpenRouterKey, generateReviewDigest } = await import("../lib/openrouter.server.js");
+    const { getGroupShopList } = await import("../lib/store-group.server.js");
+    const trialStatus = await getTrialStatus(shop);
+    if (!hasPremiumAccess(trialStatus)) {
+      return { aiError: "Your 7-day AI trial has ended. Upgrade to unlock AI insights." };
+    }
+
+    const apiKey = getResolvedOpenRouterKey();
+    if (!apiKey) {
+      return { aiError: "AI service is temporarily unavailable. Please try again later." };
+    }
+
+    const row = await db.settings.findUnique({ where: { shop } });
+    let storedConfig = {};
+    if (row?.config) {
+      try {
+        storedConfig = JSON.parse(row.config);
+      } catch {
+        storedConfig = {};
+      }
+    }
+
+    const rangeRaw = fd.get("range");
+    const rangeKey = ["7", "30", "90", "all"].includes(String(rangeRaw))
+      ? String(rangeRaw)
+      : "all";
+    const now = new Date();
+    const rangeStart = rangeStartFromKey(now, rangeKey);
+    const targetShops = await getGroupShopList(shop);
+    const reviewsAll = await db.review.findMany({
+      where: { shop: { in: targetShops } },
+      orderBy: { createdAt: "desc" },
+      select: REVIEW_LIST_SELECT,
+    });
+    const scopedReviews = filterReviewsByRangeStart(reviewsAll, rangeStart);
+    if (!scopedReviews.length) {
+      return { aiError: "No reviews in this date range." };
+    }
+
+    const {
+      kpis,
+      urgentCandidates,
+      urgentNeedsCount,
+      spotlightCandidate,
+      digestFingerprint: digestFp,
+    } = computeDashboardMetrics({
+      shop,
+      scopedReviews,
+      reviewsAll,
+      now,
+      rangeKey,
+    });
+
+    const cached = storedConfig.aiDigestCache;
+    if (cached?.fingerprint === digestFp && cached?.panel) {
+      return { aiPanel: cached.panel };
+    }
+
+    try {
+      const stats = {
+        totalReviews: scopedReviews.length,
+        avgRating: kpis.avgRating,
+        negativeCount: scopedReviews.filter((r) => r.rating <= 2).length,
+      };
+      const { digest, error } = await generateReviewDigest({
+        apiKey,
+        urgentCandidates,
+        spotlightCandidate: spotlightCandidate
+          ? {
+              excerpt: spotlightCandidate.quote,
+              author: spotlightCandidate.author,
+              rating: spotlightCandidate.rating,
+            }
+          : null,
+        stats,
+      });
+
+      if (error) {
+        return { aiError: error };
+      }
+      if (!digest) {
+        return { aiError: "AI analysis failed" };
+      }
+
+      const snippetRows = digest.urgent.pickIds
+        .map((id) => urgentCandidates.find((c) => c.id === id))
+        .filter(Boolean)
+        .map((c) => ({
+          id: c.id,
+          text: c.excerpt,
+          authorInitial: c.authorInitial,
+        }));
+      const fallbackSnippets = urgentCandidates.slice(0, 2).map((c) => ({
+        id: c.id,
+        text: c.excerpt,
+        authorInitial: c.authorInitial,
+      }));
+      const aiPanel = {
+        topInsight: digest.topInsight,
+        urgent: {
+          headline: digest.urgent.headline,
+          count: urgentNeedsCount,
+          snippets: snippetRows.length > 0 ? snippetRows : fallbackSnippets,
+        },
+        spotlight:
+          spotlightCandidate || {
+            quote: "Once five-star reviews come in, a standout quote will appear here.",
+            author: "Your customers",
+            rating: 5,
+            verified: false,
+          },
+        spotlightNote: digest.spotlightNote,
+      };
+      const newConfig = {
+        ...storedConfig,
+        aiDigestCache: { fingerprint: digestFp, panel: aiPanel },
+      };
+      await db.settings.upsert({
+        where: { shop },
+        update: { config: JSON.stringify(newConfig) },
+        create: { shop, config: JSON.stringify(newConfig) },
+      });
+      return { aiPanel };
+    } catch (aiErr) {
+      return {
+        aiError: aiErr instanceof Error ? aiErr.message : "AI analysis failed",
+      };
+    }
+  }
+
+  if (intent === "translationQuickToggle") {
+    const { getTrialStatus } = await import("../lib/trial.server.js");
+    const { getResolvedOpenRouterKey } = await import("../lib/openrouter.server.js");
+    const trialStatus = await getTrialStatus(shop);
+    if (!hasPremiumAccess(trialStatus)) {
+      return { translationError: "Premium is required for review translation." };
+    }
+    const apiKey = getResolvedOpenRouterKey();
+    if (!apiKey) {
+      return { translationError: "Translation service is temporarily unavailable." };
+    }
+
+    const row = await db.settings.findUnique({ where: { shop } });
+    let config = {};
+    if (row?.config) {
+      try {
+        config = JSON.parse(row.config);
+      } catch {
+        config = {};
+      }
+    }
+
+    const enabled = fd.get("enabled") === "true";
+    const nextConfig = mergeTranslationIntoConfig(config, { enabled });
+    await db.settings.upsert({
+      where: { shop },
+      update: { config: JSON.stringify(nextConfig) },
+      create: { shop, config: JSON.stringify(nextConfig) },
+    });
+
+    return { translation: getTranslationSettings(nextConfig) };
+  }
+
   return {};
+}
+
+export function shouldRevalidate({ formData, defaultShouldRevalidate }) {
+  const intent = formData?.get("_intent");
+  if (intent === "translationQuickToggle" || intent === "aiPlaybook" || intent === "aiDigest") {
+    return false;
+  }
+  return defaultShouldRevalidate;
 }
 
 export const loader = async ({ request }) => {
   const { session, admin } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
-
-  // Auto-sync existing reviews on first install (fire-and-forget, runs once)
-  try {
-    const alreadySynced = await hasRunInitialSync(shop);
-    if (!alreadySynced) {
-      syncExistingReviews(admin, shop)
-        .then(() => markInitialSyncDone(shop))
-        .catch((err) => console.error("[review-sync] error:", err));
-    }
-  } catch (syncErr) {
-    console.error("[review-sync] check failed:", syncErr);
-  }
-
-  try {
-    const indexSynced = await hasRunProductIndexSync(shop);
-    if (!indexSynced) {
-      syncProductIndex(admin, shop)
-        .then(() => markProductIndexSyncDone(shop))
-        .catch((err) => console.error("[product-index] error:", err));
-    }
-  } catch (indexErr) {
-    console.error("[product-index] check failed:", indexErr);
-  }
-
-  // Ensure shop record exists and get trial status
-  const trialStatus = await getTrialStatus(shop);
 
   const settingsRow = await db.settings.findUnique({ where: { shop } });
   let storedConfig = {};
@@ -201,8 +353,34 @@ export const loader = async ({ request }) => {
     }
   }
 
-  // AI features are available if trial is active AND env key is configured
-  const openRouterKey = trialStatus.isActive ? getResolvedOpenRouterKey() : null;
+  // Auto-sync existing reviews on first install (fire-and-forget, runs once)
+  try {
+    const alreadySynced = await hasRunInitialSync(shop, storedConfig);
+    if (!alreadySynced) {
+      syncExistingReviews(admin, shop)
+        .then(() => markInitialSyncDone(shop))
+        .catch((err) => console.error("[review-sync] error:", err));
+    }
+  } catch (syncErr) {
+    console.error("[review-sync] check failed:", syncErr);
+  }
+
+  try {
+    const indexSynced = await hasRunProductIndexSync(shop, storedConfig);
+    if (!indexSynced) {
+      syncProductIndex(admin, shop)
+        .then(() => markProductIndexSyncDone(shop))
+        .catch((err) => console.error("[product-index] error:", err));
+    }
+  } catch (indexErr) {
+    console.error("[product-index] check failed:", indexErr);
+  }
+
+  const { getTrialStatus } = await import("../lib/trial.server.js");
+  const { getResolvedOpenRouterKey } = await import("../lib/openrouter.server.js");
+  const trialStatus = await getTrialStatus(shop);
+
+  const openRouterKey = hasPremiumAccess(trialStatus) ? getResolvedOpenRouterKey() : null;
   const aiEnabled = Boolean(openRouterKey);
 
   const url = new URL(request.url);
@@ -213,6 +391,7 @@ export const loader = async ({ request }) => {
   const reviewsAll = await db.review.findMany({
     where: { shop: { in: targetShops } },
     orderBy: { createdAt: "desc" },
+    select: REVIEW_LIST_SELECT,
   });
 
   const now = new Date();
@@ -238,93 +417,22 @@ export const loader = async ({ request }) => {
 
   let aiPanel = null;
   let aiError = null;
+  let aiDigestPending = false;
 
   if (aiEnabled && totalReviews > 0) {
     const cached = storedConfig.aiDigestCache;
     if (cached?.fingerprint === digestFp && cached?.panel) {
-      // Cache hit — use immediately, no API call
       aiPanel = cached.panel;
     } else {
-      // Cache miss — try the AI call but with a strict timeout so we never
-      // block the page render (the React stream timeout is 10 s).
-      try {
-        const AI_LOADER_TIMEOUT_MS = 8000;
-        const aiPromise = (async () => {
-          const stats = {
-            totalReviews,
-            avgRating: kpis.avgRating,
-            negativeCount: scopedReviews.filter((r) => r.rating <= 2).length,
-          };
-          const { digest, error } = await generateReviewDigest({
-            apiKey: openRouterKey,
-            urgentCandidates,
-            spotlightCandidate: spotlightCandidate
-              ? {
-                  excerpt: spotlightCandidate.quote,
-                  author: spotlightCandidate.author,
-                  rating: spotlightCandidate.rating,
-                }
-              : null,
-            stats,
-          });
-          return { digest, error };
-        })();
-
-        const timeoutPromise = new Promise((resolve) =>
-          setTimeout(() => resolve({ digest: null, error: "AI timed out" }), AI_LOADER_TIMEOUT_MS),
-        );
-
-        const { digest, error } = await Promise.race([aiPromise, timeoutPromise]);
-
-        if (error) {
-          aiError = error;
-        } else if (digest) {
-          const snippetRows = digest.urgent.pickIds
-            .map((id) => urgentCandidates.find((c) => c.id === id))
-            .filter(Boolean)
-            .map((c) => ({
-              id: c.id,
-              text: c.excerpt,
-              authorInitial: c.authorInitial,
-            }));
-          const fallbackSnippets = urgentCandidates.slice(0, 2).map((c) => ({
-            id: c.id,
-            text: c.excerpt,
-            authorInitial: c.authorInitial,
-          }));
-          aiPanel = {
-            topInsight: digest.topInsight,
-            urgent: {
-              headline: digest.urgent.headline,
-              count: urgentNeedsCount,
-              snippets: snippetRows.length > 0 ? snippetRows : fallbackSnippets,
-            },
-            spotlight:
-              spotlightCandidate || {
-                quote: "Once five-star reviews come in, a standout quote will appear here.",
-                author: "Your customers",
-                rating: 5,
-                verified: false,
-              },
-            spotlightNote: digest.spotlightNote,
-          };
-          const newConfig = {
-            ...storedConfig,
-            aiDigestCache: { fingerprint: digestFp, panel: aiPanel },
-          };
-          await db.settings.upsert({
-            where: { shop },
-            update: { config: JSON.stringify(newConfig) },
-            create: { shop, config: JSON.stringify(newConfig) },
-          });
-        }
-      } catch (aiErr) {
-        // Never let AI failures crash the page
-        aiError = aiErr instanceof Error ? aiErr.message : "AI analysis failed";
-        console.error("[dashboard-loader] AI digest error:", aiErr);
-      }
+      aiDigestPending = true;
     }
   }
+
+  const translation = getTranslationSettings(storedConfig);
+  const shopReviewTotal = await db.review.count({ where: { shop } });
+  const translatedCount = await db.review.count({
+    where: { shop, translatedLang: translation.targetLanguage },
+  });
 
   return {
     kpis,
@@ -333,15 +441,19 @@ export const loader = async ({ request }) => {
     totalReviews,
     aiPanel,
     aiError,
+    aiDigestPending,
     urgentNeedsCount,
     rangeKey,
     metricsRangeLabel: rangeLabel(rangeKey),
     shop,
-    trialStatus: {
-      isActive: trialStatus.isActive,
-      daysRemaining: trialStatus.daysRemaining === Infinity ? null : trialStatus.daysRemaining,
-      planStatus: trialStatus.planStatus,
-      trialEndsAt: trialStatus.trialEndsAt.toISOString(),
+    trialStatus: serializeTrialStatus(trialStatus),
+    translationSummary: {
+      ...translation,
+      shopReviewTotal,
+      translatedCount,
+      pendingCount: Math.max(0, shopReviewTotal - translatedCount),
+      aiAvailable: hasPremiumAccess(trialStatus) && Boolean(openRouterKey),
+      targetLabel: languageLabel(translation.targetLanguage),
     },
   };
 };
@@ -547,18 +659,32 @@ export default function Dashboard() {
     totalReviews,
     aiPanel,
     aiError,
+    aiDigestPending,
     urgentNeedsCount,
     rangeKey,
     metricsRangeLabel,
     shop,
     trialStatus,
+    translationSummary,
   } = useLoaderData();
   const [, setSearchParams] = useSearchParams();
   const playbookFetcher = useFetcher();
+  const translationFetcher = useFetcher();
+  const aiDigestFetcher = useFetcher();
   const [playbookOpen, setPlaybookOpen] = useState(false);
   const [tableSearch, setTableSearch] = useState("");
   const [sortKey, setSortKey] = useState("lastReview");
   const [sortDir, setSortDir] = useState("desc");
+
+  const resolvedAiPanel = aiDigestFetcher.data?.aiPanel ?? aiPanel;
+  const resolvedAiError = aiDigestFetcher.data?.aiError ?? aiError;
+
+  useEffect(() => {
+    if (!aiDigestPending || aiDigestFetcher.state !== "idle") return;
+    if (aiDigestFetcher.data?.aiPanel || aiDigestFetcher.data?.aiError) return;
+    aiDigestFetcher.submit({ _intent: "aiDigest", range: rangeKey }, { method: "post" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiDigestPending, rangeKey]);
 
   const playbookBusy = playbookFetcher.state !== "idle";
   const totalReviewBars = buildTotalReviewBars(kpis.totalReviews);
@@ -683,6 +809,12 @@ export default function Dashboard() {
             </div>
           </div>
 
+          <TranslationDashboardCard
+            summary={translationSummary}
+            fetcher={translationFetcher}
+            trialStatus={trialStatus}
+          />
+
           <Card noPad>
             <div style={s.tableTop}>
               <div>
@@ -789,14 +921,15 @@ export default function Dashboard() {
 
         <aside style={s.aside} className="dAside">
           {/* ── Trial status banner ─────────────────────────────── */}
-          <TrialBanner trialStatus={trialStatus} />
+          <PremiumTrialBanner trialStatus={trialStatus} />
 
           <div style={s.asideStack}>
-            {!trialStatus.isActive ? (
+            {!trialStatus.hasPremium ? (
               <div style={s.aiErrorCard}>
                 <p style={s.aiErrorTitle}>AI trial ended</p>
                 <p style={s.aiErrorBody}>
-                  AI-powered insights, playbooks, and analysis require an upgrade. All other features (reviews, widgets, editor) continue to work.
+                  AI-powered insights, playbooks, and analysis require an upgrade. Reviews,
+                  widgets, and the editor continue to work.
                 </p>
               </div>
             ) : totalReviews === 0 ? (
@@ -806,20 +939,20 @@ export default function Dashboard() {
                   Add the theme block to product pages or use Write a review in the app—then analysis will appear here.
                 </p>
               </div>
-            ) : aiError ? (
+            ) : resolvedAiError ? (
               <div style={s.aiErrorCard}>
                 <p style={s.aiErrorTitle}>Analysis unavailable</p>
-                <p style={s.aiErrorBody}>{clipText(aiError, 280)}</p>
+                <p style={s.aiErrorBody}>{clipText(resolvedAiError, 280)}</p>
               </div>
-            ) : aiPanel ? (
+            ) : resolvedAiPanel ? (
               <>
                 <TopInsightCard
-                  panel={aiPanel}
+                  panel={resolvedAiPanel}
                   onViewFullAnalysis={runPlaybook}
                   disabled={playbookBusy}
                 />
-                <UrgentCard panel={aiPanel} urgentNeedsCount={urgentNeedsCount} />
-                <SpotlightCard panel={aiPanel} />
+                <UrgentCard panel={resolvedAiPanel} urgentNeedsCount={urgentNeedsCount} />
+                <SpotlightCard panel={resolvedAiPanel} />
               </>
             ) : (
               <div style={s.aiEmptyCard}>
@@ -981,56 +1114,6 @@ function SpotlightCard({ panel }) {
   );
 }
 
-function TrialBanner({ trialStatus }) {
-  if (!trialStatus) return null;
-
-  const { isActive, daysRemaining, planStatus } = trialStatus;
-
-  if (planStatus === "active") {
-    return (
-      <div style={s.trialCard}>
-        <div style={s.trialHead}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: SHOPIFY_GREEN, flexShrink: 0 }} />
-          <span style={s.trialHeadText}>AI Pro — Active</span>
-        </div>
-        <p style={s.trialSubtext}>AI insights, playbooks & analysis are enabled.</p>
-      </div>
-    );
-  }
-
-  if (!isActive) {
-    return (
-      <div style={s.trialExpiredCard}>
-        <div style={s.trialHead}>
-          <AlertTriangle size={16} color={CRITICAL_RED} />
-          <span style={{ ...s.trialHeadText, color: "#8e1f0b" }}>AI trial ended</span>
-        </div>
-        <p style={{ ...s.trialSubtext, color: "#8e1f0b" }}>
-          Your 7-day AI trial has ended. Reviews, widgets & all other features still work — only AI insights & playbooks are disabled.
-        </p>
-      </div>
-    );
-  }
-
-  const daysText = daysRemaining === 1 ? "1 day" : `${daysRemaining} days`;
-
-  return (
-    <div style={s.trialActiveCard}>
-      <div style={s.trialHead}>
-        <Sparkles size={16} color="#008060" />
-        <span style={s.trialHeadText}>AI trial</span>
-        <span style={s.trialBadge}>{daysText} left</span>
-      </div>
-      <p style={s.trialSubtext}>
-        AI insights, playbooks & analysis are active. All other features are always free.
-      </p>
-      <div style={s.trialBarTrack}>
-        <div style={{ ...s.trialBarFill, width: `${Math.max(5, (daysRemaining / 7) * 100)}%` }} />
-      </div>
-    </div>
-  );
-}
-
 function PlaybookModal({ playbook, error, busy, onClose }) {
   return (
     <div style={s.modalRoot} role="dialog" aria-modal="true" aria-labelledby="playbook-title">
@@ -1070,6 +1153,103 @@ function PlaybookModal({ playbook, error, busy, onClose }) {
   );
 }
 
+function TranslationDashboardCard({ summary, fetcher, trialStatus }) {
+  const { search } = useLocation();
+  const shopify = useAppBridge();
+  const enabled =
+    fetcher.data?.translation?.enabled !== undefined
+      ? fetcher.data.translation.enabled
+      : summary.enabled;
+  const busy = fetcher.state !== "idle";
+  const premium = trialStatus?.hasPremium;
+
+  const manageHref = mergeShopifyEmbedParams("/app/review-translation", search);
+
+  const handleToggle = () => {
+    if (!premium || !summary.aiAvailable) return;
+    fetcher.submit(
+      {
+        _intent: "translationQuickToggle",
+        enabled: enabled ? "false" : "true",
+      },
+      { method: "post" },
+    );
+  };
+
+  return (
+    <Card compact style={{ marginBottom: 16 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 0 }}>
+          <span style={{ ...s.cardIcon, ...s.cardIconCompact, background: "#ecfdf3", color: SHOPIFY_GREEN }}>
+            <Languages size={15} />
+          </span>
+          <div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 4 }}>
+              <span style={{ fontSize: 14, fontWeight: 800, color: "#202223" }}>Review translation</span>
+              <Badge tone={enabled ? "green" : undefined}>{enabled ? "On" : "Off"}</Badge>
+            </div>
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#6d7175", lineHeight: 1.5 }}>
+              Target: {summary.targetLabel}
+              {summary.pendingCount > 0
+                ? ` · ${summary.pendingCount.toLocaleString()} pending`
+                : " · All reviews translated"}
+            </p>
+            {fetcher.data?.translationError ? (
+              <p style={{ margin: "6px 0 0", fontSize: 12, fontWeight: 600, color: "#d72c0d" }}>
+                {fetcher.data.translationError}
+              </p>
+            ) : null}
+          </div>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+          {premium && summary.aiAvailable ? (
+            <button
+              type="button"
+              onClick={handleToggle}
+              disabled={busy}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 8,
+                border: "1px solid #c9cccf",
+                background: "#fff",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: busy ? "wait" : "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              {enabled ? "Turn off storefront" : "Turn on storefront"}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof shopify.navigate === "function") {
+                shopify.navigate(manageHref);
+              } else {
+                open(manageHref, "_self");
+              }
+            }}
+            style={{
+              padding: "8px 14px",
+              borderRadius: 8,
+              border: "1px solid #008060",
+              background: "#ecfdf3",
+              color: "#008060",
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            Manage translation
+          </button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function Card({ children, noPad, style, compact }) {
   return (
     <div
@@ -1094,21 +1274,13 @@ function Badge({ children, tone }) {
 
 function ActionLink({ children, feature, to }) {
   const { search } = useLocation();
-  const shopify = useAppBridge();
   const target = mergeShopifyEmbedParams(to, search);
 
   return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (typeof shopify.navigate === "function") {
-          shopify.navigate(target);
-        } else {
-          open(target, "_self");
-        }
-      }}
+    <Link
+      to={target}
+      prefetch="intent"
+      onClick={(e) => e.stopPropagation()}
       style={{
         ...(feature ? s.actFeature : s.actBtn),
         display: "inline-flex",
@@ -1123,10 +1295,11 @@ function ActionLink({ children, feature, to }) {
         position: "relative",
         zIndex: 20,
         pointerEvents: "auto",
+        textDecoration: "none",
       }}
     >
       {children}
-    </button>
+    </Link>
   );
 }
 

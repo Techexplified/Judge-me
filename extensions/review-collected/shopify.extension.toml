@@ -1,0 +1,27 @@
+uid = "86a2e27a-709f-8cf3-6672-4069f3a1f0130685862d"
+[[extensions]]
+name = "Review collected"
+type = "flow_trigger"
+handle = "review-collected"
+description = "Starts a workflow when a new product review is collected in JudgeMe."
+
+[settings]
+
+  [[settings.fields]]
+  type = "product_reference"
+  description = "The product that was reviewed."
+
+  [[settings.fields]]
+  type = "number_decimal"
+  key = "Rating"
+  description = "Star rating from 1 to 5."
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Review author"
+  description = "Name shown on the review."
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Review comment"
+  description = "Review body text."

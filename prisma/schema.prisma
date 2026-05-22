@@ -40,9 +40,15 @@ model Review {
   author       String
   email        String?
   status       String   @default("PENDING")
-  reply        String?
-  replyDate    DateTime?
-  createdAt    DateTime @default(now())
+  reply            String?
+  replyDate        DateTime?
+  originalComment  String?
+  originalTitle    String?
+  translatedLang   String?
+  createdAt        DateTime @default(now())
+
+  @@index([shop])
+  @@index([shop, createdAt])
 }
 
 model Settings {

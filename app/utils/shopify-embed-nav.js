@@ -31,9 +31,15 @@ export function mergeShopifyEmbedParams(to, currentSearch) {
 
 export function isStoreProfileComplete(storeProfile) {
   if (!storeProfile) return false;
-  return Boolean(
+  const baseComplete = Boolean(
     storeProfile.industry?.trim() &&
       storeProfile.primaryGoal?.trim() &&
-      storeProfile.hasMultipleStores?.trim(),
+      storeProfile.hasMultipleStores?.trim() &&
+      storeProfile.importingFromOtherApp?.trim(),
   );
+  if (!baseComplete) return false;
+  if (storeProfile.importingFromOtherApp === "yes") {
+    return Boolean(storeProfile.importSource?.trim());
+  }
+  return true;
 }

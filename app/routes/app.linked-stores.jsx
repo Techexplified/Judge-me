@@ -11,7 +11,7 @@ import {
 import { CheckCircle2, AlertCircle, Store, Crown } from "lucide-react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import { normalizeShopDomain } from "../utils/shop.server";
+import { normalizeShopDomain } from "../utils/shop.js";
 import { linkStore } from "../lib/link-store.server";
 import { embedRedirect } from "../utils/shopify-embed-nav.server.js";
 import {

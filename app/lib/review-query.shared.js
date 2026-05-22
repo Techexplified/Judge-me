@@ -1,0 +1,20 @@
+/** Fields needed for dashboard metrics, reviews UI, and reply modals. */
+export const REVIEW_LIST_SELECT = {
+  id: true,
+  shop: true,
+  productId: true,
+  productName: true,
+  productImage: true,
+  rating: true,
+  title: true,
+  comment: true,
+  author: true,
+  email: true,
+  status: true,
+  reply: true,
+  replyDate: true,
+  originalComment: true,
+  originalTitle: true,
+  translatedLang: true,
+  createdAt: true,
+};

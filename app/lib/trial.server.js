@@ -1,6 +1,12 @@
 import db from "../db.server.js";
+import { TRIAL_DAYS } from "./trial.shared.js";
 
-const TRIAL_DAYS = 7;
+export {
+  TRIAL_DAYS,
+  PREMIUM_FEATURE_LABELS,
+  hasPremiumAccess,
+  serializeTrialStatus,
+} from "./trial.shared.js";
 
 /**
  * Ensure a Shop row exists for this shop domain.

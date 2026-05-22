@@ -1,4 +1,10 @@
 import db from "../db.server";
+import { emitReviewCollectedFlowTrigger } from "../lib/flow-review-trigger.server";
+import {
+  getActiveTranslationContext,
+  storefrontReviewText,
+  maybeAutoTranslateReviewData,
+} from "../lib/review-translation.server.js";
 import {
   normalizeShopifyProductId,
   productIdMatchList,
@@ -126,7 +132,28 @@ export async function loader({ request }) {
     orderBy: { createdAt: "desc" },
   });
 
-  return new Response(JSON.stringify(reviews), {
+  const { active, translation } = await getActiveTranslationContext(shopNorm);
+
+  const payload = reviews.map((r) => {
+    const text = storefrontReviewText(r, active, translation.targetLanguage);
+    return {
+      id: r.id,
+      shop: r.shop,
+      productId: r.productId,
+      productName: r.productName,
+      productImage: r.productImage,
+      rating: r.rating,
+      title: text.title,
+      comment: text.comment,
+      author: r.author,
+      status: r.status,
+      reply: r.reply,
+      replyDate: r.replyDate,
+      createdAt: r.createdAt,
+    };
+  });
+
+  return new Response(JSON.stringify(payload), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
@@ -159,19 +186,26 @@ export async function action({ request }) {
   const pid =
     normalizeShopifyProductId(productId) || String(productId).trim();
 
-  await db.review.create({
-    data: {
-      shop: shopNorm,
-      productId: pid,
-      productName: productName || "Unknown product",
-      rating: Number(rating),
-      title: title?.trim() || null,
-      comment,
-      author: author?.trim() || "Anonymous",
-      email: email?.trim() || null,
-      status: "PUBLISHED",
-    },
+  let reviewData = {
+    shop: shopNorm,
+    productId: pid,
+    productName: productName || "Unknown product",
+    rating: Number(rating),
+    title: title?.trim() || null,
+    comment,
+    author: author?.trim() || "Anonymous",
+    email: email?.trim() || null,
+    status: "PUBLISHED",
+  };
+
+  const { data: translatedData } = await maybeAutoTranslateReviewData(shopNorm, reviewData);
+  reviewData = translatedData;
+
+  const created = await db.review.create({
+    data: reviewData,
   });
+
+  await emitReviewCollectedFlowTrigger(shopNorm, created);
 
   return new Response(JSON.stringify({ ok: true }), {
     headers: {

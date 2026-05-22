@@ -20,8 +20,8 @@ import {
 } from "lucide-react";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
-import { normalizeShopDomain } from "../utils/shop.server";
-import { normalizeShopifyProductId } from "../utils/product-id.server";
+import { normalizeShopDomain } from "../utils/shop.js";
+import { normalizeShopifyProductId } from "../utils/product-id.shared.js";
 
 const ACCENT = "#23B5B5";
 
@@ -111,7 +111,7 @@ export const loader = async ({ request }) => {
 };
 
 export const action = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
   const fd = await request.formData();
   const intent = fd.get("_intent");
@@ -130,20 +130,28 @@ export const action = async ({ request }) => {
       return { reviewError: "Please add rating, name, and review before posting." };
     }
 
-    await db.review.create({
-      data: {
-        shop,
-        productId,
-        productName,
-        productImage,
-        rating,
-        title,
-        comment,
-        author,
-        email,
-        status: "PUBLISHED",
-      },
+    let reviewData = {
+      shop,
+      productId,
+      productName,
+      productImage,
+      rating,
+      title,
+      comment,
+      author,
+      email,
+      status: "PUBLISHED",
+    };
+
+    const { maybeAutoTranslateReviewData } = await import("../lib/review-translation.server.js");
+    const { data: translatedData } = await maybeAutoTranslateReviewData(shop, reviewData);
+    reviewData = translatedData;
+
+    const created = await db.review.create({
+      data: reviewData,
     });
+    const { emitReviewCollectedFlowTrigger } = await import("../lib/flow-review-trigger.server.js");
+    await emitReviewCollectedFlowTrigger(shop, created, { admin });
     return { reviewSaved: true };
   }
   const configRaw = fd.get("config");

@@ -4,7 +4,7 @@ import { Outlet, useLoaderData, useRouteError } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { authenticate } from "../shopify.server";
-import { normalizeShopDomain } from "../utils/shop.server";
+import { normalizeShopDomain } from "../utils/shop.js";
 import { isOnboardingComplete } from "../lib/onboarding.server";
 import { embedRedirect } from "../utils/shopify-embed-nav.server.js";
 
@@ -36,6 +36,8 @@ export default function App() {
         <s-app-nav>
           <s-link href="/app">Dashboard</s-link>
           <s-link href="/app/reviews">Reviews</s-link>
+          <s-link href="/app/import-reviews">Import reviews</s-link>
+          <s-link href="/app/review-translation">Translation</s-link>
           <s-link href="/app/linked-stores">Linked stores</s-link>
           <s-link href="/app/review-form">Review Form</s-link>
         </s-app-nav>
@@ -52,3 +54,14 @@ export function ErrorBoundary() {
 export const headers = (headersArgs) => {
   return boundary.headers(headersArgs);
 };
+
+export function shouldRevalidate({ currentUrl, nextUrl, defaultShouldRevalidate }) {
+  const leavingOnboarding =
+    currentUrl.pathname.startsWith("/app/onboarding") &&
+    !nextUrl.pathname.startsWith("/app/onboarding");
+  if (leavingOnboarding) return true;
+  if (currentUrl.pathname.startsWith("/app/") && nextUrl.pathname.startsWith("/app/")) {
+    return false;
+  }
+  return defaultShouldRevalidate;
+}

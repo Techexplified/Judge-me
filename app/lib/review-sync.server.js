@@ -10,6 +10,7 @@
  */
 
 import db from "../db.server.js";
+import { insertReviewCandidates } from "./review-dedup.server.js";
 
 // ─── GraphQL ────────────────────────────────────────────────────────────────
 
@@ -185,38 +186,6 @@ function collectCandidatesFromProductNode(node, shop) {
 }
 
 /**
- * @returns {{ imported: number, skipped: number }}
- */
-async function insertReviewCandidates(shop, productId, candidates) {
-  if (candidates.length === 0) {
-    return { imported: 0, skipped: 0 };
-  }
-
-  const existing = await db.review.findMany({
-    where: { shop, productId },
-    select: { author: true, comment: true },
-  });
-
-  const existingSet = new Set(
-    existing.map((r) => `${r.author.toLowerCase()}::${r.comment.slice(0, 60).toLowerCase()}`),
-  );
-
-  const toInsert = candidates.filter((r) => {
-    const key = `${r.author.toLowerCase()}::${r.comment.slice(0, 60).toLowerCase()}`;
-    return !existingSet.has(key);
-  });
-
-  if (toInsert.length > 0) {
-    await db.review.createMany({ data: toInsert });
-  }
-
-  return {
-    imported: toInsert.length,
-    skipped: candidates.length - toInsert.length,
-  };
-}
-
-/**
  * Import review metafields for one product (e.g. after products/create or products/update).
  * @param {object} admin
  * @param {string} shop
@@ -297,7 +266,10 @@ export async function syncExistingReviews(admin, shop) {
  * Checks if a sync has already been run for this shop.
  * We store a flag in the Settings config to avoid re-syncing on every page load.
  */
-export async function hasRunInitialSync(shop) {
+export async function hasRunInitialSync(shop, preloadedConfig) {
+  if (preloadedConfig !== undefined) {
+    return Boolean(preloadedConfig?.initialSyncDone);
+  }
   const row = await db.settings.findUnique({ where: { shop } });
   if (!row?.config) return false;
   try {
