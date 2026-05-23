@@ -380,7 +380,7 @@ export default function Onboarding() {
         <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 900 }}>Link stores</h2>
         <p style={{ margin: "0 0 16px", color: "#6d7175", fontWeight: 600, fontSize: 13 }}>
           Install this app on each store. Reviews sync when SKU or handle matches.
-          {showLaterHint ? " You can add stores later from Linked stores." : ""}
+          {showLaterHint ? " You can add stores later from Integration." : ""}
         </p>
 
         {linkError ? (
@@ -472,7 +472,7 @@ export default function Onboarding() {
         <p style={{ margin: 0, color: "#6d7175", fontWeight: 600, fontSize: 13, lineHeight: 1.5 }}>
           {wantsImport
             ? "Next, we'll help you import your reviews from your previous app."
-            : "Add the review widget to your theme, or open Linked stores anytime to connect more shops."}
+            : "Add the review widget to your theme, or open Integration anytime to connect more shops."}
         </p>
       </div>
     </WizardShell>

@@ -113,7 +113,7 @@ export default function LinkedStores() {
   return (
     <Page>
       <PageHeader
-        title="Linked stores"
+        title="Integration"
         subtitle="Share reviews across stores when product SKU or handle matches."
       />
 

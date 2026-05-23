@@ -354,31 +354,9 @@ export default function ReviewEditor() {
             gap: 12,
           }}
         >
-          <div>
-            <h1 style={{ fontSize: "17px", fontWeight: 800, margin: 0, color: config.textColor }}>
-              JudgeMe Product Reviews
-            </h1>
-            <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#94a3b8", fontWeight: 600 }}>
-              Shopify Theme v2.4
-            </p>
-          </div>
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "6px 12px",
-              borderRadius: 999,
-              background: "#ecfdf5",
-              color: "#16a34a",
-              fontSize: "12px",
-              fontWeight: 800,
-              flexShrink: 0,
-            }}
-          >
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e" }} />
-            Live
-          </span>
+          <h1 style={{ fontSize: "17px", fontWeight: 800, margin: 0, color: config.textColor }}>
+            JudgeMe Product Reviews
+          </h1>
         </div>
 
         <div
