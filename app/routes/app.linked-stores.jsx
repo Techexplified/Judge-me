@@ -60,7 +60,6 @@ export const loader = async ({ request }) => {
 
   return {
     group,
-    appUrl: process.env.SHOPIFY_APP_URL || "",
     linkedSuccess,
   };
 };
@@ -81,7 +80,7 @@ export const action = async ({ request }) => {
 };
 
 export default function LinkedStores() {
-  const { group, appUrl, linkedSuccess } = useLoaderData();
+  const { group, linkedSuccess } = useLoaderData();
   const actionData = useActionData();
   const submit = useSubmit();
   const navigation = useNavigation();
@@ -89,7 +88,6 @@ export default function LinkedStores() {
 
   const [targetShop, setTargetShop] = useState("");
   const [showLinkedBanner, setShowLinkedBanner] = useState(false);
-  const [showThemeInfo, setShowThemeInfo] = useState(false);
   const isSubmitting = navigation.state === "submitting";
 
   useEffect(() => {
@@ -127,34 +125,6 @@ export default function LinkedStores() {
         {actionData?.error ? (
           <Banner tone="critical" icon={<AlertCircle size={18} />}>
             {actionData.error}
-          </Banner>
-        ) : null}
-
-        {appUrl ? (
-          <Banner tone="info">
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowThemeInfo((v) => !v)}
-                style={{
-                  border: "none",
-                  background: "none",
-                  padding: 0,
-                  font: "inherit",
-                  fontWeight: 800,
-                  color: "inherit",
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
-              >
-                Theme setup {showThemeInfo ? "▾" : "▸"}
-              </button>
-              {showThemeInfo ? (
-                <p style={{ margin: "8px 0 0", fontSize: 12, fontWeight: 600 }}>
-                  Theme block API base URL: <strong>{appUrl.replace(/\/$/, "")}</strong>
-                </p>
-              ) : null}
-            </div>
           </Banner>
         ) : null}
 
