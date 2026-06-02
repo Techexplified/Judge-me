@@ -17,4 +17,14 @@ export const REVIEW_LIST_SELECT = {
   originalTitle: true,
   translatedLang: true,
   createdAt: true,
+  media: {
+    select: {
+      id: true,
+      type: true,
+      mimeType: true,
+      filename: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "asc" },
+  },
 };

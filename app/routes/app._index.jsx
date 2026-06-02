@@ -14,6 +14,7 @@ import { normalizeShopDomain } from "../utils/shop.js";
 import { mergeShopifyEmbedParams } from "../utils/shopify-embed-nav.js";
 import {
   computeDashboardMetrics,
+  computeAnalyticsDetail,
   filterReviewsByRangeStart,
   parseDashboardRange,
   rangeLabel,
@@ -23,6 +24,9 @@ import {
 import { hasPremiumAccess, serializeTrialStatus } from "../lib/trial.shared.js";
 import { REVIEW_LIST_SELECT } from "../lib/review-query.shared.js";
 import { PremiumTrialBanner } from "../components/premium-trial-banner";
+import { KpiCard } from "../components/analytics/kpi-card.jsx";
+import { AnalyticsDrilldownModal } from "../components/analytics/analytics-drilldown-modal.jsx";
+import { AnalyticsUpgradeTeaser } from "../components/analytics/analytics-upgrade-teaser.jsx";
 import {
   syncExistingReviews,
   hasRunInitialSync,
@@ -47,11 +51,12 @@ import {
   Download,
   Lightbulb,
   MessageCircle,
-  MessageSquare,
   Search,
   Sparkles,
   Star,
   TrendingUp,
+  Flag,
+  SlidersHorizontal,
   Languages,
   X,
 } from "lucide-react";
@@ -405,6 +410,8 @@ export const loader = async ({ request }) => {
     urgentNeedsCount,
     spotlightCandidate,
     digestFingerprint: digestFp,
+    miniCharts,
+    rangeStart: metricsRangeStart,
   } = computeDashboardMetrics({
     shop,
     scopedReviews,
@@ -412,6 +419,16 @@ export const loader = async ({ request }) => {
     now,
     rangeKey,
   });
+
+  const analyticsDetail = hasPremiumAccess(trialStatus)
+    ? computeAnalyticsDetail({
+        scopedReviews,
+        reviewsAll,
+        now,
+        rangeKey,
+        rangeStart: metricsRangeStart,
+      })
+    : null;
 
   const totalReviews = scopedReviews.length;
 
@@ -437,6 +454,8 @@ export const loader = async ({ request }) => {
   return {
     kpis,
     products,
+    miniCharts,
+    analyticsDetail,
     aiEnabled,
     totalReviews,
     aiPanel,
@@ -655,6 +674,8 @@ export default function Dashboard() {
   const {
     kpis,
     products,
+    miniCharts,
+    analyticsDetail,
     aiEnabled,
     totalReviews,
     aiPanel,
@@ -672,9 +693,40 @@ export default function Dashboard() {
   const translationFetcher = useFetcher();
   const aiDigestFetcher = useFetcher();
   const [playbookOpen, setPlaybookOpen] = useState(false);
+  const [analyticsView, setAnalyticsView] = useState(null);
+  const [sentimentFilter, setSentimentFilter] = useState(null);
+  const [showUpgradeTeaser, setShowUpgradeTeaser] = useState(false);
+  const [teaserView, setTeaserView] = useState("volume");
   const [tableSearch, setTableSearch] = useState("");
   const [sortKey, setSortKey] = useState("lastReview");
   const [sortDir, setSortDir] = useState("desc");
+
+  const premium = trialStatus?.hasPremium;
+  const openAnalytics = (view, sentiment = null) => {
+    setSentimentFilter(sentiment);
+    setAnalyticsView(view);
+  };
+  const openUpgradeTeaser = (view) => {
+    setTeaserView(view);
+    setShowUpgradeTeaser(true);
+  };
+  const closeAnalytics = () => {
+    setAnalyticsView(null);
+    setSentimentFilter(null);
+  };
+  const velocityBadgeTone =
+    kpis.velocityLabel === "High" ? "green" : kpis.velocityLabel === "Low" ? "red" : undefined;
+  const avgDeltaNum = Number.parseFloat(String(kpis.avgDelta ?? "").replace(/^[+]/, ""));
+  const avgBadgeTone =
+    Number.isFinite(avgDeltaNum) && avgDeltaNum !== 0
+      ? avgDeltaNum > 0
+        ? "green"
+        : "red"
+      : undefined;
+  const miniBarValues = miniCharts?.dailyVolume?.length ? miniCharts.dailyVolume : [0];
+  const velocityValues = miniCharts?.velocitySparkline?.length
+    ? miniCharts.velocitySparkline
+    : [0];
 
   const resolvedAiPanel = aiDigestFetcher.data?.aiPanel ?? aiPanel;
   const resolvedAiError = aiDigestFetcher.data?.aiError ?? aiError;
@@ -687,7 +739,6 @@ export default function Dashboard() {
   }, [aiDigestPending, rangeKey]);
 
   const playbookBusy = playbookFetcher.state !== "idle";
-  const totalReviewBars = buildTotalReviewBars(kpis.totalReviews);
 
   const filteredProducts = useMemo(() => {
     const q = tableSearch.trim().toLowerCase();
@@ -761,52 +812,86 @@ export default function Dashboard() {
 
       <div style={s.body} className="dBody">
         <div style={s.left}>
-          <div style={s.kpiWrap} className="dKpiWrap">
-            <div style={s.kpiTopRow} className="dKpiTopRow">
-              <div style={s.kpiTopCell}>
-                <Card compact>
-                  <div style={s.cardHeadCompact}>
-                    <span style={{ ...s.cardIcon, ...s.cardIconCompact }}><MessageSquare size={15} /></span>
-                    <Badge tone="green"><ArrowUpRight size={12} />{kpis.totalTrend}</Badge>
-                  </div>
-                  <div style={s.kpiMetricRowCompact}>
-                    <div style={s.bigNumCompact}>{kpis.totalReviews}</div>
-                    <MiniBarGraph values={totalReviewBars} />
-                  </div>
+          <div style={s.kpiGrid} className="dKpiGrid">
+            <KpiCard
+              premium={premium}
+              proBadge={!premium}
+              onOpen={() => openAnalytics("volume")}
+              onLocked={() => openUpgradeTeaser("volume")}
+              ariaLabel="Total reviews analytics"
+            >
+              <Card compact style={s.kpiStatCardTop}>
+                <div style={s.cardHeadCompact}>
+                  <span style={{ ...s.cardIcon, ...s.cardIconCompact }}><Flag size={15} /></span>
+                  <Badge tone="green"><ArrowUpRight size={12} />{kpis.totalTrend}</Badge>
+                </div>
+                <div style={s.kpiStatBodyInline}>
+                  <div style={s.bigNumCompact}>{kpis.totalReviews}</div>
                   <div style={s.cardLabelCompact}>Total Reviews</div>
-                </Card>
-              </div>
+                </div>
+                <div style={s.kpiMiniBarRow}>
+                  <MiniBarGraph values={miniBarValues} />
+                </div>
+              </Card>
+            </KpiCard>
 
-              <div style={s.kpiTopCell}>
-                <Card compact>
-                  <div style={s.cardHeadCompact}>
-                    <span style={{ ...s.cardIcon, ...s.cardIconCompact, background: "#f6f6f7", color: "#b98900" }}><Star size={15} /></span>
-                    <Badge tone="red"><ArrowUpRight size={12} />{kpis.avgDelta}</Badge>
-                  </div>
+            <KpiCard
+              premium={premium}
+              proBadge={!premium}
+              onOpen={() => openAnalytics("rating")}
+              onLocked={() => openUpgradeTeaser("rating")}
+              ariaLabel="Average rating analytics"
+            >
+              <Card compact style={s.kpiStatCardTop}>
+                <div style={s.cardHeadCompact}>
+                  <span style={{ ...s.cardIcon, ...s.cardIconCompact, background: "#fff5ea", color: "#b98900" }}><Star size={15} /></span>
+                  <Badge tone={avgBadgeTone}>
+                    <ArrowUpRight size={12} />
+                    {kpis.avgDelta}
+                  </Badge>
+                </div>
+                <div style={s.kpiStatBodyInline}>
                   <div style={s.bigNumCompact}>{kpis.avgRating}</div>
-                  <div style={s.starsRowCompact} aria-hidden="true">{"★★★★☆"}</div>
+                  <StarRow rating={kpis.avgRating} />
                   <div style={s.cardLabelCompact}>Average Rating</div>
-                </Card>
-              </div>
-            </div>
+                </div>
+              </Card>
+            </KpiCard>
 
-            <div style={s.kpiBottomRow} className="dKpiBottomRow">
-              <div style={s.kpiVelCell}>
-                <Card style={{ ...s.kpiChartCard, ...s.cardChartDense }}>
-                  <div style={s.cardHead}>
-                    <span style={{ ...s.cardIcon, background: "#ecfdf3", color: SHOPIFY_GREEN }}><TrendingUp size={16} /></span>
-                    <Badge tone="green">High</Badge>
-                  </div>
-                  <div style={s.bigNum}>+{kpis.velocityPerWeek} / week</div>
-                  <div style={s.cardLabel}>Review Velocity</div>
-                  <VelocitySparkline />
-                </Card>
-              </div>
+            <KpiCard
+              premium={premium}
+              proBadge={!premium}
+              onOpen={() => openAnalytics("velocity")}
+              onLocked={() => openUpgradeTeaser("velocity")}
+              ariaLabel="Review velocity analytics"
+            >
+              <Card compact style={{ ...s.kpiStatCardBottom, ...s.kpiChartCard }}>
+                <div style={s.cardHeadCompact}>
+                  <span style={{ ...s.cardIcon, ...s.cardIconCompact, background: "#ecfdf3", color: SHOPIFY_GREEN }}><TrendingUp size={15} /></span>
+                  <Badge tone={velocityBadgeTone}>{kpis.velocityLabel || "Medium"}</Badge>
+                </div>
+                <div style={s.kpiStatBodyInline}>
+                  <div style={s.bigNumCompact}>+{kpis.velocityPerWeek} / week</div>
+                  <div style={s.cardLabelCompact}>Review Velocity</div>
+                </div>
+                <div style={s.kpiSparkFooter}>
+                  <VelocitySparkline values={velocityValues} />
+                </div>
+              </Card>
+            </KpiCard>
 
-              <div style={s.kpiSentCell}>
-                <SentimentCard sentiment={kpis.sentiment} />
-              </div>
-            </div>
+            <KpiCard
+              premium={premium}
+              proBadge={!premium}
+              onOpen={() => openAnalytics("sentiment")}
+              onLocked={() => openUpgradeTeaser("sentiment")}
+              ariaLabel="Sentiment split analytics"
+            >
+              <SentimentCard
+                sentiment={kpis.sentiment}
+                onSegmentClick={premium ? (seg) => openAnalytics("sentiment", seg) : undefined}
+              />
+            </KpiCard>
           </div>
 
           <TranslationDashboardCard
@@ -928,8 +1013,8 @@ export default function Dashboard() {
               <div style={s.aiErrorCard}>
                 <p style={s.aiErrorTitle}>AI trial ended</p>
                 <p style={s.aiErrorBody}>
-                  AI-powered insights, playbooks, and analysis require an upgrade. Reviews,
-                  widgets, and the editor continue to work.
+                  AI-powered insights, interactive analytics, playbooks, and analysis require an upgrade.
+                  Reviews, widgets, and the editor continue to work.
                 </p>
               </div>
             ) : totalReviews === 0 ? (
@@ -969,6 +1054,24 @@ export default function Dashboard() {
           error={playbookFetcher.data?.playbookError}
           busy={playbookBusy}
           onClose={closePlaybook}
+        />
+      ) : null}
+
+      {analyticsView && premium ? (
+        <AnalyticsDrilldownModal
+          key={`${analyticsView}-${sentimentFilter ?? ""}`}
+          view={analyticsView}
+          analyticsDetail={analyticsDetail}
+          rangeKey={rangeKey}
+          sentimentFilter={sentimentFilter}
+          onClose={closeAnalytics}
+        />
+      ) : null}
+
+      {showUpgradeTeaser ? (
+        <AnalyticsUpgradeTeaser
+          view={teaserView}
+          onClose={() => setShowUpgradeTeaser(false)}
         />
       ) : null}
     </div>
@@ -1325,25 +1428,51 @@ function sentimentConicGradient(sentiment) {
   return `conic-gradient(${SHOPIFY_GREEN} 0% ${a}%, ${NEUTRAL_SEGMENT} ${a}% ${b}%, ${CRITICAL_RED} ${b}% 100%)`;
 }
 
-function SentimentCard({ sentiment }) {
+function StarRow({ rating }) {
+  const value = Math.min(5, Math.max(0, Number.parseFloat(rating) || 0));
+  const full = Math.floor(value);
+  const partial = value - full >= 0.35;
+  return (
+    <div style={s.starRow} aria-hidden="true">
+      {[1, 2, 3, 4, 5].map((i) => {
+        const filled = i <= full || (i === full + 1 && partial);
+        return (
+          <Star
+            key={i}
+            size={13}
+            strokeWidth={1.75}
+            color="#b98900"
+            fill={filled ? "#b98900" : "transparent"}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function SentimentCard({ sentiment, onSegmentClick }) {
   const c = sentimentConicGradient(sentiment);
   return (
-    <Card style={{ ...s.kpiChartCard, ...s.cardChartDense }}>
-      <div style={s.sentCardHeadCompact}>
-        <span style={s.sentTitle}>Sentiment Split</span>
-        <span style={{ ...s.cardIcon, background: "#f6f6f7", color: "#5c5f62" }}><Sparkles size={16} /></span>
+    <Card compact style={{ ...s.kpiStatCardBottom, ...s.kpiChartCard }}>
+      <div style={s.cardHeadCompact}>
+        <span style={s.sentCardTitle}>Sentiment Split</span>
+        <span style={{ ...s.cardIcon, ...s.cardIconCompact, background: "#f6f6f7", color: "#5c5f62" }}>
+          <SlidersHorizontal size={14} />
+        </span>
       </div>
-      <div style={s.sentRowSent}>
+      <div style={s.sentBody}>
         <div style={{ ...s.donutSent, backgroundImage: c }}>
           <div style={s.donutInnerSent}>
-            <div style={s.donutPctSent}>{sentiment.positivePct}%</div>
-            <div style={s.donutLabelSent}>Positive</div>
+            <div style={s.donutCenterSent}>
+              <div style={s.donutPctSent}>{sentiment.positivePct}%</div>
+              <div style={s.donutLblSent}>Positive</div>
+            </div>
           </div>
         </div>
         <div style={s.sentLegendSent}>
-          <Dot color={SHOPIFY_GREEN} label={`Positive ${sentiment.positivePct}%`} compact />
-          <Dot color={NEUTRAL_SEGMENT} label={`Neutral ${sentiment.neutralPct}%`} compact />
-          <Dot color={CRITICAL_RED} label={`Negative ${sentiment.negativePct}%`} compact />
+          <Dot color={SHOPIFY_GREEN} label={`Positive ${sentiment.positivePct}%`} compact onClick={onSegmentClick ? () => onSegmentClick("positive") : undefined} />
+          <Dot color={NEUTRAL_SEGMENT} label={`Neutral ${sentiment.neutralPct}%`} compact onClick={onSegmentClick ? () => onSegmentClick("neutral") : undefined} />
+          <Dot color={CRITICAL_RED} label={`Negative ${sentiment.negativePct}%`} compact onClick={onSegmentClick ? () => onSegmentClick("negative") : undefined} />
         </div>
       </div>
     </Card>
@@ -1363,12 +1492,14 @@ function sparkPoints(values, w, h, padX, padY) {
     .join(" ");
 }
 
-function VelocitySparkline({ values = [4, 12, 7, 18, 9, 22, 11, 26, 14, 30, 16, 24] }) {
-  const w = 300;
-  const h = 46;
-  const padX = 5;
-  const padY = 6;
-  const pts = sparkPoints(values, w, h, padX, padY);
+function VelocitySparkline({ values = [0] }) {
+  const w = 280;
+  const h = 32;
+  const padX = 4;
+  const padY = 5;
+  const safeValues = values.length >= 2 ? values : [0, ...values];
+  const pts = sparkPoints(safeValues, w, h, padX, padY);
+  const areaPts = `${padX},${h - padY} ${pts} ${w - padX},${h - padY}`;
 
   return (
     <svg
@@ -1376,14 +1507,14 @@ function VelocitySparkline({ values = [4, 12, 7, 18, 9, 22, 11, 26, 14, 30, 16, 
       height={h}
       viewBox={`0 0 ${w} ${h}`}
       preserveAspectRatio="none"
-      style={s.sparkSvgVelocity}
+      style={s.sparkSvg}
       aria-hidden
     >
-      <line x1={padX} y1={h - padY} x2={w - padX} y2={h - padY} stroke="#e1e3e5" strokeWidth="1" />
+      <polygon points={areaPts} fill="#00806018" stroke="none" />
       <polyline
         fill="none"
         stroke={SHOPIFY_GREEN}
-        strokeWidth="2.5"
+        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
         points={pts}
@@ -1392,30 +1523,64 @@ function VelocitySparkline({ values = [4, 12, 7, 18, 9, 22, 11, 26, 14, 30, 16, 
   );
 }
 
-function Dot({ color, label, compact }) {
+function Dot({ color, label, compact, onClick }) {
   return (
-    <div style={s.legendRow}>
+    <div
+      style={{
+        ...s.legendRow,
+        ...(onClick ? { cursor: "pointer" } : {}),
+      }}
+      onClick={
+        onClick
+          ? (e) => {
+              e.stopPropagation();
+              onClick();
+            }
+          : undefined
+      }
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                onClick();
+              }
+            }
+          : undefined
+      }
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+    >
       <span style={{ ...s.legendDot, background: color }} />
       <span style={compact ? s.legendLabelSent : s.legendLabel}>{label}</span>
     </div>
   );
 }
 
-function buildTotalReviewBars(totalReviews) {
-  const n = Number.parseInt(String(totalReviews), 10) || 0;
-  const base = Math.max(1, Math.min(6, n));
-  return [0.24, 0.42, 0.32, 0.58, 0.46, 0.74, 0.62].map((v, idx) => {
-    const scaled = v + base * 0.02 + idx * 0.005;
-    return Math.max(0.2, Math.min(1, scaled));
-  });
-}
+const MINI_BAR_W = 12;
+const MINI_BAR_GAP = 5;
+const MINI_BAR_CHART_H = 56;
 
 function MiniBarGraph({ values }) {
+  const raw = (Array.isArray(values) ? values : [0]).slice(-7).map((v) => Number(v) || 0);
+  const max = Math.max(...raw, 1);
+
   return (
-    <div style={s.miniBarWrap} aria-hidden="true">
-      {values.map((v, idx) => (
-        <span key={`${idx}-${v}`} style={{ ...s.miniBar, height: `${Math.round(v * 100)}%` }} />
-      ))}
+    <div style={s.miniBarChart} role="img" aria-hidden>
+      {raw.map((v, idx) => {
+        const ratio = v / max;
+        const barH = Math.max(10, Math.round(ratio * (MINI_BAR_CHART_H - 6)));
+        return (
+          <div
+            key={`bar-${idx}-${v}`}
+            style={{
+              ...s.miniBar,
+              height: barH,
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -1446,16 +1611,9 @@ const responsive = `
   @media(max-width:1180px){
     .dBody{grid-template-columns:1fr!important;}
     .dAside{position:relative!important;top:0!important;}
-    .dKpiWrap{gap:16px!important;}
-    .dKpiTopRow{gap:16px!important;}
-    .dKpiBottomRow{gap:16px!important;}
-  }
-  @media(max-width:720px){
-    .dKpiBottomRow{grid-template-columns:1fr!important;}
   }
   @media(max-width:640px){
-    .dKpiTopRow,
-    .dKpiBottomRow{grid-template-columns:1fr!important;}
+    .dKpiGrid{grid-template-columns:1fr!important;}
   }
 `;
 
@@ -1507,35 +1665,67 @@ const s = {
   left: { display: "grid", gap: 16, minWidth: 0 },
   aside: { position: "sticky", top: 16 },
 
-  kpiWrap: { display: "flex", flexDirection: "column", gap: 16, minWidth: 0 },
-  kpiTopRow: {
+  kpiGrid: {
     display: "grid",
-    gridTemplateColumns: "minmax(0, 1.22fr) minmax(0, 0.82fr)",
+    gridTemplateColumns: "minmax(0, 1.65fr) minmax(0, 1fr)",
     gap: 16,
     minWidth: 0,
     width: "100%",
     alignItems: "stretch",
   },
-  kpiBottomRow: {
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 1.22fr) minmax(0, 0.82fr)",
-    gap: 16,
-    minWidth: 0,
-    width: "100%",
-    alignItems: "stretch",
-  },
-  kpiTopCell: { minWidth: 0, display: "flex", alignItems: "stretch" },
-  kpiVelCell: { minWidth: 0, maxWidth: "100%", display: "flex", flexDirection: "column" },
-  kpiSentCell: { minWidth: 0, maxWidth: "100%", display: "flex", flexDirection: "column" },
   kpiChartCard: {
     display: "flex",
     flexDirection: "column",
     width: "100%",
-    height: "100%",
     maxWidth: "100%",
     boxSizing: "border-box",
   },
-  cardChartDense: { padding: "16px" },
+  kpiStatCardTop: {
+    minHeight: 128,
+    flex: "1 1 auto",
+  },
+  kpiStatCardBottom: {
+    minHeight: 148,
+    flex: "1 1 auto",
+  },
+  kpiMiniBarRow: {
+    marginTop: 10,
+    width: "100%",
+    flexShrink: 0,
+    minHeight: MINI_BAR_CHART_H,
+  },
+  kpiStatBodyInline: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    flex: "1 1 auto",
+    minWidth: 0,
+    flexShrink: 0,
+  },
+  kpiSparkFooter: {
+    marginTop: "auto",
+    paddingTop: 10,
+    minHeight: 36,
+    flexShrink: 0,
+    display: "flex",
+    alignItems: "flex-end",
+    width: "100%",
+  },
+  miniBarChart: {
+    display: "flex",
+    alignItems: "flex-end",
+    gap: MINI_BAR_GAP,
+    height: MINI_BAR_CHART_H,
+    width: "100%",
+    maxWidth: 7 * MINI_BAR_W + 6 * MINI_BAR_GAP,
+  },
+  miniBar: {
+    width: MINI_BAR_W,
+    flexShrink: 0,
+    borderRadius: 3,
+    background: `linear-gradient(180deg, ${SHOPIFY_GREEN} 0%, ${SHOPIFY_GREEN_DARK} 100%)`,
+    boxShadow: "0 1px 2px rgba(0,110,82,0.2)",
+  },
 
   card: {
     background: SURFACE_BG,
@@ -1546,84 +1736,64 @@ const s = {
     boxSizing: "border-box",
   },
   cardCompact: {
-    padding: "16px",
+    padding: "14px 16px",
     borderRadius: R,
     width: "100%",
-    minHeight: 118,
     display: "flex",
     flexDirection: "column",
+    gap: 0,
+  },
+  kpiStatBody: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    flex: "1 1 auto",
+    minHeight: 0,
+    marginTop: 2,
   },
 
   cardHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   cardHeadCompact: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-  cardIcon: { width: 28, height: 28, borderRadius: 6, background: SURFACE_MUTED, color: "#5c5f62", display: "grid", placeItems: "center" },
-  cardIconCompact: { width: 28, height: 28, borderRadius: 6 },
+  cardIcon: { width: 28, height: 28, borderRadius: "50%", background: SURFACE_MUTED, color: "#5c5f62", display: "grid", placeItems: "center", flexShrink: 0 },
+  cardIconCompact: { width: 28, height: 28 },
   cardLabel: { fontSize: 12, fontWeight: 700, color: "#6d7175", marginTop: 2 },
-  cardLabelCompact: { fontSize: 11, fontWeight: 700, color: "#6d7175", marginTop: 1 },
-  kpiMetricRowCompact: {
-    display: "flex",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    gap: 20,
-    marginTop: 4,
-    width: "100%",
-  },
-  miniBarWrap: {
-    width: 176,
-    height: 36,
-    display: "flex",
-    alignItems: "flex-end",
-    gap: 6,
-    opacity: 0.9,
-    flexShrink: 0,
-    borderBottom: "1px solid #d2e8dc",
-    paddingBottom: 2,
-  },
-  miniBar: {
-    width: 12,
-    borderRadius: "3px 3px 0 0",
-    background: SHOPIFY_GREEN,
-    display: "block",
-  },
+  cardLabelCompact: { fontSize: 11, fontWeight: 700, color: "#6d7175", marginTop: 0 },
+  starRow: { display: "flex", gap: 2, alignItems: "center", marginTop: 2 },
 
   bigNum: { fontSize: 28, fontWeight: 900, color: "#202223", lineHeight: 1.1, margin: "6px 0 0" },
-  bigNumCompact: { fontSize: 26, fontWeight: 900, color: "#202223", lineHeight: 1.1, margin: "4px 0 0" },
-  starsRow: { color: "#b98900", fontSize: 13, letterSpacing: "0.08em", marginBottom: 2 },
-  starsRowCompact: { color: "#b98900", fontSize: 12, letterSpacing: "0.08em", marginBottom: 0 },
+  bigNumCompact: { fontSize: 26, fontWeight: 900, color: "#202223", lineHeight: 1.05, margin: 0 },
 
   badge: { display: "inline-flex", gap: 4, alignItems: "center", padding: "3px 10px", borderRadius: 999, fontWeight: 900, fontSize: 11, border: "1px solid" },
 
-  sentCardHeadCompact: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
-  sentTitle: { fontSize: 13, fontWeight: 800, color: "#6d7175", letterSpacing: "0.02em" },
-  sentRowSent: {
+  sentCardTitle: { fontSize: 13, fontWeight: 900, color: "#202223", lineHeight: 1.2 },
+  sentBody: {
     display: "flex",
-    gap: 12,
+    gap: 14,
     alignItems: "center",
-    marginTop: 0,
-    flexWrap: "wrap",
+    flex: "1 1 auto",
+    minHeight: 0,
     width: "100%",
     minWidth: 0,
   },
-  donutSent: { width: 88, height: 88, borderRadius: "50%", display: "grid", placeItems: "center", flexShrink: 0 },
+  donutSent: { width: 84, height: 84, borderRadius: "50%", display: "grid", placeItems: "center", flexShrink: 0 },
   donutInnerSent: {
-    width: 58,
-    height: 58,
+    width: 54,
+    height: 54,
     borderRadius: "50%",
     background: SURFACE_BG,
-    border: `2px solid ${SURFACE_BORDER}`,
+    border: `1px solid ${SURFACE_BORDER}`,
     display: "grid",
     placeItems: "center",
-    padding: "2px",
   },
-  donutPctSent: { fontSize: 15, fontWeight: 900, color: "#202223", lineHeight: 1 },
-  donutLabelSent: { fontSize: 9, fontWeight: 800, color: "#6d7175" },
-  sentLegendSent: { display: "grid", gap: 5, flex: "1 1 0", minWidth: 0 },
+  donutCenterSent: { textAlign: "center", lineHeight: 1.15 },
+  donutPctSent: { fontSize: 15, fontWeight: 900, color: "#202223", lineHeight: 1.1 },
+  donutLblSent: { fontSize: 9, fontWeight: 700, color: "#6d7175", marginTop: 1 },
+  sentLegendSent: { display: "grid", gap: 6, flex: "1 1 0", minWidth: 0 },
+  sparkSvg: { display: "block", width: "100%", flexShrink: 0 },
   legendRow: { display: "flex", gap: 10, alignItems: "center", minWidth: 0 },
   legendDot: { width: 9, height: 9, borderRadius: 999, flexShrink: 0 },
   legendLabel: { fontSize: 13, fontWeight: 700, color: "#5c5f62" },
-  legendLabelSent: { fontSize: 12, fontWeight: 700, color: "#5c5f62", overflowWrap: "anywhere" },
-
-  sparkSvgVelocity: { marginTop: 12, display: "block", flexShrink: 0, maxWidth: "100%" },
+  legendLabelSent: { fontSize: 11, fontWeight: 700, color: "#5c5f62", lineHeight: 1.3 },
 
   tableTop: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", borderBottom: `1px solid ${SURFACE_BORDER}`, gap: 16 },
   tableH: { fontSize: 19, fontWeight: 900, color: "#202223", marginRight: 12 },

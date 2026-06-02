@@ -41,6 +41,19 @@
                     ${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}
                   </div>
                   <p style="margin-top:4px">${r.comment}</p>
+                  ${
+                    Array.isArray(r.media) && r.media.length
+                      ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+                          ${r.media
+                            .map((m) =>
+                              m.type === "video"
+                                ? `<video src="${m.url}" controls playsinline style="max-width:200px;border-radius:8px"></video>`
+                                : `<a href="${m.url}" target="_blank" rel="noopener"><img src="${m.url}" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:8px" /></a>`,
+                            )
+                            .join("")}
+                        </div>`
+                      : ""
+                  }
                 </div>
               `
               )

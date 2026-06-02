@@ -130,11 +130,25 @@ export async function loader({ request }) {
       status: { in: PUBLISHED_STATUSES },
     },
     orderBy: { createdAt: "desc" },
+    include: {
+      media: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          type: true,
+          mimeType: true,
+          filename: true,
+        },
+      },
+    },
   });
 
   const { active, translation } = await getActiveTranslationContext(shopNorm);
 
-  const payload = reviews.map((r) => {
+  const { attachPublicMediaUrls } = await import("../lib/review-media.server.js");
+  const withMedia = attachPublicMediaUrls(request, reviews);
+
+  const payload = withMedia.map((r) => {
     const text = storefrontReviewText(r, active, translation.targetLanguage);
     return {
       id: r.id,
@@ -150,6 +164,7 @@ export async function loader({ request }) {
       reply: r.reply,
       replyDate: r.replyDate,
       createdAt: r.createdAt,
+      media: r.media,
     };
   });
 
@@ -163,17 +178,75 @@ export async function action({ request }) {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  const contentType = request.headers.get("content-type") || "";
+  let shop;
+  let productId;
+  let productName;
+  let rating;
+  let comment;
+  let author;
+  let title;
+  let email;
+  let mediaFiles = [];
 
-  const { shop, productId, productName, rating, comment, author, title, email } = body;
+  if (contentType.includes("multipart/form-data")) {
+    const fd = await request.formData();
+    shop = fd.get("shop");
+    productId = fd.get("productId");
+    productName = fd.get("productName");
+    rating = fd.get("rating");
+    comment = fd.get("comment");
+    author = fd.get("author");
+    title = fd.get("title");
+    email = fd.get("email");
+
+    const shopNormEarly = normalizeShopDomain(shop);
+    let formConfig = { showPhotos: true, showVideos: true };
+    if (shopNormEarly) {
+      const settingsRow = await db.settings.findUnique({ where: { shop: shopNormEarly } });
+      if (settingsRow?.config) {
+        try {
+          const { mergeFormConfig } = await import("../lib/review-form-config.shared.js");
+          formConfig = mergeFormConfig(JSON.parse(settingsRow.config));
+        } catch {
+          /* keep defaults */
+        }
+      }
+    }
+
+    const { extractMediaFilesFromForm } = await import("../lib/review-media.server.js");
+    const mediaResult = extractMediaFilesFromForm(fd, {
+      allowImages: formConfig.showPhotos !== false,
+      allowVideos: formConfig.showVideos !== false,
+    });
+    if (!mediaResult.ok) {
+      return new Response(JSON.stringify({ error: mediaResult.error }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    mediaFiles = mediaResult.files;
+  } else {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    ({
+      shop,
+      productId,
+      productName,
+      rating,
+      comment,
+      author,
+      title,
+      email,
+    } = body);
+  }
 
   if (!shop || !productId || !rating || !comment) {
     return new Response("Missing fields", {
@@ -191,10 +264,10 @@ export async function action({ request }) {
     productId: pid,
     productName: productName || "Unknown product",
     rating: Number(rating),
-    title: title?.trim() || null,
-    comment,
-    author: author?.trim() || "Anonymous",
-    email: email?.trim() || null,
+    title: (typeof title === "string" ? title : "")?.trim() || null,
+    comment: String(comment),
+    author: (typeof author === "string" ? author : "")?.trim() || "Anonymous",
+    email: (typeof email === "string" ? email : "")?.trim() || null,
     status: "PUBLISHED",
   };
 
@@ -204,6 +277,11 @@ export async function action({ request }) {
   const created = await db.review.create({
     data: reviewData,
   });
+
+  if (mediaFiles.length > 0) {
+    const { saveReviewMedia } = await import("../lib/review-media.server.js");
+    await saveReviewMedia(created.id, mediaFiles);
+  }
 
   await emitReviewCollectedFlowTrigger(shopNorm, created);
 

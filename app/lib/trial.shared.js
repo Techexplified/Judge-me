@@ -1,5 +1,6 @@
 export const TRIAL_DAYS = 7;
 export const PREMIUM_FEATURE_LABELS = [
+  "Interactive analytics",
   "AI insights & playbooks",
   "CSV review import",
   "Review translation",

@@ -90,11 +90,14 @@ export const loader = async ({ request }) => {
   const { getTrialStatus } = await import("../lib/trial.server.js");
   const targetShops = await getGroupShopList(shop);
 
-  const reviews = await db.review.findMany({
+  const reviewsRaw = await db.review.findMany({
     where: { shop: { in: targetShops } },
     orderBy: { createdAt: "desc" },
     select: REVIEW_LIST_SELECT,
   });
+
+  const { attachPublicMediaUrls } = await import("../lib/review-media.server.js");
+  const reviews = attachPublicMediaUrls(request, reviewsRaw);
 
   const totalReviews = reviews.length;
   const avgRating =
@@ -842,6 +845,53 @@ function ProductReviewsModal({ product, currentShop, modeReply, onClose, transla
   );
 }
 
+function ReviewMediaGallery({ media }) {
+  if (!media?.length) return null;
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "0 0 16px" }}>
+      {media.map((item) =>
+        item.type === "video" ? (
+          <video
+            key={item.id}
+            src={item.url}
+            controls
+            playsInline
+            style={{
+              width: 160,
+              maxWidth: "100%",
+              height: 96,
+              objectFit: "cover",
+              borderRadius: 8,
+              border: "1px solid #e2e8f0",
+              background: "#0f172a",
+            }}
+          />
+        ) : (
+          <a
+            key={item.id}
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: "block" }}
+          >
+            <img
+              src={item.url}
+              alt={item.filename || "Review photo"}
+              style={{
+                width: 72,
+                height: 72,
+                objectFit: "cover",
+                borderRadius: 8,
+                border: "1px solid #e2e8f0",
+              }}
+            />
+          </a>
+        ),
+      )}
+    </div>
+  );
+}
+
 function ReviewDetailCard({
   review,
   currentShop,
@@ -989,6 +1039,7 @@ function ReviewDetailCard({
 
       {displayTitle ? <h3 style={detailStyles.reviewTitle}>{displayTitle}</h3> : null}
       <p style={detailStyles.reviewBody}>{displayComment}</p>
+      <ReviewMediaGallery media={review.media} />
 
       {(canTranslate || hasStoredTranslation) ? (
         <div

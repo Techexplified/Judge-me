@@ -159,7 +159,7 @@ export function PremiumTrialBanner({ trialStatus }) {
           />
           <span style={styles.headText}>AI Pro — Active</span>
         </div>
-        <p style={styles.subtext}>AI insights, playbooks & analysis are enabled.</p>
+        <p style={styles.subtext}>AI insights, playbooks, interactive analytics & analysis are enabled.</p>
       </div>
     );
   }
@@ -172,8 +172,8 @@ export function PremiumTrialBanner({ trialStatus }) {
           <span style={{ ...styles.headText, color: "#8e1f0b" }}>AI trial ended</span>
         </div>
         <p style={{ ...styles.subtext, color: "#8e1f0b" }}>
-          Your 7-day trial has ended. Reviews, widgets & moderation stay free — only AI insights &
-          playbooks require an upgrade.
+          Your 7-day trial has ended. Reviews, widgets & moderation stay free — AI insights,
+          interactive analytics & playbooks require an upgrade.
         </p>
       </div>
     );
@@ -187,8 +187,8 @@ export function PremiumTrialBanner({ trialStatus }) {
         <span style={styles.badge}>{daysLabel(days)}</span>
       </div>
       <p style={styles.subtext}>
-        AI insights, playbooks & analysis are active. Core review features remain free after the
-        trial.
+        AI insights, playbooks, interactive analytics & analysis are active. Core review features
+        remain free after the trial.
       </p>
       <div style={styles.barTrack}>
         <div
@@ -208,7 +208,9 @@ export function PremiumGateBanner({ feature = "feature" }) {
       ? "CSV import"
       : feature === "translation"
         ? "Review translation"
-        : "This feature";
+        : feature === "analytics"
+          ? "Interactive analytics"
+          : "This feature";
 
   return (
     <div style={styles.expiredCard}>

@@ -46,9 +46,24 @@ model Review {
   originalTitle    String?
   translatedLang   String?
   createdAt        DateTime @default(now())
+  media            ReviewMedia[]
 
   @@index([shop])
   @@index([shop, createdAt])
+}
+
+model ReviewMedia {
+  id        String   @id @default(uuid())
+  reviewId  String
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  /// "image" | "video"
+  type      String
+  mimeType  String
+  filename  String?
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@index([reviewId])
 }
 
 model Settings {
