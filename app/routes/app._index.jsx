@@ -86,7 +86,7 @@ function reviewFormHref(productName, productId) {
   if (pid) q.set("productId", pid);
   if (productName) q.set("productName", String(productName).trim());
   const qs = q.toString();
-  return qs ? `/app/review-form?${qs}` : "/app/review-form";
+  return qs ? `/app/settings/customizations?${qs}` : "/app/settings/customizations";
 }
 
 function clipText(text, max) {
@@ -1429,7 +1429,7 @@ function TranslationDashboardCard({ summary, fetcher, trialStatus }) {
   const busy = fetcher.state !== "idle";
   const premium = trialStatus?.hasPremium;
 
-  const manageHref = mergeShopifyEmbedParams("/app/review-translation", search);
+  const manageHref = mergeShopifyEmbedParams("/app/settings/translation", search);
 
   const handleToggle = () => {
     if (!premium || !summary.aiAvailable) return;

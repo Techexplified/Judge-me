@@ -529,7 +529,7 @@ export default function ReviewsManagement() {
     );
   }, [searchParams, setSearchParams]);
 
-  const importHref = mergeShopifyEmbedParams("/app/import-reviews", location.search);
+  const importHref = mergeShopifyEmbedParams("/app/settings/import", location.search);
 
   const goToImport = useCallback(() => {
     if (typeof shopify?.navigate === "function") {

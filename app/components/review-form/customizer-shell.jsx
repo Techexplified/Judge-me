@@ -26,14 +26,17 @@ export function CustomizerShell({
   publishBlocked = false,
   publishBlockedMessage = "",
   widgetUsage = null,
+  embedded = false,
 }) {
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
-        height: "100vh",
-        maxHeight: "100vh",
+        height: embedded ? "100%" : "100vh",
+        maxHeight: embedded ? "none" : "100vh",
+        flex: embedded ? 1 : undefined,
+        minHeight: embedded ? 0 : undefined,
         overflow: "hidden",
         background: TOKENS.panelBg,
         fontFamily: UI_FONT,

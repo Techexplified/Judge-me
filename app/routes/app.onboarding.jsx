@@ -192,7 +192,7 @@ export const action = async ({ request }) => {
       SOURCE_PRESETS[profile.importSource]
     ) {
       throw embedRedirect(
-        `/app/import-reviews?source=${encodeURIComponent(profile.importSource)}`,
+        `/app/settings/import?source=${encodeURIComponent(profile.importSource)}`,
         request,
       );
     }

@@ -37,10 +37,6 @@ export default function App() {
           <s-link href="/app">Dashboard</s-link>
           <s-link href="/app/analytics">Analytics</s-link>
           <s-link href="/app/reviews">Reviews</s-link>
-          <s-link href="/app/import-reviews">Import reviews</s-link>
-          <s-link href="/app/review-translation">Translation</s-link>
-          <s-link href="/app/linked-stores">Integration</s-link>
-          <s-link href="/app/review-form">Review Form</s-link>
           <s-link href="/app/settings">Settings</s-link>
         </s-app-nav>
       ) : null}
