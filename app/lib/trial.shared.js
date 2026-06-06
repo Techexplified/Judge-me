@@ -1,6 +1,6 @@
 export const PRO_TRIAL_DAYS = 14;
 export const FREE_REVIEWS_PER_MONTH = 50;
-export const PRO_PRICE_USD = 15;
+export const PRO_PRICE_USD = 20;
 
 export {
   FREE_PLAN_HIGHLIGHTS,
