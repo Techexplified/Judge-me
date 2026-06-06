@@ -39,7 +39,7 @@ export const loader = async ({ request }) => {
     serializePlanStatus,
     formatBillingError,
     isShopifyBillingRedirect,
-    getProPricingUrl,
+    getAppPricingUrl,
   } = await import("../lib/billing.server.js");
   const { BILLING_TEST_MODE, USE_BILLING_API } = await import("../shopify.server.js");
   const { session, billing, redirect } = await authenticate.admin(request);
@@ -86,7 +86,7 @@ export const loader = async ({ request }) => {
   const billingSuccess =
     returnedFromPricing && planStatus.hasPro;
   const billingDeclined = url.searchParams.get("billing") === "declined";
-  const appPricingUrl = !USE_BILLING_API ? await getProPricingUrl(shop) : null;
+  const appPricingUrl = !USE_BILLING_API ? await getAppPricingUrl(shop) : null;
 
   return {
     shop,

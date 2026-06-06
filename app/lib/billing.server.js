@@ -389,9 +389,9 @@ export async function getAppPricingUrl(shop, planHandle = null) {
   return base;
 }
 
-/** Direct link to Pro plan approval (Shopify App Pricing). */
+/** Shopify-hosted plan selection page (merchants pick Free or Pro there). */
 export async function getProPricingUrl(shop) {
-  return getAppPricingUrl(shop, MANAGED_PRO_PLAN_HANDLE);
+  return getAppPricingUrl(shop);
 }
 
 /**
