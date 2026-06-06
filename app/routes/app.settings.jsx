@@ -13,19 +13,7 @@ import { authenticate } from "../shopify.server";
 import { normalizeShopDomain } from "../utils/shop.js";
 import { mergeShopifyEmbedParams } from "../utils/shopify-embed-nav.js";
 import { embedRedirect } from "../utils/shopify-embed-nav.server.js";
-import {
-  getShopPlanStatus,
-  requestProSubscription,
-  serializePlanStatus,
-  formatBillingError,
-  isShopifyBillingRedirect,
-  getAppPricingUrl,
-  getProPricingUrl,
-  PRO_PRICE_USD,
-  PRO_TRIAL_DAYS,
-  BILLING_TEST_MODE,
-  USE_BILLING_API,
-} from "../lib/billing.server.js";
+import { PRO_PRICE_USD, PRO_TRIAL_DAYS } from "../lib/trial.shared.js";
 import {
   Banner,
   Card,
@@ -45,6 +33,15 @@ function buildReturnUrl(request) {
 }
 
 export const loader = async ({ request }) => {
+  const {
+    getShopPlanStatus,
+    requestProSubscription,
+    serializePlanStatus,
+    formatBillingError,
+    isShopifyBillingRedirect,
+    getProPricingUrl,
+  } = await import("../lib/billing.server.js");
+  const { BILLING_TEST_MODE, USE_BILLING_API } = await import("../shopify.server.js");
   const { session, billing, redirect } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
   const url = new URL(request.url);
@@ -106,6 +103,13 @@ export const loader = async ({ request }) => {
 };
 
 export const action = async ({ request }) => {
+  const {
+    getShopPlanStatus,
+    requestProSubscription,
+    formatBillingError,
+    isShopifyBillingRedirect,
+  } = await import("../lib/billing.server.js");
+  const { BILLING_TEST_MODE } = await import("../shopify.server.js");
   const { session, billing, redirect } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
   const fd = await request.formData();
