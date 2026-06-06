@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import { useState } from "react";
-import { Crown } from "lucide-react";
 import { SHOPIFY_GREEN } from "./analytics-styles.js";
 
 const styles = {
@@ -40,16 +39,15 @@ const styles = {
     zIndex: 2,
     display: "inline-flex",
     alignItems: "center",
-    gap: 5,
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 800,
-    padding: "5px 10px",
-    borderRadius: 6,
-    background: SHOPIFY_GREEN,
-    color: "#fff",
-    letterSpacing: "0.04em",
+    padding: "3px 7px",
+    borderRadius: 4,
+    background: "#ecfdf3",
+    color: SHOPIFY_GREEN,
+    border: "1px solid #b4e4cf",
+    letterSpacing: "0.05em",
     textTransform: "uppercase",
-    boxShadow: "0 1px 3px rgba(0, 100, 72, 0.22)",
     pointerEvents: "none",
   },
   hint: {
@@ -93,13 +91,8 @@ export function KpiCard({ premium, proBadge, onOpen, onLocked, children, ariaLab
       tabIndex={0}
       aria-label={ariaLabel}
     >
-      <div style={{ ...styles.inner, paddingBottom: locked ? 36 : 22 }}>{children}</div>
-      {proBadge ? (
-        <span style={styles.proBadge}>
-          <Crown size={11} strokeWidth={2.5} />
-          Pro
-        </span>
-      ) : null}
+      <div style={{ ...styles.inner, paddingBottom: locked ? 30 : 22 }}>{children}</div>
+      {proBadge ? <span style={styles.proBadge}>Pro</span> : null}
       {hovered ? (
         <span style={styles.hint}>
           {premium ? "Click to explore" : "Upgrade to unlock"}
