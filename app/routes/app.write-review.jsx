@@ -41,6 +41,12 @@ export const action = async ({ request }) => {
     return { ok: false, error: "Choose a rating from 1 to 5 stars." };
   }
 
+  const { canCreateReview } = await import("../lib/billing.server.js");
+  const createCheck = await canCreateReview(shop);
+  if (!createCheck.ok) {
+    return { ok: false, error: createCheck.error };
+  }
+
   try {
     let reviewData = {
       shop,

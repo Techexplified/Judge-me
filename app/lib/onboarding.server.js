@@ -24,7 +24,24 @@ export async function getOnboardingState(shop) {
     completed: Boolean(config.onboarding?.completedAt),
     onboarding: config.onboarding ?? null,
     storeProfile: config.storeProfile ?? null,
+    planChoice: config.onboarding?.planChoice ?? null,
   };
+}
+
+export async function savePlanChoice(shop, choice) {
+  const normalized = choice === "pro" ? "pro" : "free";
+  const config = await readConfig(shop);
+  config.onboarding = {
+    ...(config.onboarding ?? {}),
+    planChoice: normalized,
+  };
+  await writeConfig(shop, config);
+  return normalized;
+}
+
+export async function getPlanChoice(shop) {
+  const config = await readConfig(shop);
+  return config.onboarding?.planChoice ?? null;
 }
 
 export async function isOnboardingComplete(shop) {

@@ -439,10 +439,10 @@ export function StepIndicator({ current, total = 4 }) {
   );
 }
 
-export function WizardShell({ step, children, actions }) {
+export function WizardShell({ step, total = 5, children, actions }) {
   return (
     <Page narrow>
-      <StepIndicator current={step} />
+      <StepIndicator current={step} total={total} />
       <Card style={ui.wizardCard}>{children}</Card>
       {actions ? <div style={ui.wizardActions}>{actions}</div> : null}
     </Page>

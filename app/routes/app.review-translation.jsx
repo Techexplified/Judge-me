@@ -5,7 +5,7 @@ import { Languages, Globe, CheckCircle2, RefreshCw, Sparkles, Upload } from "luc
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.js";
-import { hasPremiumAccess, serializeTrialStatus } from "../lib/trial.shared.js";
+import { hasProAccess, serializePlanStatus } from "../lib/billing.server.js";
 import { getResolvedOpenRouterKey } from "../lib/openrouter.server";
 import {
   AUTO_DETECT,
@@ -71,12 +71,12 @@ function LanguageSelect({ id, value, options, onChange, disabled, shopLocale, hi
 }
 
 export const loader = async ({ request }) => {
-  const { session, admin } = await authenticate.admin(request);
+  const { session, admin, billing } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
 
-  const { getTrialStatus } = await import("../lib/trial.server.js");
-  const trialStatus = await getTrialStatus(shop);
-  const premium = hasPremiumAccess(trialStatus);
+  const { getShopPlanStatus } = await import("../lib/billing.server.js");
+  const planStatus = await getShopPlanStatus(shop, billing);
+  const premium = hasProAccess(planStatus);
 
   const settingsRow = await db.settings.findUnique({ where: { shop } });
   let config = {};
@@ -116,7 +116,8 @@ export const loader = async ({ request }) => {
 
   return {
     shop,
-    trialStatus: serializeTrialStatus(trialStatus),
+    planStatus: serializePlanStatus(planStatus),
+    trialStatus: serializePlanStatus(planStatus),
     premium,
     aiAvailable: premium && Boolean(getResolvedOpenRouterKey()),
     translation,
@@ -131,12 +132,12 @@ export const loader = async ({ request }) => {
 export const action = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
-  const { getTrialStatus } = await import("../lib/trial.server.js");
-  const trialStatus = await getTrialStatus(shop);
+  const { getShopPlanStatus } = await import("../lib/billing.server.js");
+  const planStatus = await getShopPlanStatus(shop);
 
-  if (!hasPremiumAccess(trialStatus)) {
+  if (!hasProAccess(planStatus)) {
     return {
-      error: "Your premium trial has ended. Upgrade to use review translation.",
+      error: "Pro plan required. Upgrade in Settings to use review translation.",
     };
   }
 
@@ -208,6 +209,12 @@ export const action = async ({ request }) => {
     const cursor = Number(fd.get("cursor") || 0);
     const force = fd.get("force") === "true";
     const batchSize = Math.min(50, Math.max(1, Number(fd.get("batchSize") || 20)));
+
+    const { requireFeatureUsage } = await import("../lib/billing.server.js");
+    const usageCheck = await requireFeatureUsage(planStatus, "auto_translate", batchSize);
+    if (!usageCheck.ok) {
+      return { error: usageCheck.message };
+    }
 
     const { bulkTranslateShopReviewsBatch } = await import("../lib/review-translation.server.js");
     const batchResult = await bulkTranslateShopReviewsBatch(

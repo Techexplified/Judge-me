@@ -13,8 +13,9 @@ import { useConfigHistory } from "../hooks/use-config-history.js";
 import { CustomizerShell } from "../components/review-form/customizer-shell.jsx";
 
 export const loader = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+  const { session, billing } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
+  const { getShopPlanStatus, serializePlanStatus } = await import("../lib/billing.server.js");
   const url = new URL(request.url);
   const rawProductId = url.searchParams.get("productId");
   const productId =
@@ -33,10 +34,14 @@ export const loader = async ({ request }) => {
     }
   }
   const formConfig = mergeFormConfig(parsed);
+  const planStatus = await getShopPlanStatus(shop, billing);
+  const widgetUsage = planStatus.featureUsage?.ai_widget_customization ?? null;
   return {
     savedConfig: formConfig,
     reviewContext: { productId, productName, productImage },
     shopDomain: shop,
+    planStatus: serializePlanStatus(planStatus),
+    widgetUsage,
   };
 };
 
@@ -81,6 +86,12 @@ export const action = async ({ request }) => {
   }
 
   if (intent === "postReview") {
+    const { canCreateReview, getShopPlanStatus } = await import("../lib/billing.server.js");
+    const createCheck = await canCreateReview(shop);
+    if (!createCheck.ok) {
+      return { reviewError: createCheck.error };
+    }
+
     const rating = Number(fd.get("rating"));
     const author = String(fd.get("author") || "").trim();
     const comment = String(fd.get("comment") || "").trim();
@@ -143,6 +154,15 @@ export const action = async ({ request }) => {
       return { reviewError: mediaResult.error };
     }
 
+    const planStatus = await getShopPlanStatus(shop);
+    if (mediaResult.files.length > 0) {
+      const { mediaKindFromMime } = await import("../lib/review-media.shared.js");
+      const hasVideo = mediaResult.files.some((f) => mediaKindFromMime(f.type) === "video");
+      if (hasVideo && !planStatus.hasPro) {
+        return { reviewError: "Video reviews require a Pro plan." };
+      }
+    }
+
     const created = await db.review.create({ data: reviewData });
     if (mediaResult.files.length > 0) {
       await saveReviewMedia(created.id, mediaResult.files);
@@ -156,6 +176,13 @@ export const action = async ({ request }) => {
   const configRaw = fd.get("config");
   if (typeof configRaw !== "string") {
     return { ok: false };
+  }
+
+  const { getShopPlanStatus, requireFeatureUsage } = await import("../lib/billing.server.js");
+  const planStatus = await getShopPlanStatus(shop);
+  const usageCheck = await requireFeatureUsage(planStatus, "ai_widget_customization");
+  if (!usageCheck.ok) {
+    return { ok: false, publishError: usageCheck.message };
   }
 
   let formPayload;
@@ -192,7 +219,12 @@ export const action = async ({ request }) => {
 };
 
 export default function ReviewFormCustomizer() {
-  const { savedConfig, reviewContext, shopDomain } = useLoaderData();
+  const {
+    savedConfig,
+    reviewContext,
+    shopDomain,
+    widgetUsage,
+  } = useLoaderData();
   const actionData = useActionData();
   const navigation = useNavigation();
   const submit = useSubmit();
@@ -222,7 +254,7 @@ export default function ReviewFormCustomizer() {
       return () => clearTimeout(t);
     }
     if (actionData?.ok === false) {
-      setSaveError("Could not publish settings. Please try again.");
+      setSaveError(actionData.publishError || "Could not publish settings. Please try again.");
     }
     if (actionData?.logoError) {
       setSaveError(actionData.logoError);
@@ -235,9 +267,17 @@ export default function ReviewFormCustomizer() {
     }
   }, [actionData, updateConfig]);
 
+  const publishBlocked =
+    widgetUsage != null && widgetUsage.remaining != null && widgetUsage.remaining <= 0;
+  const publishBlockedMessage =
+    widgetUsage?.limit != null
+      ? `You've used all ${widgetUsage.limit} widget publishes this month. Resets on the 1st.`
+      : "Upgrade to Pro for more widget publishes.";
+
   const saveConfig = useCallback(() => {
+    if (publishBlocked) return;
     submit({ config: serializeFormConfig(config) }, { method: "POST" });
-  }, [submit, config]);
+  }, [submit, config, publishBlocked]);
 
   const resetConfig = useCallback(() => {
     resetHistory(mergeFormConfig(defaultFormConfig));
@@ -307,6 +347,15 @@ export default function ReviewFormCustomizer() {
       actionData={actionData}
       onSubmitReview={handleSubmitReview}
       onPreview={handlePreview}
+      publishBlocked={publishBlocked}
+      publishBlockedMessage={
+        !canPublishWidget
+          ? "Publishing widget changes requires a Pro plan. Upgrade in Settings."
+          : widgetUsage?.remaining <= 0
+            ? `You've used all ${widgetUsage?.limit ?? 20} widget publishes this month.`
+            : ""
+      }
+      widgetUsage={widgetUsage}
     />
   );
 }

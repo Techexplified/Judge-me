@@ -15,7 +15,7 @@ import db from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.js";
 import { mergeShopifyEmbedParams } from "../utils/shopify-embed-nav.js";
 import { embedRedirect } from "../utils/shopify-embed-nav.server.js";
-import { hasPremiumAccess, serializeTrialStatus } from "../lib/trial.shared.js";
+import { hasProAccess, serializePlanStatus } from "../lib/billing.server.js";
 import {
   syncProductIndex,
   hasRunProductIndexSync,
@@ -63,7 +63,7 @@ import {
 } from "../components/import-wizard-ui";
 
 export const loader = async ({ request }) => {
-  const { session, admin } = await authenticate.admin(request);
+  const { session, admin, billing } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
   const url = new URL(request.url);
 
@@ -89,9 +89,9 @@ export const loader = async ({ request }) => {
     select: { handle: true, productId: true, sku: true, title: true },
   });
 
-  const { getTrialStatus } = await import("../lib/trial.server.js");
-  const trialStatus = await getTrialStatus(shop);
-  const hasPremium = hasPremiumAccess(trialStatus);
+  const { getShopPlanStatus } = await import("../lib/billing.server.js");
+  const planStatus = await getShopPlanStatus(shop, billing);
+  const hasPremium = hasProAccess(planStatus);
   const fingerprintCount = await db.review.count({ where: { shop } });
 
   const settingsRow = await db.settings.findUnique({ where: { shop } });
@@ -109,7 +109,8 @@ export const loader = async ({ request }) => {
     shop,
     productIndexCount: productIndexRows.length,
     hasPremium,
-    trialStatus: serializeTrialStatus(trialStatus),
+    planStatus: serializePlanStatus(planStatus),
+    trialStatus: serializePlanStatus(planStatus),
     fingerprintCount,
     defaultAutoTranslateImport: translation.autoTranslateImport,
     translationTargetLabel: languageLabel(translation.targetLanguage),
@@ -117,11 +118,12 @@ export const loader = async ({ request }) => {
 };
 
 export const action = async ({ request }) => {
-  const { session, admin } = await authenticate.admin(request);
+  const { session, admin, billing } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
-  const { getTrialStatus } = await import("../lib/trial.server.js");
-  const trialStatus = await getTrialStatus(shop);
-  const hasPremium = hasPremiumAccess(trialStatus);
+  const { getShopPlanStatus, requireFeatureUsage, checkFeatureAccess, consumeFeatureUsage } =
+    await import("../lib/billing.server.js");
+  const planStatus = await getShopPlanStatus(shop, billing);
+  const hasPremium = hasProAccess(planStatus);
 
   const {
     validateRows,
@@ -136,13 +138,6 @@ export const action = async ({ request }) => {
   const formData = await request.formData();
   const intent = formData.get("_intent");
   const payloadRaw = formData.get("payload");
-
-  if (intent === "import" && !hasPremium) {
-    return data(
-      { error: "CSV import requires an active premium trial or paid plan." },
-      { status: 403 },
-    );
-  }
 
   if (!payloadRaw || typeof payloadRaw !== "string") {
     return data({ error: "Missing import payload." }, { status: 400 });
@@ -199,12 +194,18 @@ export const action = async ({ request }) => {
   }
 
   if (intent === "import") {
+    const readyCount = validated.filter((r) => r.ready).length;
+    const importCheck = await checkFeatureAccess(planStatus, "review_imports", readyCount);
+    if (!importCheck.ok) {
+      return data({ error: importCheck.message }, { status: 403 });
+    }
+
     let records = rowsToReviewRecords(validated, shop, importSettings);
 
     if (importSettings.autoTranslate) {
       if (!hasPremium) {
         return data(
-          { error: "Auto-translate requires an active premium trial or paid plan." },
+          { error: "Auto-translate requires a Pro plan. Upgrade in Settings." },
           { status: 403 },
         );
       }
@@ -225,6 +226,11 @@ export const action = async ({ request }) => {
       const translation = getTranslationSettings(config);
       const targetLanguage = translation.targetLanguage;
 
+      const translateUsage = await requireFeatureUsage(planStatus, "auto_translate", records.length);
+      if (!translateUsage.ok) {
+        return data({ error: translateUsage.message }, { status: 403 });
+      }
+
       const { translateImportRecords } = await import("../lib/review-translation.server.js");
       const { records: translatedRecords, error: translateError } = await translateImportRecords(
         records,
@@ -243,6 +249,10 @@ export const action = async ({ request }) => {
       records,
       existingFingerprints,
     );
+
+    if (imported > 0) {
+      await consumeFeatureUsage(shop, "review_imports", imported);
+    }
 
     const totalSkipped = summary.total - imported;
 
@@ -345,8 +355,15 @@ function parseCsvFile(file) {
 }
 
 export default function ImportReviewsPage() {
-  const { hasPremium, trialStatus, productIndexCount, defaultAutoTranslateImport, translationTargetLabel } =
-    useLoaderData();
+  const {
+    hasPremium,
+    planStatus,
+    trialStatus,
+    productIndexCount,
+    defaultAutoTranslateImport,
+    translationTargetLabel,
+  } = useLoaderData();
+  const importsRemaining = planStatus?.featureUsage?.review_imports?.remaining;
   const location = useLocation();
   const navigate = useNavigate();
   const shopify = useAppBridge();
@@ -521,7 +538,14 @@ export default function ImportReviewsPage() {
 
       {!hasPremium ? (
         <div style={{ marginBottom: 16 }}>
-          <PremiumGateBanner feature="import" />
+          <Banner tone="info">
+            Free plan includes {planStatus?.featureUsage?.review_imports?.limit ?? 50} CSV imports
+            per month
+            {planStatus?.featureUsage?.review_imports
+              ? ` (${planStatus.featureUsage.review_imports.remaining} remaining).`
+              : "."}{" "}
+            Auto-translate during import requires Pro.
+          </Banner>
         </div>
       ) : null}
 
@@ -787,7 +811,11 @@ export default function ImportReviewsPage() {
               </SecondaryButton>
               <PrimaryButton
                 onClick={handleImport}
-                disabled={isSubmitting || !previewResult?.summary?.ready || !hasPremium}
+                disabled={
+                  isSubmitting ||
+                  !previewResult?.summary?.ready ||
+                  (!hasPremium && importsRemaining != null && importsRemaining <= 0)
+                }
                 loading={isSubmitting}
               >
                 {isSubmitting ? "Importing…" : "Start Import"}

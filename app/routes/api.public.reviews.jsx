@@ -256,6 +256,30 @@ export async function action({ request }) {
   }
 
   const shopNorm = normalizeShopDomain(shop);
+
+  const { canCreateReview, getShopPlanStatus } = await import("../lib/billing.server.js");
+  const createCheck = await canCreateReview(shopNorm);
+  if (!createCheck.ok) {
+    return new Response(JSON.stringify({ error: createCheck.error }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const planStatus = await getShopPlanStatus(shopNorm);
+  if (mediaFiles.length > 0) {
+    const { mediaKindFromMime } = await import("../lib/review-media.shared.js");
+    const hasVideo = mediaFiles.some((f) => mediaKindFromMime(f.type) === "video");
+    if (hasVideo && !planStatus.hasPro) {
+      return new Response(
+        JSON.stringify({ error: "Video reviews require a Pro plan." }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+  }
   const pid =
     normalizeShopifyProductId(productId) || String(productId).trim();
 

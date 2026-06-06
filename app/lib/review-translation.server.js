@@ -1,6 +1,6 @@
 import db from "../db.server.js";
 import { getResolvedOpenRouterKey } from "./openrouter.server.js";
-import { hasPremiumAccess, getTrialStatus } from "./trial.server.js";
+import { hasProAccess, getShopPlanStatus } from "./billing.server.js";
 import {
   AUTO_DETECT,
   languageLabel,
@@ -533,6 +533,12 @@ export async function maybeAutoTranslateReviewData(shop, reviewData) {
     return { data: reviewData, error: null };
   }
 
+  const { requireFeatureUsage } = await import("./usage.server.js");
+  const usageCheck = await requireFeatureUsage(ctx.planStatus, "auto_translate");
+  if (!usageCheck.ok) {
+    return { data: reviewData, error: usageCheck.message };
+  }
+
   const { data, error } = await translateNewReviewData(
     reviewData,
     ctx.translation.targetLanguage,
@@ -544,8 +550,8 @@ export async function maybeAutoTranslateReviewData(shop, reviewData) {
 
 /** Load settings + verify premium for translation features. */
 export async function getActiveTranslationContext(shop) {
-  const trialStatus = await getTrialStatus(shop);
-  const premium = hasPremiumAccess(trialStatus);
+  const planStatus = await getShopPlanStatus(shop);
+  const premium = hasProAccess(planStatus);
   const apiKey = premium ? getResolvedOpenRouterKey() : null;
 
   const settingsRow = await db.settings.findUnique({ where: { shop } });
@@ -563,7 +569,8 @@ export async function getActiveTranslationContext(shop) {
   const canTranslate = premium && Boolean(apiKey);
 
   return {
-    trialStatus,
+    trialStatus: planStatus,
+    planStatus,
     premium,
     apiKey,
     translation,

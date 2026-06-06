@@ -241,3 +241,30 @@ ${JSON.stringify(sample)}`;
 
   return { playbook: { summary, sections } };
 }
+
+/**
+ * @param {{ apiKey: string, review: { rating: number, comment: string, title?: string|null, author?: string|null, productName?: string|null }, existingReply?: string|null }} opts
+ */
+export async function generateReviewReply({ apiKey, review, existingReply = null }) {
+  const userContent = `You are a helpful e-commerce merchant writing a public reply to a customer product review.
+Write a professional, warm, and concise reply (2-4 sentences). Address specific points from the review.
+Do not use markdown. Do not include placeholders. Sign off naturally as the store team.
+
+Product: ${review.productName || "Product"}
+Customer: ${review.author || "Customer"}
+Rating: ${review.rating}/5
+Review title: ${review.title || "(none)"}
+Review: ${truncate(review.comment, 600)}
+${existingReply ? `Current draft reply (improve if present): ${truncate(existingReply, 400)}` : ""}
+
+Return ONLY valid JSON: {"reply":"your reply text"}`;
+
+  const out = await openRouterChat({ apiKey, userContent, temperature: 0.45 });
+  if (out.error) return { error: out.error };
+
+  const parsed = extractJsonObject(out.content);
+  const reply = String(parsed?.reply || out.content || "").trim();
+  if (!reply) return { error: "Empty reply from AI" };
+
+  return { reply };
+}

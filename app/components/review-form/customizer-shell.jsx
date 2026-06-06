@@ -23,6 +23,9 @@ export function CustomizerShell({
   actionData,
   onSubmitReview,
   onPreview,
+  publishBlocked = false,
+  publishBlockedMessage = "",
+  widgetUsage = null,
 }) {
   return (
     <div
@@ -69,10 +72,16 @@ export function CustomizerShell({
             <Eye size={15} />
             Preview
           </button>
+          {widgetUsage ? (
+            <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>
+              {widgetUsage.remaining}/{widgetUsage.limit} publishes left
+            </span>
+          ) : null}
           <button
             type="button"
             onClick={onSave}
-            disabled={isSaving}
+            disabled={isSaving || publishBlocked}
+            title={publishBlocked ? publishBlockedMessage : undefined}
             style={{
               display: "flex",
               alignItems: "center",
@@ -80,11 +89,11 @@ export function CustomizerShell({
               padding: "10px 18px",
               borderRadius: 10,
               border: "none",
-              background: showPublishToast ? "#16a34a" : TOKENS.green,
+              background: showPublishToast ? "#16a34a" : publishBlocked ? "#94a3b8" : TOKENS.green,
               color: "#fff",
               fontWeight: 700,
               fontSize: 13,
-              cursor: isSaving ? "wait" : "pointer",
+              cursor: isSaving ? "wait" : publishBlocked ? "not-allowed" : "pointer",
               fontFamily: UI_FONT,
             }}
           >
@@ -117,6 +126,21 @@ export function CustomizerShell({
           }}
         >
           Published — your form is live on the storefront (refresh product pages to see changes).
+        </div>
+      ) : null}
+      {publishBlocked && publishBlockedMessage && !saveError ? (
+        <div
+          style={{
+            padding: "10px 24px",
+            background: "#fffbeb",
+            color: "#92400e",
+            fontSize: 13,
+            fontWeight: 600,
+            borderBottom: "1px solid #fde68a",
+            fontFamily: UI_FONT,
+          }}
+        >
+          {publishBlockedMessage}
         </div>
       ) : null}
       {saveError ? (

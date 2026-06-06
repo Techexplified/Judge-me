@@ -10,7 +10,12 @@ import {
 } from "../utils/dashboard-metrics.server.js";
 import { getResolvedOpenRouterKey, generatePlaybook } from "../lib/openrouter.server";
 import { renderDashboardReportPdf } from "../utils/dashboard-pdf.server.js";
-import { getTrialStatus, hasPremiumAccess } from "../lib/trial.server";
+import {
+  getShopPlanStatus,
+  hasProAccess,
+  requireFeatureUsage,
+  formatProRequiredMessage,
+} from "../lib/billing.server.js";
 import { getGroupShopList } from "../lib/store-group.server";
 
 export const loader = async ({ request }) => {
@@ -20,6 +25,16 @@ export const loader = async ({ request }) => {
   const url = new URL(request.url);
   const rangeKey = parseDashboardRange(url.searchParams);
   const includePlaybook = url.searchParams.get("includePlaybook") !== "0";
+
+  const planStatus = await getShopPlanStatus(shop);
+  if (!hasProAccess(planStatus)) {
+    return new Response(formatProRequiredMessage("export_pdf_csv"), { status: 403 });
+  }
+
+  const exportUsage = await requireFeatureUsage(planStatus, "export_pdf_csv");
+  if (!exportUsage.ok) {
+    return new Response(exportUsage.message, { status: 403 });
+  }
 
   const settingsRow = await db.settings.findUnique({ where: { shop } });
   let storedConfig = {};
@@ -31,8 +46,7 @@ export const loader = async ({ request }) => {
     }
   }
 
-  const trialStatus = await getTrialStatus(shop);
-  const openRouterKey = hasPremiumAccess(trialStatus) ? getResolvedOpenRouterKey() : null;
+  const openRouterKey = getResolvedOpenRouterKey();
 
   const targetShops = await getGroupShopList(shop);
   const reviewsAll = await db.review.findMany({
@@ -65,6 +79,11 @@ export const loader = async ({ request }) => {
 
   let playbook = null;
   if (includePlaybook && scopedReviews.length > 0 && openRouterKey) {
+    const playbookUsage = await requireFeatureUsage(planStatus, "ai_insights_playbook");
+    if (!playbookUsage.ok) {
+      return new Response(playbookUsage.message, { status: 403 });
+    }
+
     const pbCached = storedConfig.aiPlaybookCache;
     if (pbCached?.fingerprint === playbookPrintFingerprint && pbCached?.playbook) {
       playbook = pbCached.playbook;
@@ -125,5 +144,3 @@ export const loader = async ({ request }) => {
 };
 
 // No default export — this is a resource route.
-// React Router sends the loader Response (PDF) directly to the browser
-// without wrapping it in an HTML document.

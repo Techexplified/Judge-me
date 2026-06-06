@@ -21,7 +21,11 @@ import {
   rangeStartFromKey,
   playbookFingerprint,
 } from "../utils/dashboard-metrics.server.js";
-import { hasPremiumAccess, serializeTrialStatus } from "../lib/trial.shared.js";
+import {
+  hasProAccess,
+  serializePlanStatus,
+  requireFeatureUsage,
+} from "../lib/billing.server.js";
 import { REVIEW_LIST_SELECT } from "../lib/review-query.shared.js";
 import { PremiumTrialBanner } from "../components/premium-trial-banner";
 import { KpiCard } from "../components/analytics/kpi-card.jsx";
@@ -98,11 +102,12 @@ export async function action({ request }) {
   const intent = fd.get("_intent");
 
   if (intent === "aiPlaybook") {
-    const { getTrialStatus } = await import("../lib/trial.server.js");
+    const { getShopPlanStatus } = await import("../lib/billing.server.js");
     const { getResolvedOpenRouterKey, generatePlaybook } = await import("../lib/openrouter.server.js");
-    const trialStatus = await getTrialStatus(shop);
-    if (!hasPremiumAccess(trialStatus)) {
-      return { playbookError: "Your 7-day AI trial has ended. Upgrade to unlock AI insights & playbooks." };
+    const planStatus = await getShopPlanStatus(shop);
+    const usageCheck = await requireFeatureUsage(planStatus, "ai_insights_playbook");
+    if (!usageCheck.ok) {
+      return { playbookError: usageCheck.message || "Upgrade to Pro to unlock AI insights & playbooks." };
     }
 
     const apiKey = getResolvedOpenRouterKey();
@@ -169,12 +174,13 @@ export async function action({ request }) {
   }
 
   if (intent === "aiDigest") {
-    const { getTrialStatus } = await import("../lib/trial.server.js");
+    const { getShopPlanStatus } = await import("../lib/billing.server.js");
     const { getResolvedOpenRouterKey, generateReviewDigest } = await import("../lib/openrouter.server.js");
     const { getGroupShopList } = await import("../lib/store-group.server.js");
-    const trialStatus = await getTrialStatus(shop);
-    if (!hasPremiumAccess(trialStatus)) {
-      return { aiError: "Your 7-day AI trial has ended. Upgrade to unlock AI insights." };
+    const planStatus = await getShopPlanStatus(shop);
+    const usageCheck = await requireFeatureUsage(planStatus, "ai_dashboard_overview");
+    if (!usageCheck.ok) {
+      return { aiError: usageCheck.message || "Upgrade to Pro to unlock AI insights." };
     }
 
     const apiKey = getResolvedOpenRouterKey();
@@ -301,11 +307,11 @@ export async function action({ request }) {
   }
 
   if (intent === "translationQuickToggle") {
-    const { getTrialStatus } = await import("../lib/trial.server.js");
+    const { getShopPlanStatus } = await import("../lib/billing.server.js");
     const { getResolvedOpenRouterKey } = await import("../lib/openrouter.server.js");
-    const trialStatus = await getTrialStatus(shop);
-    if (!hasPremiumAccess(trialStatus)) {
-      return { translationError: "Premium is required for review translation." };
+    const planStatus = await getShopPlanStatus(shop);
+    if (!hasProAccess(planStatus)) {
+      return { translationError: "Pro plan is required for review translation." };
     }
     const apiKey = getResolvedOpenRouterKey();
     if (!apiKey) {
@@ -333,19 +339,45 @@ export async function action({ request }) {
     return { translation: getTranslationSettings(nextConfig) };
   }
 
+  if (intent === "openAnalyticsChart") {
+    const { getShopPlanStatus } = await import("../lib/billing.server.js");
+    const planStatus = await getShopPlanStatus(shop);
+    const usageCheck = await requireFeatureUsage(planStatus, "live_graphs_charts");
+    if (!usageCheck.ok) {
+      return { ok: false, chartError: usageCheck.message };
+    }
+    return { ok: true, intent: "openAnalyticsChart" };
+  }
+
+  if (intent === "trackUrgentReply") {
+    const { getShopPlanStatus } = await import("../lib/billing.server.js");
+    const planStatus = await getShopPlanStatus(shop);
+    const usageCheck = await requireFeatureUsage(planStatus, "urgent_reply_prioritization");
+    if (!usageCheck.ok) {
+      return { ok: false, urgentError: usageCheck.message };
+    }
+    return { ok: true, intent: "trackUrgentReply" };
+  }
+
   return {};
 }
 
 export function shouldRevalidate({ formData, defaultShouldRevalidate }) {
   const intent = formData?.get("_intent");
-  if (intent === "translationQuickToggle" || intent === "aiPlaybook" || intent === "aiDigest") {
+  if (
+    intent === "translationQuickToggle" ||
+    intent === "aiPlaybook" ||
+    intent === "aiDigest" ||
+    intent === "openAnalyticsChart" ||
+    intent === "trackUrgentReply"
+  ) {
     return false;
   }
   return defaultShouldRevalidate;
 }
 
 export const loader = async ({ request }) => {
-  const { session, admin } = await authenticate.admin(request);
+  const { session, admin, billing } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
 
   const settingsRow = await db.settings.findUnique({ where: { shop } });
@@ -381,11 +413,11 @@ export const loader = async ({ request }) => {
     console.error("[product-index] check failed:", indexErr);
   }
 
-  const { getTrialStatus } = await import("../lib/trial.server.js");
+  const { getShopPlanStatus } = await import("../lib/billing.server.js");
   const { getResolvedOpenRouterKey } = await import("../lib/openrouter.server.js");
-  const trialStatus = await getTrialStatus(shop);
+  const planStatus = await getShopPlanStatus(shop, billing);
 
-  const openRouterKey = hasPremiumAccess(trialStatus) ? getResolvedOpenRouterKey() : null;
+  const openRouterKey = hasProAccess(planStatus) ? getResolvedOpenRouterKey() : null;
   const aiEnabled = Boolean(openRouterKey);
 
   const url = new URL(request.url);
@@ -420,7 +452,7 @@ export const loader = async ({ request }) => {
     rangeKey,
   });
 
-  const analyticsDetail = hasPremiumAccess(trialStatus)
+  const analyticsDetail = hasProAccess(planStatus)
     ? computeAnalyticsDetail({
         scopedReviews,
         reviewsAll,
@@ -465,13 +497,14 @@ export const loader = async ({ request }) => {
     rangeKey,
     metricsRangeLabel: rangeLabel(rangeKey),
     shop,
-    trialStatus: serializeTrialStatus(trialStatus),
+    planStatus: serializePlanStatus(planStatus),
+    trialStatus: serializePlanStatus(planStatus),
     translationSummary: {
       ...translation,
       shopReviewTotal,
       translatedCount,
       pendingCount: Math.max(0, shopReviewTotal - translatedCount),
-      aiAvailable: hasPremiumAccess(trialStatus) && Boolean(openRouterKey),
+      aiAvailable: hasProAccess(planStatus) && Boolean(openRouterKey),
       targetLabel: languageLabel(translation.targetLanguage),
     },
   };
@@ -566,16 +599,22 @@ async function savePdfBlobToDisk(blob, filename, shopify) {
   notifyExport(shopify, "PDF download started.");
 }
 
-function ExportPdfLink({ rangeKey, disabled }) {
+async function readExportErrorMessage(res, fallback) {
+  try {
+    const text = await res.text();
+    return text?.trim() || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function ExportDownloadLink({ rangeKey, disabled, disabledLabel, exportPath, fileKind, defaultFilename }) {
   const { search } = useLocation();
   const shopify = useAppBridge();
   const [busy, setBusy] = useState(false);
   const [exportError, setExportError] = useState(null);
 
-  const path = mergeShopifyEmbedParams(
-    `/app/export-report?range=${encodeURIComponent(rangeKey)}&includePlaybook=1`,
-    search,
-  );
+  const path = mergeShopifyEmbedParams(exportPath, search);
 
   if (disabled) {
     return (
@@ -587,8 +626,9 @@ function ExportPdfLink({ rangeKey, disabled }) {
           pointerEvents: "none",
         }}
         aria-disabled="true"
+        title={disabledLabel}
       >
-        <Download size={14} /> Export PDF
+        <Download size={14} /> {disabledLabel || `Export ${fileKind}`}
       </span>
     );
   }
@@ -616,10 +656,12 @@ function ExportPdfLink({ rangeKey, disabled }) {
               });
 
               if (!res.ok) {
-                const msg =
+                const msg = await readExportErrorMessage(
+                  res,
                   res.status === 401 || res.status === 403
-                    ? "Could not authorize PDF export. Reload the app and try again."
-                    : `Export failed (${res.status}). Try again.`;
+                    ? `Could not authorize ${fileKind} export. Reload the app and try again.`
+                    : `Export failed (${res.status}). Try again.`,
+                );
                 setExportError(msg);
                 notifyExport(shopify, msg, true);
                 return;
@@ -627,24 +669,39 @@ function ExportPdfLink({ rangeKey, disabled }) {
 
               const blob = await res.blob();
               const contentType = (res.headers.get("Content-Type") || "").toLowerCase();
-              const looksPdf =
-                contentType.includes("application/pdf") || (await blobLooksLikePdf(blob));
 
-              if (!looksPdf) {
-                const msg = "Server did not return a PDF (try reloading the app).";
-                setExportError(msg);
-                notifyExport(shopify, msg, true);
-                return;
+              if (fileKind === "PDF") {
+                const looksPdf =
+                  contentType.includes("application/pdf") || (await blobLooksLikePdf(blob));
+                if (!looksPdf) {
+                  const msg = "Server did not return a PDF (try reloading the app).";
+                  setExportError(msg);
+                  notifyExport(shopify, msg, true);
+                  return;
+                }
               }
 
               const filename =
                 parseFilenameFromContentDisposition(res.headers.get("Content-Disposition")) ||
-                `review-report-${rangeKey}.pdf`;
+                defaultFilename;
 
-              await savePdfBlobToDisk(blob, filename, shopify);
+              if (fileKind === "PDF") {
+                await savePdfBlobToDisk(blob, filename, shopify);
+              } else {
+                const objectUrl = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = objectUrl;
+                a.download = filename;
+                a.rel = "noopener";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                scheduleRevokeObjectURL(objectUrl);
+                notifyExport(shopify, "CSV download started.");
+              }
             } catch (err) {
               const message =
-                err instanceof Error ? err.message : "Could not download the PDF.";
+                err instanceof Error ? err.message : `Could not download the ${fileKind}.`;
               setExportError(message);
               notifyExport(shopify, message, true);
             } finally {
@@ -659,7 +716,7 @@ function ExportPdfLink({ rangeKey, disabled }) {
           ...(busy ? { opacity: 0.75, cursor: "wait" } : {}),
         }}
       >
-        <Download size={14} /> {busy ? "Exporting…" : "Export PDF"}
+        <Download size={14} /> {busy ? "Exporting…" : `Export ${fileKind}`}
       </button>
       {exportError ? (
         <span style={{ fontSize: 12, color: "#b91c1c", maxWidth: 280, textAlign: "right" }} role="alert">
@@ -692,8 +749,12 @@ export default function Dashboard() {
   const playbookFetcher = useFetcher();
   const translationFetcher = useFetcher();
   const aiDigestFetcher = useFetcher();
+  const chartFetcher = useFetcher();
+  const urgentFetcher = useFetcher();
   const [playbookOpen, setPlaybookOpen] = useState(false);
   const [analyticsView, setAnalyticsView] = useState(null);
+  const [pendingChartView, setPendingChartView] = useState(null);
+  const [pendingUrgentNav, setPendingUrgentNav] = useState(null);
   const [sentimentFilter, setSentimentFilter] = useState(null);
   const [showUpgradeTeaser, setShowUpgradeTeaser] = useState(false);
   const [teaserView, setTeaserView] = useState("volume");
@@ -702,10 +763,45 @@ export default function Dashboard() {
   const [sortDir, setSortDir] = useState("desc");
 
   const premium = trialStatus?.hasPremium;
+  const featureUsage = trialStatus?.featureUsage ?? {};
+  const exportQuota = featureUsage.export_pdf_csv;
+  const playbookQuota = featureUsage.ai_insights_playbook;
+  const chartsQuota = featureUsage.live_graphs_charts;
+  const urgentQuota = featureUsage.urgent_reply_prioritization;
+
   const openAnalytics = (view, sentiment = null) => {
-    setSentimentFilter(sentiment);
-    setAnalyticsView(view);
+    if (!premium) {
+      setTeaserView(view);
+      setShowUpgradeTeaser(true);
+      return;
+    }
+    if (chartsQuota && chartsQuota.remaining <= 0) {
+      return;
+    }
+    setPendingChartView({ view, sentiment });
+    chartFetcher.submit({ _intent: "openAnalyticsChart" }, { method: "post" });
   };
+
+  useEffect(() => {
+    if (chartFetcher.state !== "idle" || !pendingChartView) return;
+    if (chartFetcher.data?.ok) {
+      setSentimentFilter(pendingChartView.sentiment);
+      setAnalyticsView(pendingChartView.view);
+      setPendingChartView(null);
+    } else if (chartFetcher.data?.chartError) {
+      setPendingChartView(null);
+    }
+  }, [chartFetcher.state, chartFetcher.data, pendingChartView]);
+
+  useEffect(() => {
+    if (urgentFetcher.state !== "idle" || !pendingUrgentNav) return;
+    if (urgentFetcher.data?.ok) {
+      window.location.assign(pendingUrgentNav);
+      setPendingUrgentNav(null);
+    } else if (urgentFetcher.data?.urgentError) {
+      setPendingUrgentNav(null);
+    }
+  }, [urgentFetcher.state, urgentFetcher.data, pendingUrgentNav]);
   const openUpgradeTeaser = (view) => {
     setTeaserView(view);
     setShowUpgradeTeaser(true);
@@ -761,11 +857,19 @@ export default function Dashboard() {
   }, [products, tableSearch, sortKey, sortDir]);
 
   const runPlaybook = () => {
+    if (playbookQuota && playbookQuota.remaining <= 0) return;
     setPlaybookOpen(true);
     playbookFetcher.submit(
       { _intent: "aiPlaybook", range: rangeKey },
       { method: "post" },
     );
+  };
+
+  const handleUrgentRespond = (href) => {
+    if (!premium) return;
+    if (urgentQuota && urgentQuota.remaining <= 0) return;
+    setPendingUrgentNav(href);
+    urgentFetcher.submit({ _intent: "trackUrgentReply" }, { method: "post" });
   };
 
   const closePlaybook = () => {
@@ -806,7 +910,34 @@ export default function Dashboard() {
               <option value="all">All time</option>
             </select>
           </label>
-          <ExportPdfLink rangeKey={rangeKey} disabled={totalReviews === 0} />
+          <ExportDownloadLink
+            rangeKey={rangeKey}
+            disabled={totalReviews === 0 || !premium || (exportQuota && exportQuota.remaining <= 0)}
+            disabledLabel={
+              !premium
+                ? "Export PDF (Pro)"
+                : exportQuota && exportQuota.remaining <= 0
+                  ? "PDF limit reached"
+                  : "Export PDF"
+            }
+            exportPath={`/app/export-report?range=${encodeURIComponent(rangeKey)}&includePlaybook=1`}
+            fileKind="PDF"
+            defaultFilename={`review-report-${rangeKey}.pdf`}
+          />
+          <ExportDownloadLink
+            rangeKey={rangeKey}
+            disabled={totalReviews === 0 || !premium || (exportQuota && exportQuota.remaining <= 0)}
+            disabledLabel={
+              !premium
+                ? "Export CSV (Pro)"
+                : exportQuota && exportQuota.remaining <= 0
+                  ? "CSV limit reached"
+                  : "Export CSV"
+            }
+            exportPath={`/app/export-reviews-csv?range=${encodeURIComponent(rangeKey)}`}
+            fileKind="CSV"
+            defaultFilename={`reviews-export-${rangeKey}.csv`}
+          />
         </div>
       </div>
 
@@ -1011,7 +1142,7 @@ export default function Dashboard() {
           <div style={s.asideStack}>
             {!trialStatus.hasPremium ? (
               <div style={s.aiErrorCard}>
-                <p style={s.aiErrorTitle}>AI trial ended</p>
+                <p style={s.aiErrorTitle}>Pro plan required</p>
                 <p style={s.aiErrorBody}>
                   AI-powered insights, interactive analytics, playbooks, and analysis require an upgrade.
                   Reviews, widgets, and the editor continue to work.
@@ -1034,9 +1165,24 @@ export default function Dashboard() {
                 <TopInsightCard
                   panel={resolvedAiPanel}
                   onViewFullAnalysis={runPlaybook}
-                  disabled={playbookBusy}
+                  disabled={playbookBusy || (playbookQuota && playbookQuota.remaining <= 0)}
+                  quotaHint={
+                    playbookQuota
+                      ? `${playbookQuota.remaining}/${playbookQuota.limit} playbooks left`
+                      : null
+                  }
                 />
-                <UrgentCard panel={resolvedAiPanel} urgentNeedsCount={urgentNeedsCount} />
+                <UrgentCard
+                  panel={resolvedAiPanel}
+                  urgentNeedsCount={urgentNeedsCount}
+                  onRespondNow={handleUrgentRespond}
+                  disabled={urgentFetcher.state !== "idle" || (urgentQuota && urgentQuota.remaining <= 0)}
+                  quotaHint={
+                    urgentQuota
+                      ? `${urgentQuota.remaining}/${urgentQuota.limit} prioritised replies left`
+                      : null
+                  }
+                />
                 <SpotlightCard panel={resolvedAiPanel} />
               </>
             ) : (
@@ -1094,7 +1240,7 @@ function tagStyle(trend) {
   return { background: "#f6f6f7", color: "#5c5f62", borderColor: "#e1e3e5" };
 }
 
-function TopInsightCard({ panel, onViewFullAnalysis, disabled }) {
+function TopInsightCard({ panel, onViewFullAnalysis, disabled, quotaHint }) {
   const headline = panel.topInsight?.headline || "";
   const tags = panel.topInsight?.tags || [];
   return (
@@ -1117,24 +1263,27 @@ function TopInsightCard({ panel, onViewFullAnalysis, disabled }) {
         ))}
       </div>
       <div style={s.aiTopDivider} />
+      {quotaHint ? (
+        <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6d7175" }}>{quotaHint}</p>
+      ) : null}
       <button
         type="button"
         style={{
           ...s.aiTopLink,
           opacity: disabled ? 0.65 : 1,
-          cursor: disabled ? "wait" : "pointer",
+          cursor: disabled ? "not-allowed" : "pointer",
         }}
         onClick={onViewFullAnalysis}
         disabled={disabled}
       >
         <Lightbulb size={15} color="#008060" />
-        {disabled ? "Opening playbook…" : "View full analysis"}
+        {disabled ? "Playbook unavailable" : "View full analysis"}
       </button>
     </div>
   );
 }
 
-function UrgentCard({ panel, urgentNeedsCount }) {
+function UrgentCard({ panel, urgentNeedsCount, onRespondNow, disabled, quotaHint }) {
   const { search } = useLocation();
   const snippets = panel.urgent.snippets || [];
   const headline =
@@ -1166,10 +1315,24 @@ function UrgentCard({ panel, urgentNeedsCount }) {
           ))
         )}
       </div>
-      <Link to={mergeShopifyEmbedParams("/app/reviews", search)} style={s.aiUrgentCta}>
+      {quotaHint ? (
+        <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 600, color: "#6d7175" }}>{quotaHint}</p>
+      ) : null}
+      <button
+        type="button"
+        onClick={() => onRespondNow?.(mergeShopifyEmbedParams("/app/reviews?mode=reply", search))}
+        disabled={disabled}
+        style={{
+          ...s.aiUrgentCta,
+          border: "none",
+          fontFamily: "inherit",
+          cursor: disabled ? "not-allowed" : "pointer",
+          opacity: disabled ? 0.65 : 1,
+        }}
+      >
         <MessageCircle size={18} color="#fff" />
         Respond now
-      </Link>
+      </button>
     </div>
   );
 }

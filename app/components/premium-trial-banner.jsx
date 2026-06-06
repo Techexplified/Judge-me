@@ -1,6 +1,10 @@
 /* eslint-disable react/prop-types */
+import { Link, useLocation } from "react-router";
 import { AlertTriangle, Sparkles } from "lucide-react";
 import { SHOPIFY_GREEN } from "./admin-ui";
+import { mergeShopifyEmbedParams } from "../utils/shopify-embed-nav.js";
+import { FEATURE_LABELS } from "../lib/usage.shared.js";
+import { PRO_PRICE_USD } from "../lib/trial.shared.js";
 
 const CRITICAL_RED = "#d72c0d";
 
@@ -89,6 +93,14 @@ const styles = {
     border: "1px solid #fed3d1",
     color: "#8e1f0b",
   },
+  upgradeLink: {
+    display: "inline-block",
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: 800,
+    color: SHOPIFY_GREEN,
+    textDecoration: "none",
+  },
 };
 
 function daysLabel(days) {
@@ -96,16 +108,23 @@ function daysLabel(days) {
   return `${days} days left`;
 }
 
+function useSettingsHref() {
+  const location = useLocation();
+  return mergeShopifyEmbedParams("/app/settings", location.search);
+}
+
 /** Compact pill for page header (import, translation, etc.) */
-export function PremiumTrialBadge({ trialStatus }) {
-  if (!trialStatus) return null;
+export function PremiumTrialBadge({ trialStatus, planStatus }) {
+  const status = planStatus ?? trialStatus;
+  if (!status) return null;
 
-  const { isActive, daysRemaining, planStatus, hasPremium } = trialStatus;
-  const days = daysRemaining ?? 0;
+  const hasPro = status.hasPro ?? status.hasPremium;
+  const inTrial = status.isInTrial === true;
+  const days = inTrial ? (status.trialDaysRemaining ?? status.daysRemaining ?? 0) : 0;
 
-  if (planStatus === "active") {
+  if (hasPro) {
     return (
-      <span style={{ ...styles.pill, ...styles.pillPro }}>
+      <span style={{ ...styles.pill, ...(inTrial ? styles.pillActive : styles.pillPro) }}>
         <span
           style={{
             width: 7,
@@ -115,38 +134,46 @@ export function PremiumTrialBadge({ trialStatus }) {
             flexShrink: 0,
           }}
         />
-        Premium active
-      </span>
-    );
-  }
-
-  if (!hasPremium && !isActive) {
-    return (
-      <span style={{ ...styles.pill, ...styles.pillExpired }}>
-        <AlertTriangle size={14} />
-        Trial ended
+        {inTrial && days > 0 ? `Pro trial · ${days}d` : "Pro active"}
       </span>
     );
   }
 
   return (
-    <span style={{ ...styles.pill, ...styles.pillActive }}>
-      <Sparkles size={14} />
-      {daysLabel(days)}
+    <span style={{ ...styles.pill, ...styles.pillExpired }}>
+      <AlertTriangle size={14} />
+      Free plan
     </span>
   );
 }
 
-/** Dashboard sidebar card — AI features only */
-export function PremiumTrialBanner({ trialStatus }) {
-  if (!trialStatus) return null;
+/** Dashboard sidebar card */
+export function PremiumTrialBanner({ trialStatus, planStatus }) {
+  const settingsHref = useSettingsHref();
+  const status = planStatus ?? trialStatus;
+  if (!status) return null;
 
-  const { isActive, daysRemaining, planStatus, hasPremium } = trialStatus;
-  const days = daysRemaining ?? 0;
+  const hasPro = status.hasPro ?? status.hasPremium;
+  const inTrial = status.isInTrial === true;
+  const days = inTrial ? (status.trialDaysRemaining ?? status.daysRemaining ?? 0) : 0;
+  const reviewsRemaining = status.reviewsRemaining;
+  const trialEndsLabel =
+    inTrial && status.billingTrialEndsAt
+      ? new Date(status.billingTrialEndsAt).toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : null;
 
-  if (planStatus === "active") {
+  if (hasPro) {
+    const usage = status.featureUsage ?? {};
+    const lowQuota = Object.entries(usage).filter(
+      ([, v]) => v && v.limit > 0 && v.remaining <= Math.max(1, Math.ceil(v.limit * 0.2)),
+    );
+
     return (
-      <div style={styles.proCard}>
+      <div style={inTrial ? styles.activeCard : styles.proCard}>
         <div style={styles.head}>
           <span
             style={{
@@ -157,52 +184,54 @@ export function PremiumTrialBanner({ trialStatus }) {
               flexShrink: 0,
             }}
           />
-          <span style={styles.headText}>AI Pro — Active</span>
+          <span style={styles.headText}>{inTrial ? "Pro — Free trial" : "Pro — Active"}</span>
+          {inTrial && days > 0 ? (
+            <span style={styles.badge}>{daysLabel(days)} trial</span>
+          ) : null}
         </div>
-        <p style={styles.subtext}>AI insights, playbooks, interactive analytics & analysis are enabled.</p>
-      </div>
-    );
-  }
-
-  if (!hasPremium && !isActive) {
-    return (
-      <div style={styles.expiredCard}>
-        <div style={styles.head}>
-          <AlertTriangle size={16} color={CRITICAL_RED} />
-          <span style={{ ...styles.headText, color: "#8e1f0b" }}>AI trial ended</span>
-        </div>
-        <p style={{ ...styles.subtext, color: "#8e1f0b" }}>
-          Your 7-day trial has ended. Reviews, widgets & moderation stay free — AI insights,
-          interactive analytics & playbooks require an upgrade.
+        <p style={styles.subtext}>
+          {inTrial
+            ? `No charge until${trialEndsLabel ? ` ${trialEndsLabel}` : " your trial ends"}. Then $${PRO_PRICE_USD}/month via Shopify.`
+            : `Billed $${PRO_PRICE_USD}/month via Shopify.`}{" "}
+          Metered AI features reset on the 1st of each month. Unlimited reviews included.
         </p>
+        {lowQuota.length > 0 ? (
+          <p style={{ ...styles.subtext, marginTop: 8, color: "#92400e" }}>
+            Low quota:{" "}
+            {lowQuota
+              .slice(0, 3)
+              .map(([key, v]) => `${FEATURE_LABELS[key] || key} (${v.remaining}/${v.limit})`)
+              .join(" · ")}
+          </p>
+        ) : null}
+        <Link to={settingsHref} style={styles.upgradeLink}>
+          View usage in Settings →
+        </Link>
       </div>
     );
   }
 
   return (
-    <div style={styles.activeCard}>
+    <div style={styles.expiredCard}>
       <div style={styles.head}>
-        <Sparkles size={16} color={SHOPIFY_GREEN} />
-        <span style={styles.headText}>AI trial</span>
-        <span style={styles.badge}>{daysLabel(days)}</span>
+        <AlertTriangle size={16} color={CRITICAL_RED} />
+        <span style={{ ...styles.headText, color: "#8e1f0b" }}>Free plan</span>
       </div>
-      <p style={styles.subtext}>
-        AI insights, playbooks, interactive analytics & analysis are active. Core review features
-        remain free after the trial.
+      <p style={{ ...styles.subtext, color: "#8e1f0b" }}>
+        {reviewsRemaining != null
+          ? `${reviewsRemaining} reviews left this month. `
+          : ""}
+        Upgrade to Pro for unlimited reviews, photo/video, AI & analytics.
       </p>
-      <div style={styles.barTrack}>
-        <div
-          style={{
-            ...styles.barFill,
-            width: `${Math.max(5, (days / 7) * 100)}%`,
-          }}
-        />
-      </div>
+      <Link to={settingsHref} style={styles.upgradeLink}>
+        Upgrade to Pro →
+      </Link>
     </div>
   );
 }
 
 export function PremiumGateBanner({ feature = "feature" }) {
+  const settingsHref = useSettingsHref();
   const label =
     feature === "import"
       ? "CSV import"
@@ -210,18 +239,22 @@ export function PremiumGateBanner({ feature = "feature" }) {
         ? "Review translation"
         : feature === "analytics"
           ? "Interactive analytics"
-          : "This feature";
+          : feature === "media"
+            ? "Photo & video reviews"
+            : "This feature";
 
   return (
     <div style={styles.expiredCard}>
       <div style={styles.head}>
         <AlertTriangle size={16} color={CRITICAL_RED} />
-        <span style={{ ...styles.headText, color: "#8e1f0b" }}>Premium feature</span>
+        <span style={{ ...styles.headText, color: "#8e1f0b" }}>Pro feature</span>
       </div>
       <p style={{ ...styles.subtext, color: "#8e1f0b" }}>
-        {label} requires an active premium trial or paid plan. Your core review tools remain
-        available.
+        {label} requires a Pro plan. Core review tools remain available on Free.
       </p>
+      <Link to={settingsHref} style={styles.upgradeLink}>
+        Start 14-day free trial →
+      </Link>
     </div>
   );
 }

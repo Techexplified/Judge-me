@@ -20,6 +20,7 @@ import {
   Upload,
   Languages,
   Eye,
+  Sparkles,
 } from "lucide-react";
 import {
   Badge,
@@ -38,7 +39,7 @@ import db from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.js";
 import { getGroupShopList } from "../lib/store-group.server";
 import { getResolvedOpenRouterKey } from "../lib/openrouter.server";
-import { hasPremiumAccess, serializeTrialStatus } from "../lib/trial.shared.js";
+import { hasProAccess, serializePlanStatus } from "../lib/billing.server.js";
 import { REVIEW_LIST_SELECT } from "../lib/review-query.shared.js";
 import {
   languageLabel,
@@ -85,9 +86,9 @@ function resolveProductFromUrlParams(products, productNameRaw, pidRaw) {
 }
 
 export const loader = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+  const { session, billing } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
-  const { getTrialStatus } = await import("../lib/trial.server.js");
+  const { getShopPlanStatus } = await import("../lib/billing.server.js");
   const targetShops = await getGroupShopList(shop);
 
   const reviewsRaw = await db.review.findMany({
@@ -149,8 +150,8 @@ export const loader = async ({ request }) => {
 
   const totalGrowth = calculateGrowth(reviewsThisMonth, reviewsLastMonth);
 
-  const trialStatus = await getTrialStatus(shop);
-  const premium = hasPremiumAccess(trialStatus);
+  const planStatus = await getShopPlanStatus(shop, billing);
+  const premium = hasProAccess(planStatus);
   const settingsRow = await db.settings.findUnique({ where: { shop } });
   let config = {};
   if (settingsRow?.config) {
@@ -168,7 +169,8 @@ export const loader = async ({ request }) => {
     translation,
     premium,
     aiAvailable: premium && Boolean(getResolvedOpenRouterKey()),
-    trialStatus: serializeTrialStatus(trialStatus),
+    planStatus: serializePlanStatus(planStatus),
+    trialStatus: serializePlanStatus(planStatus),
     stats: {
       totalReviews,
       avgRating,
@@ -198,10 +200,11 @@ export const action = async ({ request }) => {
   const translation = getTranslationSettings(config);
 
   if (intent === "translateReview") {
-    const { getTrialStatus } = await import("../lib/trial.server.js");
-    const trialStatus = await getTrialStatus(shop);
-    if (!hasPremiumAccess(trialStatus)) {
-      return { ok: false, error: "Premium is required for review translation." };
+    const { getShopPlanStatus, requireFeatureUsage } = await import("../lib/billing.server.js");
+    const planStatus = await getShopPlanStatus(shop);
+    const usageCheck = await requireFeatureUsage(planStatus, "auto_translate");
+    if (!usageCheck.ok) {
+      return { ok: false, error: usageCheck.message || "Pro plan required for review translation." };
     }
     const apiKey = getResolvedOpenRouterKey();
     if (!apiKey) {
@@ -248,11 +251,63 @@ export const action = async ({ request }) => {
     };
   }
 
+  if (intent === "suggestReply") {
+    const { getShopPlanStatus, requireFeatureUsage } = await import("../lib/billing.server.js");
+    const { generateReviewReply } = await import("../lib/openrouter.server.js");
+    const planStatus = await getShopPlanStatus(shop);
+    const usageCheck = await requireFeatureUsage(planStatus, "ai_review_replies");
+    if (!usageCheck.ok) {
+      return { ok: false, intent: "suggestReply", error: usageCheck.message };
+    }
+
+    const apiKey = getResolvedOpenRouterKey();
+    if (!apiKey) {
+      return { ok: false, intent: "suggestReply", error: "AI service is temporarily unavailable." };
+    }
+
+    if (!reviewId || typeof reviewId !== "string") {
+      return { ok: false, intent: "suggestReply", error: "Missing review." };
+    }
+
+    const targetShops = await getGroupShopList(shop);
+    const existing = await db.review.findFirst({
+      where: { id: reviewId, shop: { in: targetShops } },
+    });
+    if (!existing) {
+      return { ok: false, intent: "suggestReply", error: "Review not found." };
+    }
+
+    const draftReply = formData.get("draftReply");
+    const { reply, error } = await generateReviewReply({
+      apiKey,
+      review: {
+        rating: existing.rating,
+        comment: existing.comment,
+        title: existing.title,
+        author: existing.author,
+        productName: existing.productName,
+      },
+      existingReply: typeof draftReply === "string" ? draftReply : null,
+    });
+
+    if (error) {
+      return { ok: false, intent: "suggestReply", error };
+    }
+
+    return { ok: true, intent: "suggestReply", reviewId, suggestedReply: reply };
+  }
+
   if (intent === "translateReviews") {
-    const { getTrialStatus } = await import("../lib/trial.server.js");
-    const trialStatus = await getTrialStatus(shop);
-    if (!hasPremiumAccess(trialStatus)) {
-      return { ok: false, error: "Premium is required for review translation." };
+    const { getShopPlanStatus, requireFeatureUsage, hasProAccess } = await import(
+      "../lib/billing.server.js"
+    );
+    const planStatus = await getShopPlanStatus(shop);
+    if (!hasProAccess(planStatus)) {
+      return {
+        ok: false,
+        error:
+          "Bulk translation requires Pro. On Free, translate individual reviews while replying (10/month).",
+      };
     }
     const apiKey = getResolvedOpenRouterKey();
     if (!apiKey) {
@@ -266,6 +321,11 @@ export const action = async ({ request }) => {
       .filter(Boolean);
     if (reviewIds.length === 0) {
       return { ok: false, error: "Select at least one review." };
+    }
+
+    const usageCheck = await requireFeatureUsage(planStatus, "auto_translate", reviewIds.length);
+    if (!usageCheck.ok) {
+      return { ok: false, error: usageCheck.message || "Pro plan required for review translation." };
     }
 
     const { translateReviewIds } = await import("../lib/review-translation.server.js");
@@ -318,7 +378,13 @@ export const action = async ({ request }) => {
 
 export function shouldRevalidate({ formData, defaultShouldRevalidate }) {
   const intent = formData?.get("_intent");
-  if (intent === "translateReview" || intent === "translateReviews") return false;
+  if (
+    intent === "translateReview" ||
+    intent === "translateReviews" ||
+    intent === "suggestReply"
+  ) {
+    return false;
+  }
   return defaultShouldRevalidate;
 }
 
@@ -931,8 +997,34 @@ function ReviewDetailCard({
     });
   }, [review]);
 
+  const isSuggesting =
+    fetcher.state === "submitting" &&
+    fetcher.formData?.get("_intent") === "suggestReply";
+
+  const handleSuggestReply = () => {
+    setSaveError(null);
+    fetcher.submit(
+      {
+        _intent: "suggestReply",
+        reviewId: review.id,
+        draftReply: replyText,
+      },
+      { method: "POST" },
+    );
+  };
+
   useEffect(() => {
     if (fetcher.state !== "idle" || !fetcher.data) return;
+    if (fetcher.data.intent === "suggestReply" && fetcher.data.reviewId === review.id) {
+      if (fetcher.data.ok && fetcher.data.suggestedReply) {
+        setReplyText(fetcher.data.suggestedReply);
+        setIsEditing(true);
+        setSaveError(null);
+      } else if (fetcher.data.error) {
+        setSaveError(fetcher.data.error);
+      }
+      return;
+    }
     if (fetcher.data.intent === "translateReview" && fetcher.data.reviewId === review.id) {
       if (fetcher.data.ok && fetcher.data.review) {
         setReviewText({
@@ -979,6 +1071,7 @@ function ReviewDetailCard({
   const hasStoredTranslation = reviewHasTranslation(reviewText);
   const isTranslatedToTarget = reviewText.translatedLang === translation.targetLanguage;
   const canTranslate = premium && aiAvailable;
+  const canSuggestReply = premium && aiAvailable;
   const isTranslating =
     fetcher.state === "submitting" &&
     fetcher.formData?.get("_intent") === "translateReview";
@@ -1093,10 +1186,20 @@ function ReviewDetailCard({
               rows={4}
             />
             <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+              {canSuggestReply ? (
+                <SecondaryButton
+                  onClick={handleSuggestReply}
+                  disabled={isSuggesting || fetcher.state === "submitting"}
+                  loading={isSuggesting}
+                >
+                  <Sparkles size={14} />
+                  {isSuggesting ? "Suggesting…" : "Suggest reply"}
+                </SecondaryButton>
+              ) : null}
               <PrimaryButton
                 onClick={handleSave}
                 disabled={fetcher.state === "submitting"}
-                loading={fetcher.state === "submitting"}
+                loading={fetcher.state === "submitting" && !isSuggesting}
               >
                 <Send size={14} /> Save reply
               </PrimaryButton>

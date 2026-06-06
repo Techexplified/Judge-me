@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
+import { Link, useLocation } from "react-router";
 import { AlertTriangle, Sparkles, X } from "lucide-react";
+import { mergeShopifyEmbedParams } from "../../utils/shopify-embed-nav.js";
 import { modalStyles, VIEW_LABELS } from "./analytics-styles.js";
 
 const styles = {
@@ -65,6 +67,8 @@ const styles = {
 };
 
 export function AnalyticsUpgradeTeaser({ view, onClose }) {
+  const location = useLocation();
+  const settingsHref = mergeShopifyEmbedParams("/app/settings", location.search);
   const label = VIEW_LABELS[view] || "Interactive analytics";
 
   return (
@@ -87,7 +91,7 @@ export function AnalyticsUpgradeTeaser({ view, onClose }) {
               <div style={styles.iconWrap}>
                 <Sparkles size={22} color="#4338ca" />
               </div>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#202223" }}>Premium analytics preview</p>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#202223" }}>Pro analytics preview</p>
             </div>
           </div>
         </div>
@@ -95,19 +99,22 @@ export function AnalyticsUpgradeTeaser({ view, onClose }) {
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 12 }}>
           <AlertTriangle size={18} color="#d72c0d" style={{ flexShrink: 0, marginTop: 2 }} />
           <p style={styles.copy}>
-            Your 7-day trial has ended. Upgrade to unlock interactive charts, drill-down insights, and
-            product-level analytics.
+            Upgrade to Pro to unlock interactive charts, drill-down insights, and product-level analytics.
+            Start with a 14-day free trial — billing handled securely by Shopify.
           </p>
         </div>
-        <p style={styles.sub}>Pricing is coming soon — core reviews, widgets & moderation stay free.</p>
+        <p style={styles.sub}>Core reviews, widgets & moderation stay free.</p>
         <ul style={styles.featureList}>
           <li>• Daily volume & rating breakdowns</li>
           <li>• Velocity trends & sentiment over time</li>
           <li>• Complaint themes from negative reviews</li>
         </ul>
         <div style={modalStyles.footer}>
-          <button type="button" style={modalStyles.btnPrimary} onClick={onClose}>
-            Got it
+          <Link to={settingsHref} style={modalStyles.btnPrimary} onClick={onClose}>
+            Upgrade to Pro
+          </Link>
+          <button type="button" style={modalStyles.btn} onClick={onClose}>
+            Not now
           </button>
         </div>
       </div>

@@ -6,7 +6,11 @@ import db from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.js";
 import { getGroupShopList } from "../lib/store-group.server";
 import { REVIEW_LIST_SELECT } from "../lib/review-query.shared.js";
-import { hasPremiumAccess, serializeTrialStatus } from "../lib/trial.shared.js";
+import {
+  hasProAccess,
+  serializePlanStatus,
+  requireFeatureUsage,
+} from "../lib/billing.server.js";
 import {
   computeAnalyticsDetail,
   computeDashboardMetrics,
@@ -27,15 +31,23 @@ function parseAnalyticsView(searchParams) {
 }
 
 export const loader = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+  const { session, billing } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
   const url = new URL(request.url);
   const rangeKey = parseDashboardRange(url.searchParams);
   const view = parseAnalyticsView(url.searchParams);
 
-  const { getTrialStatus } = await import("../lib/trial.server.js");
-  const trialStatus = await getTrialStatus(shop);
-  const hasPremium = hasPremiumAccess(trialStatus);
+  const { getShopPlanStatus } = await import("../lib/billing.server.js");
+  const planStatus = await getShopPlanStatus(shop, billing);
+  const hasPremium = hasProAccess(planStatus);
+
+  let chartsBlocked = null;
+  if (hasPremium) {
+    const chartUsage = await requireFeatureUsage(planStatus, "live_graphs_charts");
+    if (!chartUsage.ok) {
+      chartsBlocked = chartUsage.message;
+    }
+  }
 
   const targetShops = await getGroupShopList(shop);
   const reviewsAll = await db.review.findMany({
@@ -56,24 +68,27 @@ export const loader = async ({ request }) => {
     rangeKey,
   });
 
-  const analyticsDetail = hasPremium
-    ? computeAnalyticsDetail({
-        scopedReviews,
-        reviewsAll,
-        now,
-        rangeKey,
-        rangeStart: metricsRangeStart,
-      })
-    : null;
+  const analyticsDetail =
+    hasPremium && !chartsBlocked
+      ? computeAnalyticsDetail({
+          scopedReviews,
+          reviewsAll,
+          now,
+          rangeKey,
+          rangeStart: metricsRangeStart,
+        })
+      : null;
 
   return {
     shop,
     rangeKey,
     view,
     metricsRangeLabel: rangeLabel(rangeKey),
-    trialStatus: serializeTrialStatus(trialStatus),
+    planStatus: serializePlanStatus(planStatus),
+    trialStatus: serializePlanStatus(planStatus),
     hasPremium,
     analyticsDetail,
+    chartsBlocked,
     totalReviews: scopedReviews.length,
   };
 };
@@ -170,6 +185,7 @@ export default function AnalyticsPage() {
     trialStatus,
     hasPremium,
     analyticsDetail,
+    chartsBlocked,
     totalReviews,
   } = useLoaderData();
   const [, setSearchParams] = useSearchParams();
@@ -232,6 +248,20 @@ export default function AnalyticsPage() {
 
       {!hasPremium ? (
         <PremiumGateBanner feature="analytics" />
+      ) : chartsBlocked ? (
+        <div
+          style={{
+            background: "#fff4f4",
+            border: "1px solid #fed3d1",
+            borderRadius: 8,
+            padding: "16px 20px",
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#8e1f0b",
+          }}
+        >
+          {chartsBlocked}
+        </div>
       ) : (
         <>
           <div style={pageStyles.tabs} role="tablist" aria-label="Analytics views">

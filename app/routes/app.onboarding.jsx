@@ -17,7 +17,9 @@ import { linkStore } from "../lib/link-store.server";
 import {
   completeOnboarding,
   getOnboardingState,
+  getPlanChoice,
   isOnboardingComplete,
+  savePlanChoice,
   saveStoreProfile,
   saveSyndicationChoice,
 } from "../lib/onboarding.server";
@@ -26,6 +28,7 @@ import {
   mergeShopifyEmbedParams,
 } from "../utils/shopify-embed-nav.js";
 import { embedRedirect } from "../utils/shopify-embed-nav.server.js";
+import { PRO_PRICE_USD, PRO_TRIAL_DAYS } from "../lib/billing.server.js";
 import {
   Banner,
   GOAL_OPTIONS,
@@ -42,18 +45,22 @@ import {
 import { SourceGrid } from "../components/import-wizard-ui";
 import { SOURCE_LIST, SOURCE_PRESETS } from "../lib/csv-import.shared.js";
 
+const TOTAL_STEPS = 5;
+
 function parseStep(searchParams) {
   const s = Number.parseInt(searchParams.get("step") ?? "1", 10);
-  return s >= 1 && s <= 4 ? s : 1;
+  return s >= 1 && s <= TOTAL_STEPS ? s : 1;
 }
 
-function resolveOnboardingStep(requestedStep, storeProfile) {
+function resolveOnboardingStep(requestedStep, planChoice, storeProfile) {
+  if (requestedStep <= 1) return 1;
+  if (!planChoice) return requestedStep === 2 ? 2 : 2;
   if (!isStoreProfileComplete(storeProfile)) {
-    return requestedStep === 1 ? 1 : 2;
+    return requestedStep <= 2 ? 2 : 3;
   }
-  if (requestedStep <= 2) return 2;
-  if (requestedStep >= 4) return 4;
-  return 3;
+  if (requestedStep <= 3) return 3;
+  if (requestedStep >= TOTAL_STEPS) return TOTAL_STEPS;
+  return 4;
 }
 
 export const loader = async ({ request }) => {
@@ -68,7 +75,7 @@ export const loader = async ({ request }) => {
   const requestedStep = parseStep(url.searchParams);
   const linkedFlash = url.searchParams.get("linked") === "1";
 
-  const { storeProfile } = await getOnboardingState(shop);
+  const { storeProfile, planChoice } = await getOnboardingState(shop);
   const profile = storeProfile ?? {
     industry: "",
     primaryGoal: "",
@@ -77,7 +84,7 @@ export const loader = async ({ request }) => {
     importSource: "",
   };
 
-  const step = resolveOnboardingStep(requestedStep, profile);
+  const step = resolveOnboardingStep(requestedStep, planChoice, profile);
   if (step !== requestedStep) {
     throw embedRedirect(`/app/onboarding?step=${step}`, request);
   }
@@ -94,7 +101,10 @@ export const loader = async ({ request }) => {
     step,
     linkedFlash,
     storeProfile: profile,
+    planChoice,
     linkedCount,
+    proPrice: PRO_PRICE_USD,
+    proTrialDays: PRO_TRIAL_DAYS,
   };
 };
 
@@ -109,6 +119,12 @@ export const action = async ({ request }) => {
   const fd = await request.formData();
   const intent = String(fd.get("intent") ?? "");
 
+  if (intent === "savePlan") {
+    const choice = String(fd.get("planChoice") ?? "free");
+    await savePlanChoice(shop, choice);
+    throw embedRedirect("/app/onboarding?step=3", request);
+  }
+
   if (intent === "saveProfile") {
     const industry = String(fd.get("industry") ?? "").trim();
     const primaryGoal = String(fd.get("primaryGoal") ?? "").trim();
@@ -118,7 +134,7 @@ export const action = async ({ request }) => {
 
     if (!industry || !primaryGoal || !hasMultipleStores || !importingFromOtherApp) {
       return data(
-        { error: "Complete all fields to continue.", step: 2 },
+        { error: "Complete all fields to continue.", step: 3 },
         { status: 400 },
       );
     }
@@ -126,7 +142,7 @@ export const action = async ({ request }) => {
     if (importingFromOtherApp === "yes") {
       if (!importSource || !SOURCE_PRESETS[importSource]) {
         return data(
-          { error: "Select which app you are importing reviews from.", step: 2 },
+          { error: "Select which app you are importing reviews from.", step: 3 },
           { status: 400 },
         );
       }
@@ -139,31 +155,36 @@ export const action = async ({ request }) => {
       importingFromOtherApp,
       importSource,
     });
-    throw embedRedirect("/app/onboarding?step=3", request);
+    throw embedRedirect("/app/onboarding?step=4", request);
   }
 
   if (intent === "linkStore") {
     const targetShop = fd.get("targetShop");
     const result = await linkStore({ session, admin, targetShopRaw: targetShop });
     if (!result.ok) {
-      return data({ error: result.error, step: 3 }, { status: 400 });
+      return data({ error: result.error, step: 4 }, { status: 400 });
     }
-    throw embedRedirect("/app/onboarding?step=3&linked=1", request);
+    throw embedRedirect("/app/onboarding?step=4&linked=1", request);
   }
 
   if (intent === "skipSyndication") {
     await saveSyndicationChoice(shop, true);
-    throw embedRedirect("/app/onboarding?step=4", request);
+    throw embedRedirect("/app/onboarding?step=5", request);
   }
 
   if (intent === "continueToComplete") {
     await saveSyndicationChoice(shop, false);
-    throw embedRedirect("/app/onboarding?step=4", request);
+    throw embedRedirect("/app/onboarding?step=5", request);
   }
 
   if (intent === "finish") {
     const { storeProfile: profile } = await getOnboardingState(shop);
+    const planChoice = await getPlanChoice(shop);
     await completeOnboarding(shop);
+
+    if (planChoice === "pro") {
+      throw embedRedirect("/app/settings?startTrial=1", request);
+    }
 
     if (
       profile?.importingFromOtherApp === "yes" &&
@@ -183,7 +204,8 @@ export const action = async ({ request }) => {
 };
 
 export default function Onboarding() {
-  const { shop, storeProfile, linkedCount, step, linkedFlash } = useLoaderData();
+  const { shop, storeProfile, linkedCount, step, linkedFlash, proPrice, proTrialDays } =
+    useLoaderData();
   const actionData = useActionData();
   const submit = useSubmit();
   const navigate = useNavigate();
@@ -208,15 +230,15 @@ export default function Onboarding() {
   );
   const [targetShop, setTargetShop] = useState("");
   const profileError =
-    step === 2 && actionData?.error && actionData?.step === 2
-      ? actionData.error
-      : null;
-  const linkError =
     step === 3 && actionData?.error && actionData?.step === 3
       ? actionData.error
       : null;
+  const linkError =
+    step === 4 && actionData?.error && actionData?.step === 4
+      ? actionData.error
+      : null;
 
-  const confettiStep = step === 4;
+  const confettiStep = step === TOTAL_STEPS;
 
   useEffect(() => {
     if (!confettiStep) return;
@@ -244,6 +266,7 @@ export default function Onboarding() {
     return (
       <WizardShell
         step={1}
+        total={TOTAL_STEPS}
         actions={
           <PrimaryButton onClick={() => goToStep(2)}>Get started</PrimaryButton>
         }
@@ -263,9 +286,85 @@ export default function Onboarding() {
     return (
       <WizardShell
         step={2}
+        total={TOTAL_STEPS}
         actions={
           <>
             <SecondaryButton onClick={() => goToStep(1)} disabled={isSubmitting}>
+              Back
+            </SecondaryButton>
+            <SecondaryButton
+              loading={isSubmitting}
+              disabled={isSubmitting}
+              onClick={() => submit({ intent: "savePlan", planChoice: "free" }, { method: "post" })}
+            >
+              Continue with Free
+            </SecondaryButton>
+            <PrimaryButton
+              loading={isSubmitting}
+              disabled={isSubmitting}
+              onClick={() => submit({ intent: "savePlan", planChoice: "pro" }, { method: "post" })}
+            >
+              Start {proTrialDays}-day Pro trial
+            </PrimaryButton>
+          </>
+        }
+      >
+        <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 900 }}>Choose your plan</h2>
+        <p style={{ margin: "0 0 16px", color: "#6d7175", fontWeight: 600, fontSize: 13 }}>
+          Start free with core review tools, or try Pro free for {proTrialDays} days. Billing is
+          handled securely by Shopify — we never store card details.
+        </p>
+        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
+          <div
+            style={{
+              border: "1px solid #e1e3e5",
+              borderRadius: 8,
+              padding: 16,
+              background: "#fafcfb",
+            }}
+          >
+            <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 900 }}>Free</h3>
+            <p style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 900 }}>$0/mo</p>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, fontWeight: 600, color: "#6d7175" }}>
+              <li>50 reviews per month</li>
+              <li>Widget & moderation</li>
+              <li>Store linking</li>
+            </ul>
+          </div>
+          <div
+            style={{
+              border: "2px solid #008060",
+              borderRadius: 8,
+              padding: 16,
+              background: "#f1f8f5",
+            }}
+          >
+            <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 900 }}>Pro</h3>
+            <p style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 900 }}>
+              ${proPrice}/mo
+            </p>
+            <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#008060" }}>
+              {proTrialDays}-day free trial · no charge today
+            </p>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, fontWeight: 600, color: "#6d7175" }}>
+              <li>Unlimited reviews</li>
+              <li>Photo & video reviews</li>
+              <li>AI, analytics & import</li>
+            </ul>
+          </div>
+        </div>
+      </WizardShell>
+    );
+  }
+
+  if (step === 3) {
+    return (
+      <WizardShell
+        step={3}
+        total={TOTAL_STEPS}
+        actions={
+          <>
+            <SecondaryButton onClick={() => goToStep(2)} disabled={isSubmitting}>
               Back
             </SecondaryButton>
             <PrimaryButton
@@ -348,11 +447,12 @@ export default function Onboarding() {
     );
   }
 
-  if (step === 3) {
+  if (step === 4) {
     const showLaterHint = hasMultipleStores === "no";
     return (
       <WizardShell
-        step={3}
+        step={4}
+        total={TOTAL_STEPS}
         actions={
           <>
             <SecondaryButton
@@ -442,7 +542,8 @@ export default function Onboarding() {
 
   return (
     <WizardShell
-      step={4}
+      step={5}
+      total={TOTAL_STEPS}
       actions={
         <PrimaryButton
           loading={isSubmitting}

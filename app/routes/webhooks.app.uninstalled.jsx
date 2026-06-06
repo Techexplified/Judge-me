@@ -1,5 +1,5 @@
 import { authenticate } from "../shopify.server";
-import { markShopUninstalled } from "../lib/trial.server";
+import { markShopUninstalled } from "../lib/billing.server.js";
 import db from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.server";
 

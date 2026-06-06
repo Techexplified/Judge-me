@@ -73,17 +73,40 @@ model Settings {
   updatedAt DateTime @updatedAt
 }
 
-/// Tracks per-shop install timestamp and trial window.
+/// Tracks per-shop install, billing plan, and review limits.
 model Shop {
-  id           String   @id @default(uuid())
-  shop         String   @unique
-  installedAt  DateTime @default(now())
-  trialEndsAt  DateTime
-  /// "trial" | "active" | "expired"
-  planStatus   String   @default("trial")
-  uninstalledAt DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                 String    @id @default(uuid())
+  shop               String    @unique
+  installedAt        DateTime  @default(now())
+  /// Legacy field — kept for migration compatibility
+  trialEndsAt        DateTime?
+  /// Legacy field — superseded by plan + subscriptionStatus
+  planStatus         String    @default("free")
+  /// "free" | "pro"
+  plan               String    @default("free")
+  subscriptionId     String?
+  /// ACTIVE | PENDING | CANCELLED | FROZEN | EXPIRED | DECLINED
+  subscriptionStatus String?
+  billingTrialEndsAt DateTime?
+  reviewsThisMonth   Int       @default(0)
+  /// Calendar month key e.g. "2026-06"
+  reviewsMonthKey    String?
+  uninstalledAt      DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+/// Per-shop monthly usage counters for Pro metered features.
+model FeatureUsage {
+  id         String @id @default(uuid())
+  shop       String
+  featureKey String
+  /// Calendar month key e.g. "2026-06" (UTC)
+  monthKey   String
+  count      Int    @default(0)
+
+  @@unique([shop, featureKey, monthKey])
+  @@index([shop, monthKey])
 }
 
 // Represents a cluster of stores owned by the same merchant

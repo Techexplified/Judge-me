@@ -1,5 +1,7 @@
 import prisma from "../db.server.js";
 import { normalizeShopDomain } from "../utils/shop.server.js";
+import { FREE_LINKED_STORES, PRO_LINKED_STORES } from "./plan-features.shared.js";
+import { hasProAccess } from "./trial.shared.js";
 
 /**
  * Link another Shopify store into the current shop's network.
@@ -35,8 +37,27 @@ export async function linkStore({ session, admin, targetShopRaw }) {
     };
   }
 
-  let link = await prisma.groupStoreLink.findUnique({ where: { shop } });
+  let link = await prisma.groupStoreLink.findUnique({
+    where: { shop },
+    include: { group: { include: { members: true } } },
+  });
   let groupId;
+
+  const { getShopPlanStatus } = await import("./billing.server.js");
+  const planStatus = await getShopPlanStatus(shop);
+  const maxStores = hasProAccess(planStatus) ? PRO_LINKED_STORES : FREE_LINKED_STORES;
+
+  if (link?.group) {
+    const currentCount = link.group.members.length;
+    if (currentCount >= maxStores) {
+      return {
+        ok: false,
+        error: hasProAccess(planStatus)
+          ? `Your plan allows up to ${maxStores} linked stores. Remove a store or upgrade.`
+          : `Free plan allows ${FREE_LINKED_STORES} linked stores. Upgrade to Pro for up to ${PRO_LINKED_STORES}.`,
+      };
+    }
+  }
 
   if (!link) {
     const ownerEmail = session.email?.trim() || "unknown@merchant.local";
