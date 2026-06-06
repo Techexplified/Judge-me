@@ -348,13 +348,7 @@ export default function ReviewFormCustomizer() {
       onSubmitReview={handleSubmitReview}
       onPreview={handlePreview}
       publishBlocked={publishBlocked}
-      publishBlockedMessage={
-        !canPublishWidget
-          ? "Publishing widget changes requires a Pro plan. Upgrade in Settings."
-          : widgetUsage?.remaining <= 0
-            ? `You've used all ${widgetUsage?.limit ?? 20} widget publishes this month.`
-            : ""
-      }
+      publishBlockedMessage={publishBlockedMessage}
       widgetUsage={widgetUsage}
     />
   );
