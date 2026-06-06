@@ -5,24 +5,31 @@ import { Page, PageHeader } from "../admin-ui";
 import { SETTINGS_TABS, getActiveSettingsTab } from "./settings-tabs.js";
 
 const tabStyles = {
+  bar: {
+    borderBottom: "1px solid #e1e3e5",
+    marginBottom: 24,
+  },
   tabs: {
     display: "flex",
     flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 20,
+    gap: 28,
+    margin: 0,
+    padding: 0,
   },
   tab: (active) => ({
-    padding: "8px 14px",
-    borderRadius: 999,
-    border: active ? "1px solid #008060" : "1px solid #c9cccf",
-    background: active ? "#ecfdf3" : "#fff",
-    color: active ? "#008060" : "#202223",
-    fontSize: 12,
-    fontWeight: 800,
+    padding: "12px 2px",
+    marginBottom: -1,
+    border: "none",
+    borderBottom: active ? "2px solid #008060" : "2px solid transparent",
+    background: "transparent",
+    color: active ? "#008060" : "#6d7175",
+    fontSize: 13,
+    fontWeight: active ? 800 : 600,
     textDecoration: "none",
     cursor: "pointer",
     fontFamily: "inherit",
     whiteSpace: "nowrap",
+    transition: "color 0.15s ease, border-color 0.15s ease",
   }),
 };
 
@@ -52,23 +59,25 @@ export function SettingsShell({ children, variant = "default" }) {
   const search = location.search;
 
   const tabBar = (
-    <div style={tabStyles.tabs} role="tablist" aria-label="Settings sections">
-      {SETTINGS_TABS.map((tab) => {
-        const href = mergeShopifyEmbedParams(tab.path, search);
-        const active = tab.id === activeTab;
-        return (
-          <Link
-            key={tab.id}
-            to={href}
-            role="tab"
-            aria-selected={active}
-            style={tabStyles.tab(active)}
-          >
-            {tab.label}
-          </Link>
-        );
-      })}
-    </div>
+    <nav style={tabStyles.bar} aria-label="Settings sections">
+      <div style={tabStyles.tabs} role="tablist">
+        {SETTINGS_TABS.map((tab) => {
+          const href = mergeShopifyEmbedParams(tab.path, search);
+          const active = tab.id === activeTab;
+          return (
+            <Link
+              key={tab.id}
+              to={href}
+              role="tab"
+              aria-selected={active}
+              style={tabStyles.tab(active)}
+            >
+              {tab.label}
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
   );
 
   if (variant === "fullscreen") {
