@@ -30,7 +30,7 @@ import {
   mergeShopifyEmbedParams,
 } from "../utils/shopify-embed-nav.js";
 import { embedRedirect } from "../utils/shopify-embed-nav.server.js";
-import { PRO_PRICE_USD, PRO_TRIAL_DAYS, FREE_REVIEWS_PER_MONTH } from "../lib/billing.server.js";
+import { PRO_PRICE_USD, PRO_TRIAL_DAYS, FREE_REVIEWS_PER_MONTH } from "../lib/trial.shared.js";
 import {
   Banner,
   DISCOVERY_SOURCE_OPTIONS,
