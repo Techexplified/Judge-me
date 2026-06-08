@@ -4,6 +4,8 @@
 
 export const FREE_LINKED_STORES = 2;
 export const PRO_LINKED_STORES = 10;
+export const FREE_REVIEWS_PER_MONTH = 500;
+export const PRO_TRANSLATIONS_PER_MONTH = 500;
 export const FREE_IMPORTS_PER_MONTH = 50;
 export const FREE_WIDGET_PUBLISHES_PER_MONTH = 3;
 export const FREE_AUTO_TRANSLATE_PER_MONTH = 10;
@@ -29,7 +31,7 @@ export const FREE_PLAN_BOX = {
         `Import reviews from Shopify apps & 3rd party — ${FREE_IMPORTS_PER_MONTH} per month`,
         "Graphs & charts — preview only",
         `Store integrations — up to ${FREE_LINKED_STORES} stores`,
-        "Up to 50 new reviews per month",
+        `Up to ${FREE_REVIEWS_PER_MONTH} new reviews per month`,
       ],
     },
     {
@@ -86,7 +88,7 @@ export const PRO_PLAN_BOX = {
         "Auto-translate during import",
         "Admin manual control of translation",
         "View translation status (total / pending)",
-        "100 translations per month (all sources)",
+        `${PRO_TRANSLATIONS_PER_MONTH} translations per month (all sources)`,
       ],
     },
     {
@@ -111,7 +113,7 @@ export const PRO_PLAN_HIGHLIGHTS = [
   "Photo & video reviews",
   "AI insights, playbooks & replies",
   "PDF & CSV export",
-  "Full translation suite (100 / month)",
+  `Full translation suite (${PRO_TRANSLATIONS_PER_MONTH} / month)`,
   `${PRO_LINKED_STORES}+ store integrations`,
   "14-day free trial · then $20/month via Shopify",
 ];

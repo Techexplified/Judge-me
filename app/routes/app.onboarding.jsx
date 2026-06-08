@@ -28,7 +28,7 @@ import {
   mergeShopifyEmbedParams,
 } from "../utils/shopify-embed-nav.js";
 import { embedRedirect } from "../utils/shopify-embed-nav.server.js";
-import { PRO_PRICE_USD, PRO_TRIAL_DAYS } from "../lib/billing.server.js";
+import { PRO_PRICE_USD, PRO_TRIAL_DAYS, FREE_REVIEWS_PER_MONTH } from "../lib/billing.server.js";
 import {
   Banner,
   GOAL_OPTIONS,
@@ -326,7 +326,7 @@ export default function Onboarding() {
             <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 900 }}>Free</h3>
             <p style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 900 }}>$0/mo</p>
             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, fontWeight: 600, color: "#6d7175" }}>
-              <li>50 reviews per month</li>
+              <li>{FREE_REVIEWS_PER_MONTH} reviews per month</li>
               <li>Widget & moderation</li>
               <li>Store linking</li>
             </ul>

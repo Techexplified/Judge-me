@@ -1,8 +1,9 @@
 export const PRO_TRIAL_DAYS = 14;
-export const FREE_REVIEWS_PER_MONTH = 50;
 export const PRO_PRICE_USD = 20;
 
 export {
+  FREE_REVIEWS_PER_MONTH,
+  PRO_TRANSLATIONS_PER_MONTH,
   FREE_PLAN_HIGHLIGHTS,
   PRO_PLAN_HIGHLIGHTS,
   FREE_IMPORTS_PER_MONTH,
@@ -10,9 +11,15 @@ export {
   PRO_LINKED_STORES,
 } from "./plan-features.shared.js";
 
+import {
+  FREE_REVIEWS_PER_MONTH,
+  PRO_TRANSLATIONS_PER_MONTH,
+  FREE_IMPORTS_PER_MONTH,
+} from "./plan-features.shared.js";
+
 /** @deprecated use FREE_PLAN_HIGHLIGHTS / plan comparison table */
 export const FREE_FEATURE_LABELS = [
-  "Up to 50 reviews per month",
+  `Up to ${FREE_REVIEWS_PER_MONTH} reviews per month`,
   "Manual review replies",
   "50 CSV imports / month",
   "2 store integrations",
@@ -28,7 +35,7 @@ export const PRO_FEATURE_LABELS = [
   "Photo & video reviews",
   "AI insights, playbooks & replies",
   "PDF & CSV export",
-  "Full translation suite (100 / month)",
+  `Full translation suite (${PRO_TRANSLATIONS_PER_MONTH} / month)`,
   "10+ store integrations",
   "14-day free trial",
 ];

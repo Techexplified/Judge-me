@@ -11,6 +11,7 @@ import {
 
 export {
   FREE_REVIEWS_PER_MONTH,
+  PRO_TRANSLATIONS_PER_MONTH,
   hasProAccess,
   PRO_FEATURE_LABELS,
   FREE_FEATURE_LABELS,
@@ -404,7 +405,7 @@ export async function getTrialStatus(shop, billing = null) {
 }
 
 /**
- * Whether the shop can create another review (Free plan capped at 50/month).
+ * Whether the shop can create another review (Free plan capped per month).
  */
 export async function canCreateReview(shop, billing = null) {
   const status = await getShopPlanStatus(shop, billing);

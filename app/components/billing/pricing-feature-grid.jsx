@@ -14,7 +14,10 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { mergeShopifyEmbedParams } from "../../utils/shopify-embed-nav.js";
-import { PRO_PLAN_BOX } from "../../lib/plan-features.shared.js";
+import {
+  PRO_PLAN_BOX,
+  PRO_TRANSLATIONS_PER_MONTH,
+} from "../../lib/plan-features.shared.js";
 
 const MINT = { bg: "#e8f5ee", accent: "#008060", soft: "#ecfdf3" };
 const SKY = { bg: "#e8f4fc", accent: "#2563eb", soft: "#eff6ff" };
@@ -140,7 +143,7 @@ const FEATURE_CARDS = [
     tag: "Translation",
     Icon: Globe,
     title: "Full translation suite for global stores",
-    desc: "Auto-translate on reply, dashboard, and import. 100 translations per month on Pro.",
+    desc: `Auto-translate on reply, dashboard, and import. ${PRO_TRANSLATIONS_PER_MONTH} translations per month on Pro.`,
     tab: "/app/settings/translation",
     cta: "Translation settings",
   },

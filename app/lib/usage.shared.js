@@ -2,6 +2,7 @@ import {
   FREE_AUTO_TRANSLATE_PER_MONTH,
   FREE_IMPORTS_PER_MONTH,
   FREE_WIDGET_PUBLISHES_PER_MONTH,
+  PRO_TRANSLATIONS_PER_MONTH,
 } from "./plan-features.shared.js";
 
 /** Pro monthly quotas (enforced in usage.server.js). */
@@ -13,7 +14,7 @@ export const PRO_FEATURE_LIMITS = {
   ai_review_replies: 200,
   urgent_reply_prioritization: 50,
   ai_widget_customization: 20,
-  auto_translate: 100,
+  auto_translate: PRO_TRANSLATIONS_PER_MONTH,
   live_graphs_charts: 20,
 };
 
