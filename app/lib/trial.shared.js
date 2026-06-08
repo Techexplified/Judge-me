@@ -61,6 +61,10 @@ export function serializePlanStatus(planStatus) {
     billingTrialEndsAt: planStatus.billingTrialEndsAt
       ? planStatus.billingTrialEndsAt.toISOString()
       : null,
+    graceTrialEndsAt: planStatus.graceTrialEndsAt
+      ? planStatus.graceTrialEndsAt.toISOString()
+      : null,
+    isGraceTrial: planStatus.isGraceTrial === true,
     trialDaysRemaining: planStatus.trialDaysRemaining,
     isInTrial: planStatus.isInTrial === true,
     reviewsThisMonth: planStatus.reviewsThisMonth,

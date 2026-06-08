@@ -27,7 +27,7 @@ import {
   requireFeatureUsage,
 } from "../lib/billing.server.js";
 import { REVIEW_LIST_SELECT } from "../lib/review-query.shared.js";
-import { PremiumTrialBanner } from "../components/premium-trial-banner";
+import { PremiumTrialBanner, GraceTrialEndingBanner } from "../components/premium-trial-banner";
 import { KpiCard } from "../components/analytics/kpi-card.jsx";
 import { AnalyticsDrilldownModal } from "../components/analytics/analytics-drilldown-modal.jsx";
 import { AnalyticsUpgradeTeaser } from "../components/analytics/analytics-upgrade-teaser.jsx";
@@ -940,6 +940,8 @@ export default function Dashboard() {
           />
         </div>
       </div>
+
+      <GraceTrialEndingBanner trialStatus={trialStatus} />
 
       <div style={s.body} className="dBody">
         <div style={s.left}>

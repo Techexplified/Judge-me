@@ -51,6 +51,48 @@ export {
 const ACTIVE_STATUSES = new Set(["ACTIVE", "ACCEPTED"]);
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+/** Pre-billing installs get a one-time complimentary Pro period. */
+export const GRACE_TRIAL_DAYS = 14;
+export const GRACE_TRIAL_CUTOFF = new Date(
+  process.env.GRACE_TRIAL_CUTOFF_ISO || "2026-06-08T00:00:00Z",
+);
+
+function hasActiveShopifyPro(record) {
+  return (
+    record.plan === "pro" &&
+    record.subscriptionId &&
+    record.subscriptionStatus &&
+    ACTIVE_STATUSES.has(record.subscriptionStatus)
+  );
+}
+
+function isEligibleForGraceTrial(record) {
+  if (!record || record.graceTrialGrantedAt) return false;
+  if (hasActiveShopifyPro(record)) return false;
+  const installedAt = parseSubscriptionDate(record.installedAt);
+  if (!installedAt || installedAt.getTime() >= GRACE_TRIAL_CUTOFF.getTime()) return false;
+  return true;
+}
+
+/**
+ * Grant a one-time app-managed Pro grace period to pre-billing merchants.
+ * Called from getShopPlanStatus and the bulk grant script.
+ */
+export async function maybeGrantGraceTrial(shop) {
+  const record = await db.shop.findUnique({ where: { shop } });
+  if (!isEligibleForGraceTrial(record)) return false;
+
+  const now = new Date();
+  await db.shop.update({
+    where: { shop },
+    data: {
+      graceTrialEndsAt: addUtcDays(now, GRACE_TRIAL_DAYS),
+      graceTrialGrantedAt: now,
+    },
+  });
+  return true;
+}
+
 function parseSubscriptionDate(value) {
   if (!value) return null;
   const date = value instanceof Date ? value : new Date(value);
@@ -273,11 +315,10 @@ export async function getShopPlanStatus(shop, billing = null) {
     await syncSubscriptionFromShopify(shop, billingCheck);
   }
 
-  const record = await db.shop.findUnique({ where: { shop } });
+  await maybeGrantGraceTrial(shop);
+
+  let record = await db.shop.findUnique({ where: { shop } });
   const reviewsThisMonth = await getMonthlyReviewCount(shop);
-  const hasPro =
-    record.plan === "pro" &&
-    (!record.subscriptionStatus || ACTIVE_STATUSES.has(record.subscriptionStatus));
 
   if (record.billingTrialEndsAt && record.billingTrialEndsAt.getTime() <= Date.now()) {
     await db.shop.update({
@@ -287,12 +328,34 @@ export async function getShopPlanStatus(shop, billing = null) {
     record.billingTrialEndsAt = null;
   }
 
-  const isInTrial =
-    hasPro &&
+  if (record.graceTrialEndsAt && record.graceTrialEndsAt.getTime() <= Date.now()) {
+    await db.shop.update({
+      where: { shop },
+      data: { graceTrialEndsAt: null },
+    });
+    record.graceTrialEndsAt = null;
+  }
+
+  const shopifyPro =
+    record.plan === "pro" &&
+    (!record.subscriptionStatus || ACTIVE_STATUSES.has(record.subscriptionStatus));
+  const graceActive =
+    record.graceTrialEndsAt != null && record.graceTrialEndsAt.getTime() > Date.now();
+  const hasPro = shopifyPro || graceActive;
+  const isGraceTrial = graceActive && !shopifyPro;
+
+  const shopifyTrialActive =
+    shopifyPro &&
     record.billingTrialEndsAt != null &&
     record.billingTrialEndsAt.getTime() > Date.now();
+  const isInTrial = shopifyTrialActive || graceActive;
+  const activeTrialEndsAt = graceActive
+    ? record.graceTrialEndsAt
+    : shopifyTrialActive
+      ? record.billingTrialEndsAt
+      : null;
   const trialDaysRemaining = isInTrial
-    ? computeTrialDaysRemaining(record.billingTrialEndsAt)
+    ? computeTrialDaysRemaining(activeTrialEndsAt)
     : null;
 
   const reviewsRemaining = hasPro
@@ -312,7 +375,9 @@ export async function getShopPlanStatus(shop, billing = null) {
     hasPro,
     subscriptionStatus: record.subscriptionStatus,
     subscriptionId: record.subscriptionId,
-    billingTrialEndsAt: isInTrial ? record.billingTrialEndsAt : null,
+    billingTrialEndsAt: shopifyTrialActive ? record.billingTrialEndsAt : null,
+    graceTrialEndsAt: graceActive ? record.graceTrialEndsAt : null,
+    isGraceTrial,
     trialDaysRemaining,
     isInTrial,
     reviewsThisMonth,
@@ -459,6 +524,7 @@ export async function markShopUninstalled(shop) {
       subscriptionId: null,
       subscriptionStatus: null,
       billingTrialEndsAt: null,
+      graceTrialEndsAt: null,
     },
   });
 }

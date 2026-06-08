@@ -88,6 +88,9 @@ model Shop {
   /// ACTIVE | PENDING | CANCELLED | FROZEN | EXPIRED | DECLINED
   subscriptionStatus String?
   billingTrialEndsAt DateTime?
+  /// App-managed complimentary Pro for pre-billing merchants (one-time)
+  graceTrialEndsAt   DateTime?
+  graceTrialGrantedAt DateTime?
   reviewsThisMonth   Int       @default(0)
   /// Calendar month key e.g. "2026-06"
   reviewsMonthKey    String?
