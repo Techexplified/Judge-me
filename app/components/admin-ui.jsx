@@ -369,6 +369,80 @@ export function SelectField({ label, value, onChange, options, disabled }) {
   );
 }
 
+const OTHER_OPTION_VALUE = "other";
+
+export function parseSelectOrTextValue(stored, options) {
+  const presetValues = new Set(
+    options.map((o) => o.value).filter((v) => v && v !== OTHER_OPTION_VALUE),
+  );
+  if (stored && presetValues.has(stored)) {
+    return { select: stored, custom: "" };
+  }
+  if (stored) {
+    return { select: OTHER_OPTION_VALUE, custom: stored };
+  }
+  return { select: "", custom: "" };
+}
+
+export function resolveSelectOrTextValue(select, custom, options) {
+  if (!select) return "";
+  if (select === OTHER_OPTION_VALUE) {
+    return String(custom ?? "").trim();
+  }
+  const match = options.find((o) => o.value === select);
+  return match?.value ?? "";
+}
+
+/** Dropdown with preset options; choosing "Other" reveals a text field. */
+export function SelectOrTextField({
+  label,
+  selectValue,
+  customValue,
+  onSelectChange,
+  onCustomChange,
+  options,
+  disabled,
+  customPlaceholder,
+  helpText,
+}) {
+  const showCustom = selectValue === OTHER_OPTION_VALUE;
+  return (
+    <div style={ui.field}>
+      {label ? <label style={ui.label}>{label}</label> : null}
+      <select
+        value={selectValue}
+        onChange={onSelectChange}
+        disabled={disabled}
+        style={{
+          ...ui.select,
+          ...(disabled ? { opacity: 0.65, cursor: "not-allowed" } : {}),
+        }}
+      >
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+      {showCustom ? (
+        <div style={{ marginTop: 8 }}>
+          <TextField
+            value={customValue}
+            onChange={onCustomChange}
+            placeholder={customPlaceholder ?? "Type your answer"}
+            disabled={disabled}
+          />
+        </div>
+      ) : null}
+      {helpText ? (
+        <p style={{ margin: "6px 0 0", fontSize: 12, fontWeight: 600, color: "#6d7175" }}>
+          {helpText}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function PrimaryButton({ children, onClick, disabled, type = "button", loading }) {
   return (
     <button
@@ -477,4 +551,29 @@ export const IMPORT_FROM_APP_OPTIONS = [
   { value: "", label: "Select one" },
   { value: "yes", label: "Yes" },
   { value: "no", label: "No" },
+];
+
+export const JUDGE_ME_GOAL_OPTIONS = [
+  { value: "", label: "Select your main goal" },
+  { value: "collect_reviews", label: "Collect more product reviews" },
+  { value: "display_reviews", label: "Display reviews on my storefront" },
+  { value: "import_reviews", label: "Import reviews from another app" },
+  { value: "share_stores", label: "Share reviews across multiple stores" },
+  { value: "boost_seo", label: "Improve SEO with review rich snippets" },
+  { value: "ai_insights", label: "Use AI to analyze customer feedback" },
+  { value: "migrate_app", label: "Migrate from another review app" },
+  { value: "other", label: "Other (type your own)" },
+];
+
+export const DISCOVERY_SOURCE_OPTIONS = [
+  { value: "", label: "Select how you found us" },
+  { value: "shopify_app_store", label: "Shopify App Store" },
+  { value: "google_search", label: "Google search" },
+  { value: "social_media", label: "Social media (Instagram, Facebook, etc.)" },
+  { value: "youtube", label: "YouTube or video content" },
+  { value: "referral_friend", label: "Friend or colleague recommendation" },
+  { value: "referral_agency", label: "Agency or developer recommendation" },
+  { value: "blog_article", label: "Blog or online article" },
+  { value: "email_newsletter", label: "Email or newsletter" },
+  { value: "other", label: "Other (type your own)" },
 ];

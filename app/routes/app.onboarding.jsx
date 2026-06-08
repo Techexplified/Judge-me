@@ -19,7 +19,9 @@ import {
   getOnboardingState,
   getPlanChoice,
   isOnboardingComplete,
+  isQuestionnaireComplete,
   savePlanChoice,
+  saveQuestionnaire,
   saveStoreProfile,
   saveSyndicationChoice,
 } from "../lib/onboarding.server";
@@ -31,13 +33,18 @@ import { embedRedirect } from "../utils/shopify-embed-nav.server.js";
 import { PRO_PRICE_USD, PRO_TRIAL_DAYS, FREE_REVIEWS_PER_MONTH } from "../lib/billing.server.js";
 import {
   Banner,
+  DISCOVERY_SOURCE_OPTIONS,
   GOAL_OPTIONS,
   IMPORT_FROM_APP_OPTIONS,
   INDUSTRY_OPTIONS,
+  JUDGE_ME_GOAL_OPTIONS,
   MULTI_STORE_OPTIONS,
+  parseSelectOrTextValue,
   PrimaryButton,
+  resolveSelectOrTextValue,
   SecondaryButton,
   SelectField,
+  SelectOrTextField,
   Stack,
   TextField,
   WizardShell,
@@ -45,22 +52,23 @@ import {
 import { SourceGrid } from "../components/import-wizard-ui";
 import { SOURCE_LIST, SOURCE_PRESETS } from "../lib/csv-import.shared.js";
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 
 function parseStep(searchParams) {
   const s = Number.parseInt(searchParams.get("step") ?? "1", 10);
   return s >= 1 && s <= TOTAL_STEPS ? s : 1;
 }
 
-function resolveOnboardingStep(requestedStep, planChoice, storeProfile) {
+function resolveOnboardingStep(requestedStep, planChoice, storeProfile, questionnaire) {
   if (requestedStep <= 1) return 1;
-  if (!planChoice) return requestedStep === 2 ? 2 : 2;
+  if (!planChoice) return 2;
   if (!isStoreProfileComplete(storeProfile)) {
     return requestedStep <= 2 ? 2 : 3;
   }
   if (requestedStep <= 3) return 3;
-  if (requestedStep >= TOTAL_STEPS) return TOTAL_STEPS;
-  return 4;
+  if (requestedStep <= 4) return 4;
+  if (!isQuestionnaireComplete(questionnaire)) return 5;
+  return requestedStep >= 6 ? 6 : 5;
 }
 
 export const loader = async ({ request }) => {
@@ -75,7 +83,7 @@ export const loader = async ({ request }) => {
   const requestedStep = parseStep(url.searchParams);
   const linkedFlash = url.searchParams.get("linked") === "1";
 
-  const { storeProfile, planChoice } = await getOnboardingState(shop);
+  const { storeProfile, planChoice, questionnaire } = await getOnboardingState(shop);
   const profile = storeProfile ?? {
     industry: "",
     primaryGoal: "",
@@ -83,8 +91,12 @@ export const loader = async ({ request }) => {
     importingFromOtherApp: "",
     importSource: "",
   };
+  const survey = questionnaire ?? {
+    judgemeGoal: "",
+    discoverySource: "",
+  };
 
-  const step = resolveOnboardingStep(requestedStep, planChoice, profile);
+  const step = resolveOnboardingStep(requestedStep, planChoice, profile, survey);
   if (step !== requestedStep) {
     throw embedRedirect(`/app/onboarding?step=${step}`, request);
   }
@@ -101,6 +113,7 @@ export const loader = async ({ request }) => {
     step,
     linkedFlash,
     storeProfile: profile,
+    questionnaire: survey,
     planChoice,
     linkedCount,
     proPrice: PRO_PRICE_USD,
@@ -177,6 +190,21 @@ export const action = async ({ request }) => {
     throw embedRedirect("/app/onboarding?step=5", request);
   }
 
+  if (intent === "saveQuestionnaire") {
+    const judgemeGoal = String(fd.get("judgemeGoal") ?? "").trim();
+    const discoverySource = String(fd.get("discoverySource") ?? "").trim();
+
+    if (!judgemeGoal || !discoverySource) {
+      return data(
+        { error: "Answer both questions to continue.", step: 5 },
+        { status: 400 },
+      );
+    }
+
+    await saveQuestionnaire(shop, { judgemeGoal, discoverySource });
+    throw embedRedirect("/app/onboarding?step=6", request);
+  }
+
   if (intent === "finish") {
     const { storeProfile: profile } = await getOnboardingState(shop);
     const planChoice = await getPlanChoice(shop);
@@ -204,8 +232,16 @@ export const action = async ({ request }) => {
 };
 
 export default function Onboarding() {
-  const { shop, storeProfile, linkedCount, step, linkedFlash, proPrice, proTrialDays } =
-    useLoaderData();
+  const {
+    shop,
+    storeProfile,
+    questionnaire,
+    linkedCount,
+    step,
+    linkedFlash,
+    proPrice,
+    proTrialDays,
+  } = useLoaderData();
   const actionData = useActionData();
   const submit = useSubmit();
   const navigate = useNavigate();
@@ -229,12 +265,28 @@ export default function Onboarding() {
     storeProfile.importSource || "loox",
   );
   const [targetShop, setTargetShop] = useState("");
+  const goalParsed = parseSelectOrTextValue(
+    questionnaire.judgemeGoal || "",
+    JUDGE_ME_GOAL_OPTIONS,
+  );
+  const discoveryParsed = parseSelectOrTextValue(
+    questionnaire.discoverySource || "",
+    DISCOVERY_SOURCE_OPTIONS,
+  );
+  const [judgemeGoalSelect, setJudgemeGoalSelect] = useState(goalParsed.select);
+  const [judgemeGoalCustom, setJudgemeGoalCustom] = useState(goalParsed.custom);
+  const [discoverySelect, setDiscoverySelect] = useState(discoveryParsed.select);
+  const [discoveryCustom, setDiscoveryCustom] = useState(discoveryParsed.custom);
   const profileError =
     step === 3 && actionData?.error && actionData?.step === 3
       ? actionData.error
       : null;
   const linkError =
     step === 4 && actionData?.error && actionData?.step === 4
+      ? actionData.error
+      : null;
+  const questionnaireError =
+    step === 5 && actionData?.error && actionData?.step === 5
       ? actionData.error
       : null;
 
@@ -538,11 +590,86 @@ export default function Onboarding() {
     );
   }
 
+  if (step === 5) {
+    const resolvedGoal = resolveSelectOrTextValue(
+      judgemeGoalSelect,
+      judgemeGoalCustom,
+      JUDGE_ME_GOAL_OPTIONS,
+    );
+    const resolvedDiscovery = resolveSelectOrTextValue(
+      discoverySelect,
+      discoveryCustom,
+      DISCOVERY_SOURCE_OPTIONS,
+    );
+
+    return (
+      <WizardShell
+        step={5}
+        total={TOTAL_STEPS}
+        actions={
+          <>
+            <SecondaryButton onClick={() => goToStep(4)} disabled={isSubmitting}>
+              Back
+            </SecondaryButton>
+            <PrimaryButton
+              loading={isSubmitting}
+              disabled={isSubmitting}
+              onClick={() =>
+                submit(
+                  {
+                    intent: "saveQuestionnaire",
+                    judgemeGoal: resolvedGoal,
+                    discoverySource: resolvedDiscovery,
+                  },
+                  { method: "post" },
+                )
+              }
+            >
+              Continue
+            </PrimaryButton>
+          </>
+        }
+      >
+        <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 900 }}>
+          Almost done
+        </h2>
+        <p style={{ margin: "0 0 16px", color: "#6d7175", fontWeight: 600, fontSize: 13 }}>
+          Two quick questions to help us improve Judge.me for merchants like you.
+        </p>
+        {questionnaireError ? (
+          <Stack>
+            <Banner tone="critical">{questionnaireError}</Banner>
+          </Stack>
+        ) : null}
+        <SelectOrTextField
+          label="What is your main goal with Judge.me?"
+          selectValue={judgemeGoalSelect}
+          customValue={judgemeGoalCustom}
+          onSelectChange={(e) => setJudgemeGoalSelect(e.target.value)}
+          onCustomChange={(e) => setJudgemeGoalCustom(e.target.value)}
+          options={JUDGE_ME_GOAL_OPTIONS}
+          customPlaceholder="Describe your goal"
+          disabled={isSubmitting}
+        />
+        <SelectOrTextField
+          label="How did you discover Judge.me?"
+          selectValue={discoverySelect}
+          customValue={discoveryCustom}
+          onSelectChange={(e) => setDiscoverySelect(e.target.value)}
+          onCustomChange={(e) => setDiscoveryCustom(e.target.value)}
+          options={DISCOVERY_SOURCE_OPTIONS}
+          customPlaceholder="Tell us how you found us"
+          disabled={isSubmitting}
+        />
+      </WizardShell>
+    );
+  }
+
   const wantsImport = storeProfile.importingFromOtherApp === "yes";
 
   return (
     <WizardShell
-      step={5}
+      step={6}
       total={TOTAL_STEPS}
       actions={
         <PrimaryButton

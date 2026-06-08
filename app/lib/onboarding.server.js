@@ -24,8 +24,15 @@ export async function getOnboardingState(shop) {
     completed: Boolean(config.onboarding?.completedAt),
     onboarding: config.onboarding ?? null,
     storeProfile: config.storeProfile ?? null,
+    questionnaire: config.onboarding?.questionnaire ?? null,
     planChoice: config.onboarding?.planChoice ?? null,
   };
+}
+
+export function isQuestionnaireComplete(questionnaire) {
+  return Boolean(
+    questionnaire?.judgemeGoal?.trim() && questionnaire?.discoverySource?.trim(),
+  );
 }
 
 export async function savePlanChoice(shop, choice) {
@@ -67,7 +74,20 @@ export async function saveStoreProfile(shop, profile) {
   return config.storeProfile;
 }
 
-/** Record syndication choice before the completion screen (step 4). */
+export async function saveQuestionnaire(shop, answers) {
+  const config = await readConfig(shop);
+  config.onboarding = {
+    ...(config.onboarding ?? {}),
+    questionnaire: {
+      judgemeGoal: String(answers.judgemeGoal ?? "").trim(),
+      discoverySource: String(answers.discoverySource ?? "").trim(),
+    },
+  };
+  await writeConfig(shop, config);
+  return config.onboarding.questionnaire;
+}
+
+/** Record syndication choice before the questionnaire (step 4). */
 export async function saveSyndicationChoice(shop, skippedSyndication) {
   const config = await readConfig(shop);
   config.onboarding = {
