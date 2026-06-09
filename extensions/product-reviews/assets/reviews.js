@@ -15,7 +15,7 @@
 
   const API =
     root.dataset.apiBase ||
-    "https://judgme.onrender.com";
+    "https://judge-me-sigma.vercel.app";
 
   /* ---------------- LOAD REVIEWS ---------------- */
   const res = await fetch(
