@@ -39,16 +39,25 @@ export function CustomizerShell({
         flex: embedded ? 1 : undefined,
         minHeight: embedded ? 0 : undefined,
         overflow: "hidden",
+        overflowX: "hidden",
+        maxWidth: "100%",
+        boxSizing: "border-box",
         background: TOKENS.panelBg,
         fontFamily: UI_FONT,
       }}
     >
       <style>{`
+        * { box-sizing: border-box; }
+        .customizer-container {
+          overflow-x: hidden !important;
+          max-width: 100% !important;
+        }
         @media (max-width: 900px) {
           .customizer-container {
             height: auto !important;
             max-height: none !important;
-            overflow: auto !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
           }
           .customizer-header {
             flex-direction: column !important;
@@ -65,19 +74,24 @@ export function CustomizerShell({
             height: auto !important;
             flex: none !important;
             min-height: auto !important;
+            overflow-x: hidden !important;
           }
           .customizer-sidebar-aside {
             width: 100% !important;
             min-width: 0 !important;
+            max-width: 100% !important;
             border-right: none !important;
             border-bottom: 1px solid ${TOKENS.border} !important;
             overflow-y: visible !important;
+            overflow-x: hidden !important;
             flex-shrink: 1 !important;
           }
           .customizer-preview-main {
             padding: 24px 16px !important;
             width: 100% !important;
+            max-width: 100% !important;
             box-sizing: border-box !important;
+            overflow-x: hidden !important;
           }
         }
       `}</style>
@@ -207,16 +221,19 @@ export function CustomizerShell({
         </div>
       ) : null}
 
-      <div className="customizer-body" style={{ display: "flex", flex: 1, minHeight: 0 }}>
+      <div className="customizer-body" style={{ display: "flex", flex: 1, minHeight: 0, overflowX: "hidden", maxWidth: "100%" }}>
         <aside
           className="customizer-sidebar-aside"
           style={{
-            width: 400,
-            minWidth: 360,
+            width: 380,
+            minWidth: 0,
+            maxWidth: "100%",
             background: TOKENS.panelBg,
             borderRight: `1px solid ${TOKENS.border}`,
             overflowY: "auto",
+            overflowX: "hidden",
             flexShrink: 0,
+            boxSizing: "border-box",
           }}
         >
           <CustomizerSidebar
@@ -233,12 +250,15 @@ export function CustomizerShell({
           className="customizer-preview-main"
           style={{
             flex: 1,
+            minWidth: 0,
             overflowY: "auto",
+            overflowX: "hidden",
             padding: 48,
             display: "flex",
             justifyContent: "center",
             alignItems: "flex-start",
             background: config.backgroundColor,
+            boxSizing: "border-box",
           }}
         >
           <ReviewFormPreview

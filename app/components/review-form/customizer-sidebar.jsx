@@ -75,7 +75,7 @@ export function CustomizerSidebar({
   const radiusPx = config.borderRadius;
 
   return (
-    <div style={{ padding: "20px 18px", fontFamily: UI_FONT }}>
+    <div style={{ padding: "20px 18px", fontFamily: UI_FONT, overflowX: "hidden", maxWidth: "100%", boxSizing: "border-box" }}>
       <div
         style={{
           display: "flex",
