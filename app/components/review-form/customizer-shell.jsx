@@ -30,6 +30,7 @@ export function CustomizerShell({
 }) {
   return (
     <div
+      className="customizer-container"
       style={{
         display: "flex",
         flexDirection: "column",
@@ -42,7 +43,46 @@ export function CustomizerShell({
         fontFamily: UI_FONT,
       }}
     >
+      <style>{`
+        @media (max-width: 900px) {
+          .customizer-container {
+            height: auto !important;
+            max-height: none !important;
+            overflow: auto !important;
+          }
+          .customizer-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            padding: 16px 20px !important;
+          }
+          .customizer-header-actions {
+            width: 100% !important;
+            justify-content: flex-start !important;
+            flex-wrap: wrap !important;
+          }
+          .customizer-body {
+            flex-direction: column !important;
+            height: auto !important;
+            flex: none !important;
+            min-height: auto !important;
+          }
+          .customizer-sidebar-aside {
+            width: 100% !important;
+            min-width: 0 !important;
+            border-right: none !important;
+            border-bottom: 1px solid ${TOKENS.border} !important;
+            overflow-y: visible !important;
+            flex-shrink: 1 !important;
+          }
+          .customizer-preview-main {
+            padding: 24px 16px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+        }
+      `}</style>
       <header
+        className="customizer-header"
         style={{
           display: "flex",
           alignItems: "center",
@@ -51,6 +91,8 @@ export function CustomizerShell({
           background: TOKENS.white,
           borderBottom: `1px solid ${TOKENS.border}`,
           flexShrink: 0,
+          flexWrap: "wrap",
+          gap: 12,
         }}
       >
         <h1
@@ -64,7 +106,10 @@ export function CustomizerShell({
         >
           Review Form Widget Customization
         </h1>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div
+          className="customizer-header-actions"
+          style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}
+        >
           <button type="button" onClick={onUndo} disabled={!canUndo} title="Undo" style={iconBtnStyle(!canUndo)}>
             <Undo2 size={17} />
           </button>
@@ -162,8 +207,9 @@ export function CustomizerShell({
         </div>
       ) : null}
 
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+      <div className="customizer-body" style={{ display: "flex", flex: 1, minHeight: 0 }}>
         <aside
+          className="customizer-sidebar-aside"
           style={{
             width: 400,
             minWidth: 360,
@@ -184,6 +230,7 @@ export function CustomizerShell({
         </aside>
 
         <main
+          className="customizer-preview-main"
           style={{
             flex: 1,
             overflowY: "auto",

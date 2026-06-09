@@ -155,20 +155,7 @@ export function CustomizerSidebar({
             Remove logo
           </button>
         ) : null}
-        <ColorPairRow
-          left={{
-            label: "Brand color",
-            value: config.primaryColor,
-            onColor: (v) => patchConfig({ primaryColor: v, buttonColor: v }),
-            onHex: (v) => patchConfig({ primaryColor: v, buttonColor: v }),
-          }}
-          right={{
-            label: "Accent",
-            value: config.accentColor,
-            onColor: (v) => updateConfig("accentColor", v),
-            onHex: (v) => updateConfig("accentColor", v),
-          }}
-        />
+
       </CollapsibleSection>
 
       <CollapsibleSection title="Stars & ratings" iconType="stars" defaultOpen>
