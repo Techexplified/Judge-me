@@ -784,7 +784,7 @@ export function ExportInstructions({ title, steps, sourceName, onDownload, downl
             }}
           >
             <Upload size={14} />
-            {downloaded ? "Download again" : `Download ${sourceName ?? ""} CSV template`.trim()}
+            {downloaded ? "Download again" : `Download ${(sourceName ?? "").replace(/\s*CSV\s*$/i, "").trim() || "custom"} CSV template`}
           </button>
           {downloaded ? (
             <p style={{ margin: "10px 0 0", fontSize: 12, fontWeight: 600, color: SHOPIFY_GREEN }}>

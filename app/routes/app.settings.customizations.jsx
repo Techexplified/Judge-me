@@ -178,18 +178,20 @@ export const action = async ({ request }) => {
     return { ok: false };
   }
 
-  const { getShopPlanStatus, requireFeatureUsage } = await import("../lib/billing.server.js");
-  const planStatus = await getShopPlanStatus(shop);
-  const usageCheck = await requireFeatureUsage(planStatus, "ai_widget_customization");
-  if (!usageCheck.ok) {
-    return { ok: false, publishError: usageCheck.message };
-  }
-
   let formPayload;
   try {
     formPayload = JSON.parse(configRaw);
   } catch {
     return { ok: false };
+  }
+
+  const { getShopPlanStatus, checkFeatureAccess, consumeFeatureUsage } = await import("../lib/billing.server.js");
+  const planStatus = await getShopPlanStatus(shop);
+
+  // Check access BEFORE touching the DB, but do NOT consume yet
+  const accessCheck = await checkFeatureAccess(planStatus, "ai_widget_customization");
+  if (!accessCheck.ok) {
+    return { ok: false, publishError: accessCheck.message };
   }
 
   const row = await db.settings.findUnique({ where: { shop } });
@@ -209,11 +211,15 @@ export const action = async ({ request }) => {
     formConfigPublishedAt: new Date().toISOString(),
   };
 
+  // Save to DB first — only consume credit after a confirmed successful save
   await db.settings.upsert({
     where: { shop },
     update: { config: JSON.stringify(merged) },
     create: { shop, config: JSON.stringify(merged) },
   });
+
+  // Credit consumed ONLY after the save succeeds
+  await consumeFeatureUsage(shop, "ai_widget_customization", 1);
 
   return { ok: true, publishedAt: merged.formConfigPublishedAt };
 };
