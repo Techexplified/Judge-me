@@ -113,7 +113,7 @@ function PlanBoxCard({ plan, variant }) {
   return (
     <div style={{ ...styles.box, ...(isPro ? styles.boxPro : styles.boxFree) }}>
       {isPro ? <span style={styles.popular}>Most popular</span> : null}
-      <p style={styles.planLabel}>{plan.title} plan</p>
+      <p style={styles.planLabel}>{plan.title} Plan</p>
       <h3 style={styles.planTitle}>{plan.title}</h3>
       <p style={styles.price}>{plan.priceLabel}</p>
       <p style={styles.subtitle}>{plan.subtitle}</p>

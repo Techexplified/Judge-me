@@ -153,7 +153,7 @@ export function PricingTrialHero({
 }) {
   const trialCta = appPricingUrl ? (
     <a href={appPricingUrl} target="_top" rel="noopener noreferrer" style={styles.ctaDark}>
-      {hasPro ? "Manage plan" : `Start your free trial`}
+      {hasPro ? "Manage Plan" : `Start your free trial`}
     </a>
   ) : (
     <button
@@ -172,7 +172,7 @@ export function PricingTrialHero({
         <div>
           <div style={styles.titleRow}>
             <h2 style={styles.title}>
-              {hasPro ? "Your Pro plan" : `Start your free Pro trial`}
+              {hasPro ? "Your Pro Plan" : `Start your free Pro trial`}
             </h2>
             {!hasPro ? <span style={styles.badge}>Special offer</span> : null}
           </div>
@@ -188,7 +188,7 @@ export function PricingTrialHero({
         </div>
         <div style={styles.statusBox}>
           <p style={styles.statusLabel}>
-            You are on the <strong>{hasPro ? "Pro" : "Free"}</strong> plan.
+            You are on the <strong>{hasPro ? "Pro" : "Free"}</strong> Plan.
           </p>
           {!hasPro ? trialCta : (
             <PrimaryButton loading={isSubmitting} disabled={isSubmitting} onClick={onCancel}>

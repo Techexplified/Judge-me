@@ -45,8 +45,8 @@ export function PricingPage({
 
       {!useBillingApi ? (
         <Banner tone="info">
-          Upgrades open Shopify&apos;s hosted plan page (Shopify App Pricing). Configure your Pro
-          plan and 14-day trial in the Partner Dashboard.
+          Upgrades open Shopify&apos;s hosted Plan page (Shopify App Pricing). Configure your Pro
+          Plan and 14-day trial in the Partner Dashboard.
         </Banner>
       ) : null}
 
@@ -60,7 +60,7 @@ export function PricingPage({
 
       {billingDeclined ? (
         <Banner tone="warning">
-          Subscription was not approved. You can continue on the Free plan or try again.
+          Subscription was not approved. You can continue on the Free Plan or try again.
         </Banner>
       ) : null}
 
@@ -118,7 +118,7 @@ export function PricingPage({
 
       {planStatus?.featureUsage ? (
         <Card
-          title={hasPro ? "Pro feature usage" : "Free plan usage"}
+          title={hasPro ? "Pro feature usage" : "Free Plan usage"}
           description="Monthly limits reset on the 1st (UTC)."
         >
           <div style={{ overflowX: "auto" }}>

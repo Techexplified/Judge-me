@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSubmit, useLoaderData, useNavigation, useActionData } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
@@ -159,7 +159,7 @@ export const action = async ({ request }) => {
       const { mediaKindFromMime } = await import("../lib/review-media.shared.js");
       const hasVideo = mediaResult.files.some((f) => mediaKindFromMime(f.type) === "video");
       if (hasVideo && !planStatus.hasPro) {
-        return { reviewError: "Video reviews require a Pro plan." };
+        return { reviewError: "Video reviews require a Pro Plan." };
       }
     }
 

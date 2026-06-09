@@ -121,15 +121,6 @@ const styles = {
 
 const FEATURE_CARDS = [
   {
-    tone: "mint",
-    tag: "Reviews",
-    Icon: Star,
-    title: "Get reviews faster with customized review request emails",
-    desc: "Collect more reviews with branded forms, photo uploads, and video support on Pro.",
-    tab: "/app/settings/customizations",
-    cta: "Customize widget",
-  },
-  {
     tone: "sky",
     tag: "Analytics",
     Icon: BarChart3,
@@ -191,15 +182,6 @@ const FEATURE_CARDS = [
     desc: "Layout presets, brand colors, typography, and trust badges — 20 publishes per month.",
     tab: "/app/settings/customizations",
     cta: "Customizations",
-  },
-  {
-    tone: "mint",
-    tag: "SEO",
-    Icon: Search,
-    title: "Google and SEO-friendly review widgets",
-    desc: "Product review pages and structured data to help shoppers find and trust your store.",
-    tab: "/app/settings/customizations",
-    cta: "Storefront settings",
   },
 ];
 

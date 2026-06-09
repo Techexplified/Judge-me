@@ -179,7 +179,7 @@ export function PremiumTrialBadge({ trialStatus, planStatus }) {
   return (
     <span style={{ ...styles.pill, ...styles.pillExpired }}>
       <AlertTriangle size={14} />
-      Free plan
+      Free Plan
     </span>
   );
 }
@@ -251,7 +251,7 @@ export function PremiumTrialBanner({ trialStatus, planStatus }) {
           </p>
         ) : null}
         <Link to={settingsHref} style={styles.upgradeLink}>
-          {endingSoon ? "Choose your plan in Settings →" : "View usage in Settings →"}
+          {endingSoon ? "Choose your Plan in Settings →" : "View usage in Settings →"}
         </Link>
       </div>
     );
@@ -261,7 +261,7 @@ export function PremiumTrialBanner({ trialStatus, planStatus }) {
     <div style={styles.expiredCard}>
       <div style={styles.head}>
         <AlertTriangle size={16} color={CRITICAL_RED} />
-        <span style={{ ...styles.headText, color: "#8e1f0b" }}>Free plan</span>
+        <span style={{ ...styles.headText, color: "#8e1f0b" }}>Free Plan</span>
       </div>
       <p style={{ ...styles.subtext, color: "#8e1f0b" }}>
         {reviewsRemaining != null
@@ -307,7 +307,7 @@ export function GraceTrialEndingBanner({ trialStatus, planStatus }) {
         </p>
         <p style={styles.subtext}>
           {endLabel ? `Your complimentary access ends ${endLabel}. ` : ""}
-          Open Settings to stay on the Free plan or start the 14-day Shopify Pro trial — your
+          Open Settings to stay on the Free Plan or start the 14-day Shopify Pro trial — your
           choice.
         </p>
         <Link to={settingsHref} style={styles.upgradeLink}>
@@ -349,7 +349,7 @@ export function PremiumGateBanner({ feature = "feature" }) {
         <span style={{ ...styles.headText, color: "#8e1f0b" }}>Pro feature</span>
       </div>
       <p style={{ ...styles.subtext, color: "#8e1f0b" }}>
-        {label} requires a Pro plan. Core review tools remain available on Free.
+        {label} requires a Pro Plan. Core review tools remain available on Free.
       </p>
       <Link to={settingsHref} style={styles.upgradeLink}>
         Start 14-day free trial →
