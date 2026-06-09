@@ -178,141 +178,155 @@ export async function action({ request }) {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  const contentType = request.headers.get("content-type") || "";
-  let shop;
-  let productId;
-  let productName;
-  let rating;
-  let comment;
-  let author;
-  let title;
-  let email;
-  let mediaFiles = [];
+  try {
+    const contentType = request.headers.get("content-type") || "";
+    let shop;
+    let productId;
+    let productName;
+    let rating;
+    let comment;
+    let author;
+    let title;
+    let email;
+    let mediaFiles = [];
 
-  if (contentType.includes("multipart/form-data")) {
-    const fd = await request.formData();
-    shop = fd.get("shop");
-    productId = fd.get("productId");
-    productName = fd.get("productName");
-    rating = fd.get("rating");
-    comment = fd.get("comment");
-    author = fd.get("author");
-    title = fd.get("title");
-    email = fd.get("email");
+    if (contentType.includes("multipart/form-data")) {
+      const fd = await request.formData();
+      shop = fd.get("shop");
+      productId = fd.get("productId");
+      productName = fd.get("productName");
+      rating = fd.get("rating");
+      comment = fd.get("comment");
+      author = fd.get("author");
+      title = fd.get("title");
+      email = fd.get("email");
 
-    const shopNormEarly = normalizeShopDomain(shop);
-    let formConfig = { showPhotos: true, showVideos: true };
-    if (shopNormEarly) {
-      const settingsRow = await db.settings.findUnique({ where: { shop: shopNormEarly } });
-      if (settingsRow?.config) {
-        try {
-          const { mergeFormConfig } = await import("../lib/review-form-config.shared.js");
-          formConfig = mergeFormConfig(JSON.parse(settingsRow.config));
-        } catch {
-          /* keep defaults */
+      const shopNormEarly = normalizeShopDomain(shop);
+      let formConfig = { showPhotos: true, showVideos: true };
+      if (shopNormEarly) {
+        const settingsRow = await db.settings.findUnique({ where: { shop: shopNormEarly } });
+        if (settingsRow?.config) {
+          try {
+            const { mergeFormConfig } = await import("../lib/review-form-config.shared.js");
+            formConfig = mergeFormConfig(JSON.parse(settingsRow.config));
+          } catch {
+            /* keep defaults */
+          }
         }
       }
-    }
 
-    const { extractMediaFilesFromForm } = await import("../lib/review-media.server.js");
-    const mediaResult = extractMediaFilesFromForm(fd, {
-      allowImages: formConfig.showPhotos !== false,
-      allowVideos: formConfig.showVideos !== false,
-    });
-    if (!mediaResult.ok) {
-      return new Response(JSON.stringify({ error: mediaResult.error }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const { extractMediaFilesFromForm } = await import("../lib/review-media.server.js");
+      const mediaResult = extractMediaFilesFromForm(fd, {
+        allowImages: formConfig.showPhotos !== false,
+        allowVideos: formConfig.showVideos !== false,
       });
-    }
-    mediaFiles = mediaResult.files;
-  } else {
-    let body;
-    try {
-      body = await request.json();
-    } catch {
-      return new Response(JSON.stringify({ error: "Invalid JSON" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    ({
-      shop,
-      productId,
-      productName,
-      rating,
-      comment,
-      author,
-      title,
-      email,
-    } = body);
-  }
-
-  if (!shop || !productId || !rating || !comment) {
-    return new Response("Missing fields", {
-      status: 400,
-      headers: corsHeaders,
-    });
-  }
-
-  const shopNorm = normalizeShopDomain(shop);
-
-  const { canCreateReview, getShopPlanStatus } = await import("../lib/billing.server.js");
-  const createCheck = await canCreateReview(shopNorm);
-  if (!createCheck.ok) {
-    return new Response(JSON.stringify({ error: createCheck.error }), {
-      status: 403,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  const planStatus = await getShopPlanStatus(shopNorm);
-  if (mediaFiles.length > 0) {
-    const { mediaKindFromMime } = await import("../lib/review-media.shared.js");
-    const hasVideo = mediaFiles.some((f) => mediaKindFromMime(f.type) === "video");
-    if (hasVideo && !planStatus.hasPro) {
-      return new Response(
-        JSON.stringify({ error: "Video reviews require a Pro plan." }),
-        {
-          status: 403,
+      if (!mediaResult.ok) {
+        return new Response(JSON.stringify({ error: mediaResult.error }), {
+          status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
+        });
+      }
+      mediaFiles = mediaResult.files;
+    } else {
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return new Response(JSON.stringify({ error: "Invalid JSON" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      ({
+        shop,
+        productId,
+        productName,
+        rating,
+        comment,
+        author,
+        title,
+        email,
+      } = body);
     }
+
+    if (!shop || !productId || !rating || !comment) {
+      return new Response("Missing fields", {
+        status: 400,
+        headers: corsHeaders,
+      });
+    }
+
+    const shopNorm = normalizeShopDomain(shop);
+
+    const { canCreateReview, getShopPlanStatus } = await import("../lib/billing.server.js");
+    const createCheck = await canCreateReview(shopNorm);
+    if (!createCheck.ok) {
+      return new Response(JSON.stringify({ error: createCheck.error }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const planStatus = await getShopPlanStatus(shopNorm);
+    if (mediaFiles.length > 0) {
+      const { mediaKindFromMime } = await import("../lib/review-media.shared.js");
+      const hasVideo = mediaFiles.some((f) => mediaKindFromMime(f.type) === "video");
+      if (hasVideo && !planStatus.hasPro) {
+        return new Response(
+          JSON.stringify({ error: "Video reviews require a Pro plan." }),
+          {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+    }
+    const pid =
+      normalizeShopifyProductId(productId) || String(productId).trim();
+
+    let reviewData = {
+      shop: shopNorm,
+      productId: pid,
+      productName: productName || "Unknown product",
+      rating: Number(rating),
+      title: (typeof title === "string" ? title : "")?.trim() || null,
+      comment: String(comment),
+      author: (typeof author === "string" ? author : "")?.trim() || "Anonymous",
+      email: (typeof email === "string" ? email : "")?.trim() || null,
+      status: "PUBLISHED",
+    };
+
+    const { data: translatedData } = await maybeAutoTranslateReviewData(shopNorm, reviewData);
+    reviewData = translatedData;
+
+    const created = await db.review.create({
+      data: reviewData,
+    });
+
+    if (mediaFiles.length > 0) {
+      const { saveReviewMedia } = await import("../lib/review-media.server.js");
+      await saveReviewMedia(created.id, mediaFiles);
+    }
+
+    await emitReviewCollectedFlowTrigger(shopNorm, created);
+
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (err) {
+    console.error("[api.public.reviews] action failed:", err);
+    return new Response(
+      JSON.stringify({ error: err?.message ?? "Internal server error" }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      },
+    );
   }
-  const pid =
-    normalizeShopifyProductId(productId) || String(productId).trim();
-
-  let reviewData = {
-    shop: shopNorm,
-    productId: pid,
-    productName: productName || "Unknown product",
-    rating: Number(rating),
-    title: (typeof title === "string" ? title : "")?.trim() || null,
-    comment: String(comment),
-    author: (typeof author === "string" ? author : "")?.trim() || "Anonymous",
-    email: (typeof email === "string" ? email : "")?.trim() || null,
-    status: "PUBLISHED",
-  };
-
-  const { data: translatedData } = await maybeAutoTranslateReviewData(shopNorm, reviewData);
-  reviewData = translatedData;
-
-  const created = await db.review.create({
-    data: reviewData,
-  });
-
-  if (mediaFiles.length > 0) {
-    const { saveReviewMedia } = await import("../lib/review-media.server.js");
-    await saveReviewMedia(created.id, mediaFiles);
-  }
-
-  await emitReviewCollectedFlowTrigger(shopNorm, created);
-
-  return new Response(JSON.stringify({ ok: true }), {
-    headers: {
-      ...corsHeaders,
-      "Content-Type": "application/json",
-    },
-  });
 }

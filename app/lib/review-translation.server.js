@@ -523,29 +523,34 @@ export async function translateNewReviewData(
 
 /** Apply auto-translation to review create payload when settings allow. */
 export async function maybeAutoTranslateReviewData(shop, reviewData) {
-  const ctx = await getActiveTranslationContext(shop);
-  if (
-    !ctx.premium ||
-    !ctx.apiKey ||
-    !ctx.translation.enabled ||
-    !ctx.translation.autoTranslateNewReviews
-  ) {
-    return { data: reviewData, error: null };
-  }
+  try {
+    const ctx = await getActiveTranslationContext(shop);
+    if (
+      !ctx.premium ||
+      !ctx.apiKey ||
+      !ctx.translation.enabled ||
+      !ctx.translation.autoTranslateNewReviews
+    ) {
+      return { data: reviewData, error: null };
+    }
 
-  const { requireFeatureUsage } = await import("./usage.server.js");
-  const usageCheck = await requireFeatureUsage(ctx.planStatus, "auto_translate");
-  if (!usageCheck.ok) {
-    return { data: reviewData, error: usageCheck.message };
-  }
+    const { requireFeatureUsage } = await import("./usage.server.js");
+    const usageCheck = await requireFeatureUsage(ctx.planStatus, "auto_translate");
+    if (!usageCheck.ok) {
+      return { data: reviewData, error: usageCheck.message };
+    }
 
-  const { data, error } = await translateNewReviewData(
-    reviewData,
-    ctx.translation.targetLanguage,
-    ctx.apiKey,
-    ctx.translation.sourceLanguage,
-  );
-  return { data, error };
+    const { data, error } = await translateNewReviewData(
+      reviewData,
+      ctx.translation.targetLanguage,
+      ctx.apiKey,
+      ctx.translation.sourceLanguage,
+    );
+    return { data, error };
+  } catch (err) {
+    console.error("[translation] auto-translate new review failed (non-fatal):", err);
+    return { data: reviewData, error: err?.message ?? "Translation error" };
+  }
 }
 
 /** Load settings + verify premium for translation features. */

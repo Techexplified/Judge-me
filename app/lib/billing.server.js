@@ -1,4 +1,5 @@
 import db from "../db.server.js";
+import { normalizeShopDomain } from "../utils/shop.js";
 import {
   FREE_REVIEWS_PER_MONTH,
   hasProAccess,
@@ -211,12 +212,13 @@ function currentMonthKey() {
  * Ensure a Shop row exists for this shop domain.
  */
 export async function ensureShopRecord(shop) {
-  const existing = await db.shop.findUnique({ where: { shop } });
+  const shopNorm = normalizeShopDomain(shop);
+  const existing = await db.shop.findUnique({ where: { shop: shopNorm } });
 
   if (existing) {
     if (existing.uninstalledAt) {
       await db.shop.update({
-        where: { shop },
+        where: { shop: shopNorm },
         data: { uninstalledAt: null },
       });
     }
@@ -225,7 +227,7 @@ export async function ensureShopRecord(shop) {
 
   return db.shop.create({
     data: {
-      shop,
+      shop: shopNorm,
       plan: "free",
       planStatus: "free",
     },
