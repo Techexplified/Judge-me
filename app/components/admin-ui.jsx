@@ -473,20 +473,20 @@ export function SecondaryButton({ children, onClick, disabled, type = "button" }
       {children}
     </button>
   );
-}
-
-export function ResourceRow({ title, badges, icon }) {
+}export function ResourceRow({ title, badges, icon, actions }) {
   return (
     <div style={ui.resourceRow}>
       <div style={ui.resourceMain}>
         {icon ? <span style={{ flexShrink: 0 }}>{icon}</span> : null}
         <span style={ui.resourceTitle}>{title}</span>
       </div>
-      {badges ? <div style={ui.resourceBadgeGroup}>{badges}</div> : null}
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        {badges ? <div style={ui.resourceBadgeGroup}>{badges}</div> : null}
+        {actions ? <div style={{ display: "flex", gap: 6, alignItems: "center" }}>{actions}</div> : null}
+      </div>
     </div>
   );
 }
-
 export function EmptyState({ title, description, icon }) {
   return (
     <div style={ui.empty}>
