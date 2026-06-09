@@ -100,7 +100,7 @@
 
     try {
       const [settingsRes, reviewsRes] = await Promise.all([
-        fetch(`${API}/api/public/settings?shop=${encodeURIComponent(shop)}`),
+        fetch(`${API}/api/public/settings?shop=${encodeURIComponent(shop)}&t=${Date.now()}`),
         fetch(
           `${API}/api/public/reviews?productId=${encodeURIComponent(productId)}&shop=${encodeURIComponent(shop)}`,
         ),
@@ -119,10 +119,42 @@
         .jd-root { font-family: ${ff}; font-size: ${cfg.fontSize}px; color: ${cfg.textColor}; margin: 40px 0; }
         .jd-wrapper { display: flex; gap: 48px; align-items: flex-start; flex-wrap: wrap; }
         .jd-left { flex: 1; min-width: 280px; }
+        .jd-modal-overlay {
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(15, 23, 42, 0.6);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 999999;
+          padding: 16px;
+        }
         .jd-right {
-          flex: 0 1 380px; min-width: 300px; max-width: 420px;
-          background: #fff; padding: ${gap + 8}px; border-radius: ${cfg.borderRadius}px;
+          width: 100%;
+          max-width: 560px;
+          background: #fff; padding: ${gap + 16}px; border-radius: ${cfg.borderRadius}px;
           box-shadow: ${shadowCss(cfg.shadowLevel)}; border: 1px solid #e8eef3;
+          position: relative;
+          max-height: 90vh;
+          overflow-y: auto;
+          box-sizing: border-box;
+          color: ${cfg.textColor};
+          font-family: ${ff};
+        }
+        .jd-close-modal {
+          position: absolute;
+          top: 14px;
+          right: 14px;
+          border: none;
+          background: none;
+          font-size: 24px;
+          cursor: pointer;
+          color: #94a3b8;
+          line-height: 1;
+          padding: 4px;
+        }
+        .jd-close-modal:hover {
+          color: #64748b;
         }
         .jd-title { font-size: 26px; font-weight: 800; margin-bottom: 20px; }
         .jd-review { padding: 24px 0; border-bottom: 1px solid #edf2f7; }
@@ -223,26 +255,39 @@
               <button type="button" class="jd-write-btn" id="jd-open-form">Write a product review</button>
               <div id="jd-reviews-list">${reviewsHtml}</div>
             </div>
-            <div class="jd-right" id="jd-form-panel" style="display:none">
-              ${logoHeader}
-              <h3 class="jd-form-title">Write a Review</h3>
-              ${subtitle}
-              ${ratingsBlock}
-              ${writtenBlock}
-              ${mediaBlock}
-              <button type="button" class="jd-submit" id="jd-submit">Post Review</button>
-              <p id="jd-form-msg" style="text-align:center;font-size:13px;font-weight:600;margin-top:10px"></p>
-              ${trustBlock}
+            <div class="jd-modal-overlay" id="jd-modal" style="display:none">
+              <div class="jd-right" id="jd-form-panel">
+                <button type="button" class="jd-close-modal" id="jd-close-form">×</button>
+                ${logoHeader}
+                <h3 class="jd-form-title">Write a Review</h3>
+                ${subtitle}
+                ${ratingsBlock}
+                ${writtenBlock}
+                ${mediaBlock}
+                <button type="button" class="jd-submit" id="jd-submit">Post Review</button>
+                <p id="jd-form-msg" style="text-align:center;font-size:13px;font-weight:600;margin-top:10px"></p>
+                ${trustBlock}
+              </div>
             </div>
           </div>
         </div>`;
 
-      const formPanel = document.getElementById("jd-form-panel");
+      const modal = document.getElementById("jd-modal");
       const openBtn = document.getElementById("jd-open-form");
-      if (openBtn && formPanel) {
+      const closeBtn = document.getElementById("jd-close-form");
+      if (openBtn && modal) {
         openBtn.onclick = () => {
-          formPanel.style.display = "block";
-          formPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          modal.style.display = "flex";
+        };
+      }
+      if (closeBtn && modal) {
+        closeBtn.onclick = () => {
+          modal.style.display = "none";
+        };
+        modal.onclick = (e) => {
+          if (e.target === modal) {
+            modal.style.display = "none";
+          }
         };
       }
 
