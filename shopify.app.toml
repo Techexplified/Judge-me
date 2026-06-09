@@ -45,3 +45,8 @@ embedded = true
 [build]
 # When false, dev tunnels can disagree with `application_url` → App Bridge postMessage / nav issues in the admin iframe.
 automatically_update_urls_on_dev = true
+
+[app_proxy]
+url = "https://judge-me-sigma.vercel.app"
+subpath = "judgeme-reviews"
+prefix = "apps"

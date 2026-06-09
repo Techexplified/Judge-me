@@ -3,7 +3,7 @@
      data-product-id="{{ product.id }}"
      data-product-name="{{ product.title | escape }}"
      data-shop="{{ shop.permanent_domain }}"
-     data-api-base="{{ block.settings.api_base_url | default: 'https://judge-me-sigma.vercel.app' | escape }}">
+     data-api-base="/apps/judgeme-reviews">
 </div>
 <script src="{{ 'review-widget.js' | asset_url }}" defer></script>
 {% endif %}
@@ -18,13 +18,6 @@
       "id": "enable",
       "label": "Enable reviews",
       "default": true
-    },
-    {
-      "type": "text",
-      "id": "api_base_url",
-      "label": "App API base URL",
-      "default": "https://judge-me-sigma.vercel.app",
-      "info": "Deployed app origin with no trailing slash (use your shopify app dev tunnel URL while testing locally)."
     }
   ]
 }
