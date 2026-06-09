@@ -9,7 +9,7 @@ import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prism
 import prisma from "./db.server";
 
 export const PRO_PLAN = "JudgeMe Pro";
-export const PRO_PRICE_USD = 20;
+export const PRO_PRICE_USD = 9;
 export const PRO_TRIAL_DAYS = 14;
 export const BILLING_TEST_MODE = process.env.BILLING_TEST_MODE !== "false";
 /** App handle from Partner Dashboard / admin URL (e.g. judgeme-reviews). */

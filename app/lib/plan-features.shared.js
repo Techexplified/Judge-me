@@ -55,7 +55,7 @@ export const FREE_PLAN_BOX = {
 /** @type {PlanBox} */
 export const PRO_PLAN_BOX = {
   title: "Pro",
-  priceLabel: "$20 / month",
+  priceLabel: "$9 / month",
   subtitle: "14-day free trial · billed via Shopify",
   sections: [
     {
@@ -115,5 +115,5 @@ export const PRO_PLAN_HIGHLIGHTS = [
   "PDF & CSV export",
   `Full translation suite (${PRO_TRANSLATIONS_PER_MONTH} / month)`,
   `${PRO_LINKED_STORES}+ store integrations`,
-  "14-day free trial · then $20/month via Shopify",
+  "14-day free trial · then $9/month via Shopify",
 ];
