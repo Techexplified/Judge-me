@@ -20,7 +20,6 @@ export const SOURCE_PRESETS = {
     id: "loox",
     name: "Loox",
     category: "Shopify app",
-    logo: "/import-logos/loox.svg",
     autoMapped: true,
     columnAliases: {
       author: ["author", "reviewer_name", "reviewer", "name", "customer_name"],
@@ -40,7 +39,6 @@ export const SOURCE_PRESETS = {
     id: "judgeme",
     name: "Judge.me",
     category: "Shopify app",
-    logo: "/import-logos/judgeme.svg",
     autoMapped: true,
     columnAliases: {
       author: ["reviewer_name", "author", "name", "customer_name", "reviewer"],
@@ -60,7 +58,6 @@ export const SOURCE_PRESETS = {
     id: "stamped",
     name: "Stamped.io",
     category: "Shopify app",
-    logo: "/import-logos/stamped.svg",
     autoMapped: true,
     columnAliases: {
       author: ["author", "reviewauthor", "reviewer_name", "name", "customer_name", "reviewer"],
@@ -80,7 +77,6 @@ export const SOURCE_PRESETS = {
     id: "yotpo",
     name: "Yotpo",
     category: "Shopify app",
-    logo: "/import-logos/yotpo.svg",
     autoMapped: true,
     columnAliases: {
       author: ["reviewer_display_name", "reviewer_name", "author", "name", "customer_name", "reviewer"],
@@ -100,7 +96,6 @@ export const SOURCE_PRESETS = {
     id: "okendo",
     name: "Okendo",
     category: "Shopify app",
-    logo: "/import-logos/okendo.svg",
     autoMapped: true,
     columnAliases: {
       author: ["reviewer_name", "author", "name", "customer_name", "reviewer"],
@@ -138,7 +133,6 @@ export const SOURCE_PRESETS = {
     id: "flipkart",
     name: "Flipkart",
     category: "Marketplace",
-    logo: "/import-logos/flipkart.svg",
     autoMapped: true,
     columnAliases: {
       author: ["reviewer_name", "reviewer", "author", "name", "customer_name"],
@@ -156,7 +150,6 @@ export const SOURCE_PRESETS = {
     id: "custom",
     name: "Custom CSV",
     category: "Any format",
-    logo: "/import-logos/custom.svg",
     autoMapped: true,
     columnAliases: {
       author: ["reviewer_name", "author", "name", "customer_name", "reviewer"],

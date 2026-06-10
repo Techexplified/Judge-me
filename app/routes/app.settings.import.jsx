@@ -513,8 +513,8 @@ export default function ImportReviewsPage() {
         }}
       >
         <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#6d7175", lineHeight: 1.5 }}>
-          Migrate reviews from Loox, Stamped, Yotpo, Judge.me, Amazon, Flipkart, and more in under
-          2 minutes.
+          Import reviews from Loox, Stamped, Yotpo, Judge.me, Amazon, Flipkart, and more in just
+          a few clicks.
         </p>
         <div
           style={{

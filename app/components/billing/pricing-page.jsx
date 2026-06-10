@@ -2,11 +2,11 @@
 import { useLocation } from "react-router";
 import { Shield, RefreshCw, CheckCircle2 } from "lucide-react";
 import { Banner, Card, SecondaryButton, Stack } from "../admin-ui";
-import { FEATURE_LABELS } from "../../lib/usage.shared.js";
 import { PricingTrialHero } from "./pricing-trial-hero";
 import { PricingWhyUpgrade } from "./pricing-why-upgrade";
 import { PricingFeatureGrid } from "./pricing-feature-grid";
 import { PricingUpgradeFooter } from "./pricing-upgrade-footer";
+import { FeatureUsageBars } from "./feature-usage-bars";
 
 export function PricingPage({
   planStatus,
@@ -121,96 +121,7 @@ export function PricingPage({
           title={hasPro ? "Pro feature usage" : "Free Plan usage"}
           description="Monthly limits reset on the 1st (UTC)."
         >
-          <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-            >
-              <thead>
-                <tr>
-                  <th
-                    style={{
-                      textAlign: "left",
-                      padding: "8px 10px",
-                      borderBottom: "1px solid #e1e3e5",
-                    }}
-                  >
-                    Feature
-                  </th>
-                  <th
-                    style={{
-                      textAlign: "right",
-                      padding: "8px 10px",
-                      borderBottom: "1px solid #e1e3e5",
-                    }}
-                  >
-                    Used
-                  </th>
-                  <th
-                    style={{
-                      textAlign: "right",
-                      padding: "8px 10px",
-                      borderBottom: "1px solid #e1e3e5",
-                    }}
-                  >
-                    Limit
-                  </th>
-                  <th
-                    style={{
-                      textAlign: "right",
-                      padding: "8px 10px",
-                      borderBottom: "1px solid #e1e3e5",
-                    }}
-                  >
-                    Left
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(planStatus.featureUsage).map(([key, row]) => (
-                  <tr key={key}>
-                    <td style={{ padding: "8px 10px", borderBottom: "1px solid #f1f2f3" }}>
-                      {FEATURE_LABELS[key] || key}
-                    </td>
-                    <td
-                      style={{
-                        padding: "8px 10px",
-                        borderBottom: "1px solid #f1f2f3",
-                        textAlign: "right",
-                      }}
-                    >
-                      {row.used}
-                    </td>
-                    <td
-                      style={{
-                        padding: "8px 10px",
-                        borderBottom: "1px solid #f1f2f3",
-                        textAlign: "right",
-                      }}
-                    >
-                      {row.limit == null ? "∞" : row.limit}
-                    </td>
-                    <td
-                      style={{
-                        padding: "8px 10px",
-                        borderBottom: "1px solid #f1f2f3",
-                        textAlign: "right",
-                        color:
-                          row.limit != null && row.remaining <= 0 ? "#d72c0d" : "#202223",
-                        fontWeight: row.limit != null && row.remaining <= 0 ? 800 : 600,
-                      }}
-                    >
-                      {row.limit == null ? "N/A" : row.remaining}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <FeatureUsageBars featureUsage={planStatus.featureUsage} />
         </Card>
       ) : null}
 

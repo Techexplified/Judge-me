@@ -52,12 +52,14 @@ function SourceLogo({ source }) {
           height: 36,
           borderRadius: R,
           flexShrink: 0,
-          objectFit: "cover",
+          objectFit: "contain",
           display: "block",
+          background: "#fff",
         }}
       />
     );
   }
+  const initial = (source.name || "?").replace(/[^A-Za-z0-9]/g, "").charAt(0).toUpperCase() || "?";
   return (
     <span
       style={{
@@ -66,8 +68,17 @@ function SourceLogo({ source }) {
         borderRadius: R,
         background: color,
         flexShrink: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "#fff",
+        fontWeight: 800,
+        fontSize: 15,
       }}
-    />
+      aria-hidden
+    >
+      {initial}
+    </span>
   );
 }
 
