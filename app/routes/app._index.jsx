@@ -1081,7 +1081,7 @@ export default function Dashboard() {
                   <th style={s.th}>Rating</th>
                   <th style={s.th}>Reviews</th>
                   <th style={s.th}>Sentiment</th>
-                  <th style={s.th}>Last Review</th>
+                  <th style={{ ...s.th, whiteSpace: "nowrap" }}>Last Review</th>
                   <th style={{ ...s.th, textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>

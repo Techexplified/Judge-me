@@ -696,7 +696,7 @@ export default function Onboarding() {
         >
           <Store size={24} color="#008060" />
         </div>
-        <h2 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 900 }}>You&apos;re set up</h2>
+        <h2 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 900 }}>You&apos;re All Set!</h2>
         <p style={{ margin: 0, color: "#6d7175", fontWeight: 600, fontSize: 13, lineHeight: 1.5 }}>
           {wantsImport
             ? "Next, we'll help you import your reviews from your previous app."

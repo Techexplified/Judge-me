@@ -1,9 +1,10 @@
 /* eslint-disable react/prop-types */
-import { Link, useLoaderData, useSearchParams } from "react-router";
+import { Link, useLoaderData, useLocation, useSearchParams } from "react-router";
 import { CalendarDays, ChevronLeft } from "lucide-react";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.js";
+import { mergeShopifyEmbedParams } from "../utils/shopify-embed-nav.js";
 import { getGroupShopList } from "../lib/store-group.server";
 import { REVIEW_LIST_SELECT } from "../lib/review-query.shared.js";
 import {
@@ -188,6 +189,7 @@ export default function AnalyticsPage() {
     chartsBlocked,
     totalReviews,
   } = useLoaderData();
+  const { search } = useLocation();
   const [, setSearchParams] = useSearchParams();
 
   const setView = (nextView) => {
@@ -214,7 +216,7 @@ export default function AnalyticsPage() {
 
   return (
     <div style={pageStyles.page}>
-      <Link to="/app" style={pageStyles.back}>
+      <Link to={mergeShopifyEmbedParams("/app", search)} style={pageStyles.back}>
         <ChevronLeft size={16} />
         Back to dashboard
       </Link>

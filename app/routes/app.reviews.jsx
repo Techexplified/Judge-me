@@ -557,7 +557,7 @@ export default function ReviewsManagement() {
         <div style={{ marginTop: 8, flexShrink: 0 }}>
           <PrimaryButton onClick={goToImport}>
             <Upload size={16} />
-            Import reviews
+            Import Reviews
           </PrimaryButton>
         </div>
       </div>

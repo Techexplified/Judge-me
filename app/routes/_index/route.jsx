@@ -2,10 +2,26 @@ import { redirect, Form, useLoaderData } from "react-router";
 import { login } from "../../shopify.server";
 import styles from "./styles.module.css";
 
+const EMBED_QUERY_KEYS = [
+  "shop",
+  "host",
+  "embedded",
+  "hmac",
+  "id_token",
+  "session",
+  "timestamp",
+  "locale",
+];
+
+function hasEmbedContext(url) {
+  return EMBED_QUERY_KEYS.some((key) => url.searchParams.has(key));
+}
+
 export const loader = async ({ request }) => {
   const url = new URL(request.url);
 
-  if (url.searchParams.get("shop")) {
+  // Sidebar "JudgeMe Reviews" opens application_url (/) — forward any admin embed params to /app.
+  if (hasEmbedContext(url)) {
     throw redirect(`/app?${url.searchParams.toString()}`);
   }
 
