@@ -535,7 +535,7 @@ const STATUS_BADGE = {
   ready: { label: "Ready", tone: "green" },
   low_rating: { label: "Low Rating", tone: "warning" },
   duplicate: { label: "Duplicate?", tone: "blue" },
-  product_not_found: { label: "Not Found", tone: "red" },
+  product_not_found: { label: "Not in Store", tone: "warning" },
   invalid: { label: "Invalid", tone: "red" },
 };
 
@@ -667,7 +667,7 @@ export function PreviewSummary({ summary, settings }) {
   }
   if (summary.productNotFound > 0) {
     parts.push(
-      `${summary.productNotFound} row${summary.productNotFound === 1 ? "" : "s"} could not be matched to a product and will be skipped.`,
+      `${summary.productNotFound} review${summary.productNotFound === 1 ? "" : "s"} not matched to your catalog but will still be imported.`,
     );
   }
 
@@ -685,7 +685,7 @@ export function PreviewStats({ summary }) {
     { label: "Ready to Import", value: summary.ready, color: SHOPIFY_GREEN },
     { label: "Potential Duplicate", value: summary.duplicate, color: "#b98900" },
     { label: "Low Rating", value: summary.lowRating, color: "#b98900" },
-    { label: "Errors", value: summary.invalid + summary.productNotFound, color: "#d72c0d" },
+    { label: "Errors", value: summary.invalid, color: "#d72c0d" },
   ];
 
   return (

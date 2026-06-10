@@ -57,6 +57,17 @@ export function resolveProduct(row, mapping, lookup) {
   if (sku && lookup.bySku.has(sku)) {
     return lookup.bySku.get(sku);
   }
+
+  if (productIdRaw || handle || sku) {
+    const fallbackId = normalizeShopifyProductId(productIdRaw) || productIdRaw || handle || sku;
+    return {
+      productId: fallbackId,
+      productName: handle || productIdRaw || sku || "Unmatched Product",
+      productImage: null,
+      isFallback: true
+    };
+  }
+
   return null;
 }
 
@@ -108,6 +119,12 @@ export function validateRows(rows, mapping, lookup, existingFingerprints, settin
         } else {
           summary.ready += 1;
         }
+      } else if (product.isFallback) {
+        status = "product_not_found";
+        importable = true;
+        summary.productNotFound += 1;
+        summary.ready += 1;
+        batchFingerprints.add(fpKey);
       } else if (settings.filterMinRating && rating < 4) {
         status = "low_rating";
         summary.lowRating += 1;
