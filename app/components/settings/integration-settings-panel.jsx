@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect, react/prop-types */
 import { useEffect, useState } from "react";
 import { useSubmit, useNavigation, useSearchParams } from "react-router";
-import { CheckCircle2, AlertCircle, Store, Crown } from "lucide-react";
+import { CheckCircle2, AlertCircle, Store } from "lucide-react";
 import {
   Badge,
   Banner,
@@ -207,14 +207,12 @@ export function IntegrationSettingsPanel({ group, linkedSuccess, unlinkedSuccess
                 badges={
                   <>
                     {member.role === "PRIMARY" ? (
-                      <Badge tone="warning">
-                        <Crown size={11} /> Primary
-                      </Badge>
+                      <Badge tone="green">Primary</Badge>
                     ) : null}
                     {member.isCurrent ? (
                       <Badge tone="green">This store</Badge>
                     ) : (
-                      <Badge tone="blue">Linked</Badge>
+                      <Badge tone="green">Linked</Badge>
                     )}
                   </>
                 }
