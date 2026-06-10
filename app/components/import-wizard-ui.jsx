@@ -398,6 +398,20 @@ export function FileDropZone({ file, onFile, error }) {
   );
 }
 
+export function MappingErrorsList({ errors, title = "Match these columns before you continue:" }) {
+  if (!errors?.length) return null;
+  return (
+    <div>
+      <p style={{ margin: "0 0 8px", fontWeight: 800, fontSize: 13 }}>{title}</p>
+      <ul style={{ margin: 0, paddingLeft: 20, lineHeight: 1.65, fontSize: 13, fontWeight: 600 }}>
+        {errors.map((msg) => (
+          <li key={msg}>{msg}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function ColumnMappingRow({ csvColumn, value, options, autoMatched, onChange }) {
   return (
     <div
@@ -732,8 +746,27 @@ export function StepBadge({ step, total = 4 }) {
   );
 }
 
-export function ExportInstructions({ title, steps, sourceName, onDownload, downloaded, showTemplate }) {
+function exportStepText(step) {
+  return typeof step === "string" ? step : step.text;
+}
+
+function exportStepLabel(step, index) {
+  if (typeof step === "string") return null;
+  return step.label ?? `Step ${index + 1}`;
+}
+
+export function ExportInstructions({
+  title,
+  steps,
+  requiredFields,
+  sourceName,
+  onDownload,
+  downloaded,
+  showTemplate,
+}) {
   if (!steps?.length) return null;
+
+  const listMarginBottom = requiredFields?.length || showTemplate ? 14 : 0;
 
   return (
     <div
@@ -750,20 +783,51 @@ export function ExportInstructions({ title, steps, sourceName, onDownload, downl
       </p>
       <ol
         style={{
-          margin: showTemplate ? "0 0 14px" : 0,
-          paddingLeft: 20,
+          margin: `0 0 ${listMarginBottom}px`,
+          paddingLeft: requiredFields?.length ? 0 : 20,
           fontSize: 13,
           fontWeight: 600,
           color: "#5c5f62",
           lineHeight: 1.55,
+          listStyle: requiredFields?.length ? "none" : undefined,
         }}
       >
-        {steps.map((step, i) => (
-          <li key={i} style={{ marginBottom: 4 }}>
-            {step}
-          </li>
-        ))}
+        {steps.map((step, i) => {
+          const label = exportStepLabel(step, i);
+          const text = exportStepText(step);
+          return (
+            <li key={i} style={{ marginBottom: label ? 12 : 4 }}>
+              {label ? (
+                <span style={{ display: "block", fontWeight: 800, color: "#202223", marginBottom: 4 }}>
+                  {label}
+                </span>
+              ) : null}
+              {text}
+            </li>
+          );
+        })}
       </ol>
+      {requiredFields?.length ? (
+        <div style={{ marginBottom: showTemplate ? 14 : 0 }}>
+          <p style={{ margin: "0 0 8px", fontWeight: 800, fontSize: 13, color: "#202223" }}>
+            Required Fields
+          </p>
+          <ul
+            style={{
+              margin: 0,
+              paddingLeft: 20,
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#5c5f62",
+              lineHeight: 1.55,
+            }}
+          >
+            {requiredFields.map((field) => (
+              <li key={field}>{field}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {showTemplate ? (
         <>
           <button

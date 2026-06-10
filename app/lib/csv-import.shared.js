@@ -1,10 +1,10 @@
 /** Client-safe CSV import constants and helpers (no server dependencies). */
 
 export const TARGET_FIELDS = [
-  { key: "author", label: "Reviewer Name", required: true },
-  { key: "comment", label: "Review Text", required: true },
-  { key: "rating", label: "Rating (1-5)", required: true },
-  { key: "productHandle", label: "Product Handle", required: false },
+  { key: "author", label: "Reviewer name", required: true },
+  { key: "comment", label: "Review text", required: true },
+  { key: "rating", label: "Star rating (1 to 5)", required: true },
+  { key: "productHandle", label: "Product handle", required: false },
   { key: "productId", label: "Product ID", required: false },
   { key: "productSku", label: "Product SKU", required: false },
   { key: "reviewDate", label: "Review Date", required: false },
@@ -230,25 +230,30 @@ export function autoMapColumns(headers, sourceId) {
   return { mapping, matchedFields };
 }
 
+const REQUIRED_MAPPING_HINTS = {
+  author: "Reviewer name",
+  comment: "Review text",
+  rating: "Star rating (1 to 5)",
+};
+
 export function validateMapping(mapping) {
   const errors = [];
   const mappedTargets = Object.values(mapping).filter((v) => v && v !== "skip");
   const required = ["author", "comment", "rating"];
   for (const req of required) {
     if (!mappedTargets.includes(req)) {
-      errors.push(
-        `Missing required field: ${TARGET_FIELDS.find((f) => f.key === req)?.label ?? req}`,
-      );
+      errors.push(REQUIRED_MAPPING_HINTS[req] ?? req);
     }
   }
   const productFields = ["productHandle", "productId", "productSku"];
   if (!productFields.some((f) => mappedTargets.includes(f))) {
-    errors.push("Map at least one product identifier: Handle, Product ID, or SKU");
+    errors.push("Which product the review is for (handle, ID, or SKU)");
   }
   const seen = new Set();
   for (const target of mappedTargets) {
     if (seen.has(target)) {
-      errors.push(`Duplicate mapping for field: ${target}`);
+      const label = TARGET_FIELDS.find((f) => f.key === target)?.label ?? target;
+      errors.push(`${label} is selected more than once`);
     }
     seen.add(target);
   }
@@ -258,75 +263,152 @@ export function validateMapping(mapping) {
 /** How merchants export reviews from each source (shown in the import wizard). */
 export const EXPORT_INSTRUCTIONS = {
   loox: {
-    title: "How to export from Loox",
+    title: "How to Import Reviews from Loox",
     steps: [
-      "Open Loox in Shopify Admin → Reviews.",
-      "Click Export (or contact Loox support for a full CSV export).",
-      "Upload that file on the next step. Columns auto-map.",
-      "Required columns: product_handle, rating, reviewer_name, body.",
-      "Need a sample format? Download our template below.",
+      {
+        label: "Step 1",
+        text: "Open Loox from your Shopify Admin and go to the Reviews section.",
+      },
+      {
+        label: "Step 2",
+        text: "Export your reviews as a CSV file. If you cannot find the export option, contact Loox support for a full export.",
+      },
+      {
+        label: "Step 3",
+        text: "Upload the CSV file here. We'll automatically match the columns for you.",
+      },
     ],
+    requiredFields: ["Product Handle", "Rating", "Reviewer Name", "Review Content"],
   },
   judgeme: {
-    title: "How to export from Judge.me",
+    title: "How to Import Reviews from Judge.me",
     steps: [
-      "In Judge.me admin, go to Settings → Import & export.",
-      "Click Export reviews and download the CSV.",
-      "Upload that file on the next step. Columns auto-map.",
-      "Need a sample format? Download our template below.",
+      {
+        label: "Step 1",
+        text: "Open Judge.me and go to Settings, then Import and Export.",
+      },
+      {
+        label: "Step 2",
+        text: "Click Export Reviews and download the CSV file.",
+      },
+      {
+        label: "Step 3",
+        text: "Upload the file here. We'll automatically match the columns for you.",
+      },
     ],
+    requiredFields: ["Product Handle", "Rating", "Reviewer Name", "Review Content"],
   },
   stamped: {
-    title: "How to export from Stamped.io",
+    title: "How to Import Reviews from Stamped.io",
     steps: [
-      "Open Stamped.io dashboard → Reviews.",
-      "Use Export / Download CSV from the reviews list.",
-      "Upload that file on the next step. Columns auto-map.",
-      "Need a sample format? Download our template below.",
+      {
+        label: "Step 1",
+        text: "Open your Stamped dashboard and go to the Reviews section.",
+      },
+      {
+        label: "Step 2",
+        text: "Apply filters if needed, then click the download button to export as CSV. For all reviews, contact Stamped support at support@stamped.io.",
+      },
+      {
+        label: "Step 3",
+        text: "Upload the file here. We'll automatically match the columns for you.",
+      },
     ],
+    requiredFields: ["Product Handle", "Rating", "Reviewer Name", "Review Content"],
   },
   yotpo: {
-    title: "How to export from Yotpo",
+    title: "How to Import Reviews from Yotpo",
     steps: [
-      "In Yotpo admin, go to Reviews → Export.",
-      "Download the CSV export for your store.",
-      "Upload that file on the next step. Columns auto-map.",
-      "Need a sample format? Download our template below.",
+      {
+        label: "Step 1",
+        text: "Open Yotpo and go to Reviews, then Moderation.",
+      },
+      {
+        label: "Step 2",
+        text: "Click Export to CSV. Yotpo will email a download link to your account email. This can take up to an hour.",
+      },
+      {
+        label: "Step 3",
+        text: "Upload the file here. We'll automatically match the columns for you.",
+      },
     ],
+    requiredFields: ["Product Handle", "Rating", "Reviewer Name", "Review Content"],
   },
   okendo: {
-    title: "How to export from Okendo",
+    title: "How to Import Reviews from Okendo",
     steps: [
-      "In Okendo admin, go to Reviews → Export.",
-      "Download the CSV file.",
-      "Upload that file on the next step. Columns auto-map.",
-      "Need a sample format? Download our template below.",
+      {
+        label: "Step 1",
+        text: "Open Okendo and go to Settings, then Import and Export.",
+      },
+      {
+        label: "Step 2",
+        text: "Under Data, click Export next to Reviews, choose your date range, and click Request Export. Okendo will email you a download link.",
+      },
+      {
+        label: "Step 3",
+        text: "Upload the file here. We'll automatically match the columns for you.",
+      },
     ],
+    requiredFields: ["Product Handle", "Rating", "Reviewer Name", "Review Content"],
   },
   amazon: {
-    title: "How to prepare Amazon reviews",
+    title: "How to Import Reviews from Amazon",
     steps: [
-      "Export reviews from Amazon Seller Central or your review export tool.",
-      "Add a product_handle column matching each product's Shopify URL slug.",
-      "Required: star_rating, reviewer_name, review_text, and product_handle or ASIN.",
-      "Need a starting format? Download our template below.",
+      {
+        label: "Step 1",
+        text: "Export your product reviews from Amazon Seller Central or your review export tool.",
+      },
+      {
+        label: "Step 2",
+        text: "Add a Product Handle column for each row that matches the product URL slug in your Shopify store.",
+      },
+      {
+        label: "Step 3",
+        text: "Upload the file here. We'll automatically match the columns for you.",
+      },
     ],
+    requiredFields: ["Product Handle or ASIN", "Rating", "Reviewer Name", "Review Content"],
   },
   flipkart: {
-    title: "How to prepare Flipkart reviews",
+    title: "How to Import Reviews from Flipkart",
     steps: [
-      "Export product reviews from Flipkart Seller Hub.",
-      "Add a product_handle column matching your Shopify product URL slug.",
-      "Required: rating, reviewer_name, review_text, product_handle.",
-      "Need a starting format? Download our template below.",
+      {
+        label: "Step 1",
+        text: "Export product reviews from Flipkart Seller Hub.",
+      },
+      {
+        label: "Step 2",
+        text: "Add a Product Handle column for each row that matches the product URL slug in your Shopify store.",
+      },
+      {
+        label: "Step 3",
+        text: "Upload the file here. We'll automatically match the columns for you.",
+      },
     ],
+    requiredFields: ["Product Handle", "Rating", "Reviewer Name", "Review Content"],
   },
   custom: {
-    title: "Custom CSV format",
+    title: "How to Import Reviews from a Custom CSV",
     steps: [
-      "Download our universal template below.",
-      "Fill in one row per review using your store's real product handles or IDs.",
-      "Required: reviewer_name, review_body, rating (1 to 5), and product_handle or product_id.",
+      {
+        label: "Step 1",
+        text: "Download our template below.",
+      },
+      {
+        label: "Step 2",
+        text: "Fill in one row per review using your store's product handles or product IDs.",
+      },
+      {
+        label: "Step 3",
+        text: "Upload the file on the next step. We'll automatically match the columns for you.",
+      },
+    ],
+    requiredFields: [
+      "Product Handle or Product ID",
+      "Rating",
+      "Reviewer Name",
+      "Review Content",
     ],
   },
 };

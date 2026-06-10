@@ -50,6 +50,7 @@ import {
   SourceGrid,
   FileDropZone,
   ColumnMappingRow,
+  MappingErrorsList,
   ToggleSwitch,
   PreviewTable,
   PreviewSummary,
@@ -161,7 +162,7 @@ export const action = async ({ request }) => {
 
   const mappingCheck = validateMapping(mapping);
   if (!mappingCheck.valid) {
-    return data({ error: mappingCheck.errors.join(" ") }, { status: 400 });
+    return data({ error: mappingCheck.errors }, { status: 400 });
   }
 
   const productIndexRows = await db.productIndex.findMany({
@@ -553,7 +554,13 @@ export default function ImportReviewsPage() {
 
       {actionError ? (
         <div style={{ marginBottom: 16 }}>
-          <Banner tone="critical">{actionError}</Banner>
+          <Banner tone="critical">
+            {Array.isArray(actionError) ? (
+              <MappingErrorsList errors={actionError} />
+            ) : (
+              actionError
+            )}
+          </Banner>
         </div>
       ) : null}
 
@@ -582,6 +589,7 @@ export default function ImportReviewsPage() {
             <ExportInstructions
               title={exportGuide.title}
               steps={exportGuide.steps}
+              requiredFields={exportGuide.requiredFields}
               sourceName={selectedSource.name}
               onDownload={handleDownloadTemplate}
               downloaded={templateDownloaded}
@@ -650,7 +658,11 @@ export default function ImportReviewsPage() {
 
         {step === 3 ? (
           <>
-            <Card title="Column Mapping" description="We detected your CSV columns. Map them to our fields below." style={{ padding: 20 }}>
+            <Card
+              title="Match your columns"
+              description="For each column in your file, choose what it contains using the dropdown on the right."
+              style={{ padding: 20 }}
+            >
               <div
                 style={{
                   display: "flex",
@@ -672,11 +684,11 @@ export default function ImportReviewsPage() {
                 }}
               >
                 <span style={{ fontSize: 11, fontWeight: 800, color: "#6d7175", letterSpacing: "0.04em" }}>
-                  YOUR CSV COLUMN
+                  COLUMN IN YOUR FILE
                 </span>
                 <span />
                 <span style={{ fontSize: 11, fontWeight: 800, color: "#6d7175", letterSpacing: "0.04em" }}>
-                  MAPS TO
+                  WHAT IT CONTAINS
                 </span>
               </div>
               {wizard.headers.map((col) => (
@@ -694,7 +706,7 @@ export default function ImportReviewsPage() {
               {!mappingValidation.valid ? (
                 <div style={{ marginTop: 12 }}>
                   <Banner tone="critical">
-                    {mappingValidation.errors.join(" ")}
+                    <MappingErrorsList errors={mappingValidation.errors} />
                   </Banner>
                 </div>
               ) : null}
