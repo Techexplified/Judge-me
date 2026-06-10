@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSubmit, useLoaderData, useNavigation, useActionData } from "react-router";
+import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.js";
@@ -12,8 +13,64 @@ import {
 import { useConfigHistory } from "../hooks/use-config-history.js";
 import { CustomizerShell } from "../components/review-form/customizer-shell.jsx";
 
+const PRODUCT_PREVIEW_QUERY = `
+  query ProductStorefrontPreview($id: ID!) {
+    product(id: $id) {
+      title
+      handle
+      onlineStoreUrl
+    }
+  }
+`;
+
+const FIRST_PRODUCT_PREVIEW_QUERY = `
+  query FirstProductStorefrontPreview {
+    products(first: 1, query: "status:active") {
+      edges {
+        node {
+          title
+          handle
+          onlineStoreUrl
+        }
+      }
+    }
+  }
+`;
+
+function storefrontUrlFromProduct(node, shopDomain) {
+  if (node?.onlineStoreUrl) return node.onlineStoreUrl;
+  if (node?.handle) return `https://${shopDomain}/products/${node.handle}`;
+  return null;
+}
+
+async function resolveStorefrontPreview(admin, shopDomain, productId) {
+  const normalized = normalizeShopifyProductId(productId);
+  const hasSpecificProduct =
+    productId && productId !== "manual-product" && normalized && /^\d+$/.test(normalized);
+
+  try {
+    if (hasSpecificProduct) {
+      const res = await admin.graphql(PRODUCT_PREVIEW_QUERY, {
+        variables: { id: `gid://shopify/Product/${normalized}` },
+      });
+      const node = (await res.json())?.data?.product;
+      const url = storefrontUrlFromProduct(node, shopDomain);
+      if (url) return { url, title: node?.title ?? null };
+    }
+
+    const res = await admin.graphql(FIRST_PRODUCT_PREVIEW_QUERY);
+    const node = (await res.json())?.data?.products?.edges?.[0]?.node;
+    const url = storefrontUrlFromProduct(node, shopDomain);
+    if (url) return { url, title: node?.title ?? null };
+  } catch (err) {
+    console.error("[customizations] storefront preview", err);
+  }
+
+  return { url: null, title: null };
+}
+
 export const loader = async ({ request }) => {
-  const { session, billing } = await authenticate.admin(request);
+  const { session, billing, admin } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
   const { getShopPlanStatus, serializePlanStatus } = await import("../lib/billing.server.js");
   const url = new URL(request.url);
@@ -36,10 +93,12 @@ export const loader = async ({ request }) => {
   const formConfig = mergeFormConfig(parsed);
   const planStatus = await getShopPlanStatus(shop, billing);
   const widgetUsage = planStatus.featureUsage?.ai_widget_customization ?? null;
+  const storefrontPreview = await resolveStorefrontPreview(admin, shop, productId);
   return {
     savedConfig: formConfig,
     reviewContext: { productId, productName, productImage },
     shopDomain: shop,
+    storefrontPreview,
     planStatus: serializePlanStatus(planStatus),
     widgetUsage,
   };
@@ -228,12 +287,13 @@ export default function ReviewFormCustomizer() {
   const {
     savedConfig,
     reviewContext,
-    shopDomain,
+    storefrontPreview,
     widgetUsage,
   } = useLoaderData();
   const actionData = useActionData();
   const navigation = useNavigation();
   const submit = useSubmit();
+  const shopify = useAppBridge();
 
   const {
     config,
@@ -300,23 +360,20 @@ export default function ReviewFormCustomizer() {
     return () => window.removeEventListener("keydown", onKey);
   }, [isSaving, saveConfig]);
 
-  const handlePreview = () => {
-    const pid = reviewContext.productId;
-    if (pid && pid !== "manual-product") {
-      const numericId = String(pid).replace(/\D/g, "");
-      if (numericId) {
-        window.open(
-          `https://${shopDomain}/products/${numericId}`,
-          "_blank",
-          "noopener,noreferrer",
-        );
-        return;
+  const handlePreview = useCallback(() => {
+    const url = storefrontPreview?.url;
+    if (url) {
+      try {
+        window.open(url, "_blank", "noopener,noreferrer");
+      } catch {
+        shopify?.toast?.show?.("Could not open your storefront. Please try again.");
       }
+      return;
     }
-    window.alert(
-      "Open a product page with the Product Reviews block enabled to preview on your storefront. Add ?productId= to this URL from the dashboard for a direct link.",
+    shopify?.toast?.show?.(
+      "Add the Product Reviews block to a product page in your theme, then open that page to preview your widget.",
     );
-  };
+  }, [storefrontPreview, shopify]);
 
   const handleSubmitReview = ({ rating, author, comment, mediaItems }) => {
     const fd = new FormData();
