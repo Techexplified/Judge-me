@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { Link, useLocation } from "react-router";
-import { AlertTriangle, Sparkles, X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
+import { UPGRADE_NOTICE } from "../admin-ui";
 import { mergeShopifyEmbedParams } from "../../utils/shopify-embed-nav.js";
 import { modalStyles, VIEW_LABELS } from "./analytics-styles.js";
 
@@ -11,7 +12,7 @@ const styles = {
     borderRadius: 8,
     overflow: "hidden",
     border: "1px solid #e1e3e5",
-    background: "linear-gradient(135deg, #ecfdf3 0%, #f6f6f7 50%, #fff4f4 100%)",
+    background: "linear-gradient(135deg, #ecfdf3 0%, #f6f6f7 50%, #fffbea 100%)",
     height: 180,
     filter: "blur(3px)",
     opacity: 0.7,
@@ -33,8 +34,8 @@ const styles = {
     width: 48,
     height: 48,
     borderRadius: "50%",
-    background: "#fff4f4",
-    border: "1px solid #fed3d1",
+    background: UPGRADE_NOTICE.bg,
+    border: `1px solid ${UPGRADE_NOTICE.bd}`,
     display: "grid",
     placeItems: "center",
     margin: "0 auto 12px",
@@ -43,7 +44,7 @@ const styles = {
     margin: 0,
     fontSize: 14,
     fontWeight: 600,
-    color: "#8e1f0b",
+    color: UPGRADE_NOTICE.fgMuted,
     lineHeight: 1.5,
     maxWidth: 420,
   },
@@ -97,7 +98,7 @@ export function AnalyticsUpgradeTeaser({ view, onClose }) {
         </div>
 
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 12 }}>
-          <AlertTriangle size={18} color="#d72c0d" style={{ flexShrink: 0, marginTop: 2 }} />
+          <Sparkles size={18} color={UPGRADE_NOTICE.icon} style={{ flexShrink: 0, marginTop: 2 }} />
           <p style={styles.copy}>
             Upgrade to Pro to unlock interactive charts, drill-down insights, and product-level analytics.
             Start with a 14-day free trial — billing handled securely by Shopify.

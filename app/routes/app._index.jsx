@@ -28,6 +28,7 @@ import {
 } from "../lib/billing.server.js";
 import { REVIEW_LIST_SELECT } from "../lib/review-query.shared.js";
 import { PremiumTrialBanner, GraceTrialEndingBanner } from "../components/premium-trial-banner";
+import { UPGRADE_NOTICE } from "../components/admin-ui";
 import { KpiCard } from "../components/analytics/kpi-card.jsx";
 import { AnalyticsDrilldownModal } from "../components/analytics/analytics-drilldown-modal.jsx";
 import { AnalyticsUpgradeTeaser } from "../components/analytics/analytics-upgrade-teaser.jsx";
@@ -1143,9 +1144,9 @@ export default function Dashboard() {
 
           <div style={s.asideStack}>
             {!trialStatus.hasPremium ? (
-              <div style={s.aiErrorCard}>
-                <p style={s.aiErrorTitle}>Pro plan required</p>
-                <p style={s.aiErrorBody}>
+              <div style={s.aiUpgradeCard}>
+                <p style={s.aiUpgradeTitle}>Pro plan required</p>
+                <p style={s.aiUpgradeBody}>
                   AI-powered insights, interactive analytics, playbooks, and analysis require an upgrade.
                   Reviews, widgets, and the editor continue to work.
                 </p>
@@ -2087,6 +2088,22 @@ const s = {
   aiEmptyTitle: { fontSize: 14, fontWeight: 900, color: "#202223", margin: "0 0 8px" },
   aiEmptyText: { fontSize: 13, fontWeight: 600, color: "#6d7175", lineHeight: 1.5, margin: 0 },
 
+  aiUpgradeCard: {
+    background: UPGRADE_NOTICE.bg,
+    borderRadius: R,
+    border: `1px solid ${UPGRADE_NOTICE.bd}`,
+    boxShadow: shadow,
+    padding: "16px",
+  },
+  aiUpgradeTitle: { fontSize: 14, fontWeight: 900, color: UPGRADE_NOTICE.fg, margin: "0 0 8px" },
+  aiUpgradeBody: {
+    fontSize: 13,
+    fontWeight: 600,
+    color: UPGRADE_NOTICE.fgMuted,
+    lineHeight: 1.45,
+    margin: 0,
+  },
+
   aiErrorCard: {
     background: SURFACE_BG,
     borderRadius: R,
@@ -2204,7 +2221,7 @@ const s = {
     flexShrink: 0,
   },
   aiSnippetText: { fontSize: 12, fontWeight: 600, color: "#5c5f62", lineHeight: 1.4, margin: 0 },
-  aiSnippetEmpty: { fontSize: 12, fontWeight: 600, color: "#8e1f0b", margin: 0, lineHeight: 1.4 },
+  aiSnippetEmpty: { fontSize: 12, fontWeight: 600, color: "#6d7175", margin: 0, lineHeight: 1.4 },
   aiUrgentCta: {
     display: "inline-flex",
     alignItems: "center",
@@ -2337,9 +2354,9 @@ const s = {
     gap: 8,
   },
   trialExpiredCard: {
-    background: SURFACE_BG,
+    background: UPGRADE_NOTICE.bg,
     borderRadius: R,
-    border: "1px solid #fed3d1",
+    border: `1px solid ${UPGRADE_NOTICE.bd}`,
     boxShadow: shadow,
     padding: "16px",
     marginBottom: 16,

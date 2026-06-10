@@ -3,6 +3,14 @@ import { useState } from "react";
 
 export const SHOPIFY_GREEN = "#008060";
 export const SHOPIFY_GREEN_DARK = "#006e52";
+/** Soft amber/yellow for upgrade, trial, and plan-limit notices — not error red. */
+export const UPGRADE_NOTICE = {
+  bg: "#fffbea",
+  fg: "#7a6220",
+  fgMuted: "#8a7340",
+  bd: "#ede0b5",
+  icon: "#b98900",
+};
 export const PAGE_BG = "#f3f7f5";
 export const SURFACE_BG = "#fafcfb";
 export const SURFACE_BORDER = "#e5ebe8";

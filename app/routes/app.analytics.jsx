@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { Link, useLoaderData, useLocation, useSearchParams } from "react-router";
 import { CalendarDays, ChevronLeft } from "lucide-react";
+import { UPGRADE_NOTICE } from "../components/admin-ui";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.js";
@@ -253,13 +254,13 @@ export default function AnalyticsPage() {
       ) : chartsBlocked ? (
         <div
           style={{
-            background: "#fff4f4",
-            border: "1px solid #fed3d1",
+            background: UPGRADE_NOTICE.bg,
+            border: `1px solid ${UPGRADE_NOTICE.bd}`,
             borderRadius: 8,
             padding: "16px 20px",
             fontSize: 13,
             fontWeight: 600,
-            color: "#8e1f0b",
+            color: UPGRADE_NOTICE.fgMuted,
           }}
         >
           {chartsBlocked}

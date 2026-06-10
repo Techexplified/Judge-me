@@ -1,13 +1,11 @@
 /* eslint-disable react/prop-types */
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
-import { AlertTriangle, Sparkles, X } from "lucide-react";
-import { SHOPIFY_GREEN } from "./admin-ui";
+import { Sparkles, X } from "lucide-react";
+import { SHOPIFY_GREEN, UPGRADE_NOTICE } from "./admin-ui";
 import { mergeShopifyEmbedParams } from "../utils/shopify-embed-nav.js";
 import { FEATURE_LABELS } from "../lib/usage.shared.js";
 import { PRO_PRICE_USD } from "../lib/trial.shared.js";
-
-const CRITICAL_RED = "#d72c0d";
 
 const styles = {
   activeCard: {
@@ -16,9 +14,9 @@ const styles = {
     borderRadius: 8,
     padding: "14px 16px",
   },
-  expiredCard: {
-    background: "#fff4f4",
-    border: "1px solid #fed3d1",
+  noticeCard: {
+    background: UPGRADE_NOTICE.bg,
+    border: `1px solid ${UPGRADE_NOTICE.bd}`,
     borderRadius: 8,
     padding: "14px 16px",
   },
@@ -89,10 +87,10 @@ const styles = {
     border: "1px solid #e5ebe8",
     color: "#202223",
   },
-  pillExpired: {
-    background: "#fff4f4",
-    border: "1px solid #fed3d1",
-    color: "#8e1f0b",
+  pillNotice: {
+    background: UPGRADE_NOTICE.bg,
+    border: `1px solid ${UPGRADE_NOTICE.bd}`,
+    color: UPGRADE_NOTICE.fg,
   },
   upgradeLink: {
     display: "inline-block",
@@ -103,8 +101,8 @@ const styles = {
     textDecoration: "none",
   },
   endingBanner: {
-    background: "#fff8e6",
-    border: "1px solid #f9d891",
+    background: UPGRADE_NOTICE.bg,
+    border: `1px solid ${UPGRADE_NOTICE.bd}`,
     borderRadius: 8,
     padding: "14px 16px",
     marginBottom: 16,
@@ -177,8 +175,8 @@ export function PremiumTrialBadge({ trialStatus, planStatus }) {
   }
 
   return (
-    <span style={{ ...styles.pill, ...styles.pillExpired }}>
-      <AlertTriangle size={14} />
+    <span style={{ ...styles.pill, ...styles.pillNotice }}>
+      <Sparkles size={14} color={UPGRADE_NOTICE.icon} />
       Free Plan
     </span>
   );
@@ -258,12 +256,12 @@ export function PremiumTrialBanner({ trialStatus, planStatus }) {
   }
 
   return (
-    <div style={styles.expiredCard}>
+    <div style={styles.noticeCard}>
       <div style={styles.head}>
-        <AlertTriangle size={16} color={CRITICAL_RED} />
-        <span style={{ ...styles.headText, color: "#8e1f0b" }}>Free Plan</span>
+        <Sparkles size={16} color={UPGRADE_NOTICE.icon} />
+        <span style={{ ...styles.headText, color: UPGRADE_NOTICE.fg }}>Free Plan</span>
       </div>
-      <p style={{ ...styles.subtext, color: "#8e1f0b" }}>
+      <p style={{ ...styles.subtext, color: UPGRADE_NOTICE.fgMuted }}>
         {reviewsRemaining != null
           ? `${reviewsRemaining} reviews left this month. `
           : ""}
@@ -298,7 +296,7 @@ export function GraceTrialEndingBanner({ trialStatus, planStatus }) {
 
   return (
     <div style={styles.endingBanner}>
-      <Sparkles size={18} color="#b98900" style={{ flexShrink: 0, marginTop: 2 }} />
+      <Sparkles size={18} color={UPGRADE_NOTICE.icon} style={{ flexShrink: 0, marginTop: 2 }} />
       <div>
         <p style={{ ...styles.headText, marginBottom: 4 }}>
           {days === 0
@@ -343,12 +341,12 @@ export function PremiumGateBanner({ feature = "feature" }) {
             : "This feature";
 
   return (
-    <div style={styles.expiredCard}>
+    <div style={styles.noticeCard}>
       <div style={styles.head}>
-        <AlertTriangle size={16} color={CRITICAL_RED} />
-        <span style={{ ...styles.headText, color: "#8e1f0b" }}>Pro feature</span>
+        <Sparkles size={16} color={UPGRADE_NOTICE.icon} />
+        <span style={{ ...styles.headText, color: UPGRADE_NOTICE.fg }}>Pro feature</span>
       </div>
-      <p style={{ ...styles.subtext, color: "#8e1f0b" }}>
+      <p style={{ ...styles.subtext, color: UPGRADE_NOTICE.fgMuted }}>
         {label} requires a Pro Plan. Core review tools remain available on Free.
       </p>
       <Link to={settingsHref} style={styles.upgradeLink}>
