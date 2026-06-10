@@ -217,9 +217,9 @@ export function PremiumTrialBanner({ trialStatus, planStatus }) {
           <span style={styles.headText}>
             {inTrial
               ? isGraceTrial
-                ? "Pro — Complimentary trial"
-                : "Pro — Free trial"
-              : "Pro — Active"}
+                ? "Pro Complimentary trial"
+                : "Pro Free trial"
+              : "Pro Active"}
           </span>
           {inTrial && days > 0 ? (
             <span style={styles.badge}>{daysLabel(days)}</span>
@@ -236,7 +236,7 @@ export function PremiumTrialBanner({ trialStatus, planStatus }) {
         {endingSoon ? (
           <p style={{ ...styles.subtext, marginTop: 8, color: "#92400e" }}>
             Your complimentary access ends soon. Go to Settings to stay on Free or start the
-            14-day Shopify Pro trial.
+            14 day Shopify Pro trial.
           </p>
         ) : null}
         {lowQuota.length > 0 ? (
@@ -305,7 +305,7 @@ export function GraceTrialEndingBanner({ trialStatus, planStatus }) {
         </p>
         <p style={styles.subtext}>
           {endLabel ? `Your complimentary access ends ${endLabel}. ` : ""}
-          Open Settings to stay on the Free Plan or start the 14-day Shopify Pro trial — your
+          Open Settings to stay on the Free Plan or start the 14 day Shopify Pro trial. Your
           choice.
         </p>
         <Link to={settingsHref} style={styles.upgradeLink}>
@@ -350,7 +350,7 @@ export function PremiumGateBanner({ feature = "feature" }) {
         {label} requires a Pro Plan. Core review tools remain available on Free.
       </p>
       <Link to={settingsHref} style={styles.upgradeLink}>
-        Start 14-day free trial →
+        Start 14 day free trial →
       </Link>
     </div>
   );

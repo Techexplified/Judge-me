@@ -1151,7 +1151,7 @@ function ReviewDetailCard({
               loading={isTranslating}
             >
               <Languages size={14} />
-              {isTranslatedToTarget ? "Re-translate" : "Translate"}
+              {isTranslatedToTarget ? "Retranslate" : "Translate"}
             </SecondaryButton>
           ) : null}
               {hasStoredTranslation ? (
@@ -1182,7 +1182,7 @@ function ReviewDetailCard({
               style={detailStyles.replyInput}
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
-              placeholder="Write a helpful, on-brand reply for this customer…"
+              placeholder="Write a helpful, on brand reply for this customer…"
               rows={4}
             />
             <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
@@ -1228,7 +1228,7 @@ function ReviewDetailCard({
         ) : (
           <div style={detailStyles.replyEmpty}>
             <p style={{ margin: "0 0 10px", fontSize: 13, color: "#6d7175", fontWeight: 600 }}>
-              No reply yet — customers trust stores that respond.
+              No reply yet. Customers trust stores that respond.
             </p>
             <PrimaryButton onClick={() => setIsEditing(true)}>Write reply</PrimaryButton>
           </div>

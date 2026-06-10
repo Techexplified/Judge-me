@@ -187,7 +187,7 @@ export function CustomizerShell({
             fontFamily: UI_FONT,
           }}
         >
-          Published — your form is live on the storefront (refresh product pages to see changes).
+          Published. Your form is live on the storefront (refresh product pages to see changes).
         </div>
       ) : null}
       {publishBlocked && publishBlockedMessage && !saveError ? (

@@ -107,7 +107,7 @@ const PREVIEWS = [
     mock: (
       <div style={styles.mockWindow}>
         <div style={{ fontSize: 10, color: "#6d7175" }}>EN → FR</div>
-        Auto-translate reviews
+        Auto translate reviews
       </div>
     ),
     caption: "Full translation suite",

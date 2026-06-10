@@ -103,7 +103,7 @@ export function PricingUpgradeFooter({
       <div style={styles.right}>
         {cta}
         <p style={styles.subtext}>
-          {proTrialDays}-day free trial · No extra fees · Cancel anytime
+          {proTrialDays} day free trial · No extra fees · Cancel anytime
         </p>
       </div>
     </div>

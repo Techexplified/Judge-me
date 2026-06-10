@@ -257,7 +257,7 @@ export function SourceCard({ source, selected, onSelect }) {
             marginTop: 2,
           }}
         >
-          {source.autoMapped ? "Auto-mapped columns" : "Map fields manually"}
+          {source.autoMapped ? "Auto mapped columns" : "Map fields manually"}
         </span>
       </span>
     </button>
@@ -346,7 +346,7 @@ export function FileDropZone({ file, onFile, error }) {
               {file.name}
             </p>
             <p style={{ margin: "6px 0 0", fontSize: 13, fontWeight: 600, color: "#6d7175" }}>
-              {(file.size / 1024).toFixed(1)} KB — click or drop to replace
+              {(file.size / 1024).toFixed(1)} KB. Click or drop to replace
             </p>
           </>
         ) : (
@@ -598,7 +598,7 @@ export function PreviewTable({ rows }) {
                 <td style={{ padding: "12px", color: "#6d7175" }}>
                   {String(i + 1).padStart(3, "0")}
                 </td>
-                <td style={{ padding: "12px", fontWeight: 700 }}>{row.author || "—"}</td>
+                <td style={{ padding: "12px", fontWeight: 700 }}>{row.author || "None"}</td>
                 <td style={{ padding: "12px" }}>
                   <StarRating rating={row.rating} />
                 </td>
@@ -612,7 +612,7 @@ export function PreviewTable({ rows }) {
                     color: "#202223",
                   }}
                 >
-                  {row.comment || "—"}
+                  {row.comment || "None"}
                 </td>
                 <td
                   style={{
@@ -622,7 +622,7 @@ export function PreviewTable({ rows }) {
                     color: "#6d7175",
                   }}
                 >
-                  {row.productHandle || row.productId || "—"}
+                  {row.productHandle || row.productId || "None"}
                 </td>
                 <td style={{ padding: "12px", color: "#6d7175" }}>
                   {formatDate(row.createdAt)}
@@ -788,7 +788,7 @@ export function ExportInstructions({ title, steps, sourceName, onDownload, downl
           </button>
           {downloaded ? (
             <p style={{ margin: "10px 0 0", fontSize: 12, fontWeight: 600, color: SHOPIFY_GREEN }}>
-              Template downloaded — check your Downloads folder.
+              Template downloaded. Check your Downloads folder.
             </p>
           ) : null}
         </>

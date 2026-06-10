@@ -356,7 +356,7 @@ export default function Onboarding() {
               disabled={isSubmitting}
               onClick={() => submit({ intent: "savePlan", planChoice: "pro" }, { method: "post" })}
             >
-              Start {proTrialDays}-day Pro trial
+              Start {proTrialDays} day Pro trial
             </PrimaryButton>
           </>
         }
@@ -364,7 +364,7 @@ export default function Onboarding() {
         <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 900 }}>Choose your plan</h2>
         <p style={{ margin: "0 0 16px", color: "#6d7175", fontWeight: 600, fontSize: 13 }}>
           Start free with core review tools, or try Pro free for {proTrialDays} days. Billing is
-          handled securely by Shopify — we never store card details.
+          handled securely by Shopify. We never store card details.
         </p>
         <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
           <div
@@ -396,7 +396,7 @@ export default function Onboarding() {
               ${proPrice}/mo
             </p>
             <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#008060" }}>
-              {proTrialDays}-day free trial · no charge today
+              {proTrialDays} day free trial · no charge today
             </p>
             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, fontWeight: 600, color: "#6d7175" }}>
               <li>Unlimited reviews</li>

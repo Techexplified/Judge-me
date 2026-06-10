@@ -12,7 +12,7 @@ export const TARGET_FIELDS = [
   { key: "email", label: "Reviewer Email", required: false },
   { key: "reply", label: "Merchant Reply", required: false },
   { key: "replyDate", label: "Reply Date", required: false },
-  { key: "skip", label: "— Skip this column —", required: false },
+  { key: "skip", label: "Skip this column", required: false },
 ];
 
 export const SOURCE_PRESETS = {
@@ -262,7 +262,7 @@ export const EXPORT_INSTRUCTIONS = {
     steps: [
       "Open Loox in Shopify Admin → Reviews.",
       "Click Export (or contact Loox support for a full CSV export).",
-      "Upload that file on the next step — columns auto-map.",
+      "Upload that file on the next step. Columns auto-map.",
       "Required columns: product_handle, rating, reviewer_name, body.",
       "Need a sample format? Download our template below.",
     ],
@@ -272,7 +272,7 @@ export const EXPORT_INSTRUCTIONS = {
     steps: [
       "In Judge.me admin, go to Settings → Import & export.",
       "Click Export reviews and download the CSV.",
-      "Upload that file on the next step — columns auto-map.",
+      "Upload that file on the next step. Columns auto-map.",
       "Need a sample format? Download our template below.",
     ],
   },
@@ -281,7 +281,7 @@ export const EXPORT_INSTRUCTIONS = {
     steps: [
       "Open Stamped.io dashboard → Reviews.",
       "Use Export / Download CSV from the reviews list.",
-      "Upload that file on the next step — columns auto-map.",
+      "Upload that file on the next step. Columns auto-map.",
       "Need a sample format? Download our template below.",
     ],
   },
@@ -290,7 +290,7 @@ export const EXPORT_INSTRUCTIONS = {
     steps: [
       "In Yotpo admin, go to Reviews → Export.",
       "Download the CSV export for your store.",
-      "Upload that file on the next step — columns auto-map.",
+      "Upload that file on the next step. Columns auto-map.",
       "Need a sample format? Download our template below.",
     ],
   },
@@ -299,7 +299,7 @@ export const EXPORT_INSTRUCTIONS = {
     steps: [
       "In Okendo admin, go to Reviews → Export.",
       "Download the CSV file.",
-      "Upload that file on the next step — columns auto-map.",
+      "Upload that file on the next step. Columns auto-map.",
       "Need a sample format? Download our template below.",
     ],
   },
@@ -326,7 +326,7 @@ export const EXPORT_INSTRUCTIONS = {
     steps: [
       "Download our universal template below.",
       "Fill in one row per review using your store's real product handles or IDs.",
-      "Required: reviewer_name, review_body, rating (1–5), and product_handle or product_id.",
+      "Required: reviewer_name, review_body, rating (1 to 5), and product_handle or product_id.",
     ],
   },
 };

@@ -518,7 +518,7 @@ export function computeAnalyticsDetail({ scopedReviews, reviewsAll, now, rangeKe
   const volumeInsights = [];
   if (comparison.changePct !== 0) {
     volumeInsights.push(
-      `Reviews ${comparison.changeLabel} vs the prior ${rangeKey === "all" ? "30-day" : "period"}.`,
+      `Reviews ${comparison.changeLabel} vs the prior ${rangeKey === "all" ? "30 day" : "period"}.`,
     );
   }
   if (topMovers.length >= 2) {
@@ -535,7 +535,7 @@ export function computeAnalyticsDetail({ scopedReviews, reviewsAll, now, rangeKe
       : 0;
   if (ratingCounts[0].count + ratingCounts[1].count > 0) {
     const lowPct = Math.round(((ratingCounts[0].count + ratingCounts[1].count) / total) * 100);
-    ratingInsights.push(`${lowPct}% of reviews are 1–2 stars.`);
+    ratingInsights.push(`${lowPct}% of reviews are 1 to 2 stars.`);
   }
   if (bottomRated.length > 0) {
     ratingInsights.push(`Lowest rated: ${bottomRated[0].productName} (${bottomRated[0].avgRating}★).`);
@@ -549,7 +549,7 @@ export function computeAnalyticsDetail({ scopedReviews, reviewsAll, now, rangeKe
 
   const sentimentInsights = [];
   if (negative > 0) {
-    sentimentInsights.push(`${Math.round((negative / total) * 100)}% negative — ${negative} review${negative === 1 ? "" : "s"}.`);
+    sentimentInsights.push(`${Math.round((negative / total) * 100)}% negative (${negative} review${negative === 1 ? "" : "s"}).`);
   }
   if (keywords.length > 0) {
     sentimentInsights.push(`Top complaint theme: "${keywords[0].word}".`);

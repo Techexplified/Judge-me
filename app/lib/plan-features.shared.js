@@ -28,23 +28,23 @@ export const FREE_PLAN_BOX = {
       items: [
         "Manual reply to reviews",
         "Manage reviews from other merchant stores",
-        `Import reviews from Shopify apps & 3rd party — ${FREE_IMPORTS_PER_MONTH} per month`,
-        "Graphs & charts — preview only",
-        `Store integrations — up to ${FREE_LINKED_STORES} stores`,
+        `Import reviews from Shopify apps & 3rd party, ${FREE_IMPORTS_PER_MONTH} per month`,
+        "Graphs & charts (preview only)",
+        `Store integrations up to ${FREE_LINKED_STORES} stores`,
         `Up to ${FREE_REVIEWS_PER_MONTH} new reviews per month`,
       ],
     },
     {
       title: "Translation",
       items: [
-        `Auto-translate while replying — ${FREE_AUTO_TRANSLATE_PER_MONTH} per month`,
+        `Auto translate while replying, ${FREE_AUTO_TRANSLATE_PER_MONTH} per month`,
       ],
     },
     {
       title: "Review form & storefront",
       items: [
         "Post images with review",
-        `Basic widget customisation — ${FREE_WIDGET_PUBLISHES_PER_MONTH} publishes per month`,
+        `Basic widget customisation, ${FREE_WIDGET_PUBLISHES_PER_MONTH} publishes per month`,
         "Product review page on your storefront",
         "Basic branding controls",
       ],
@@ -56,7 +56,7 @@ export const FREE_PLAN_BOX = {
 export const PRO_PLAN_BOX = {
   title: "Pro",
   priceLabel: "$9 / month",
-  subtitle: "14-day free trial · billed via Shopify",
+  subtitle: "14 day free trial · billed via Shopify",
   sections: [
     {
       title: "Dashboard & onboarding",
@@ -64,28 +64,28 @@ export const PRO_PLAN_BOX = {
         "Everything in Free, plus:",
         "Unlimited reviews per month",
         "Unlimited CSV imports",
-        "Live graphs & charts (real-time analytics)",
-        `Store integrations — up to ${PRO_LINKED_STORES} stores`,
+        "Live graphs & charts (real time analytics)",
+        `Store integrations up to ${PRO_LINKED_STORES} stores`,
       ],
     },
     {
       title: "AI features",
       items: [
         "AI insight & detailed overview (PDF)",
-        "Urgent replies — prioritised review summary",
-        "PDF & CSV export — 10 per month",
-        "AI review replies — 200 per month",
-        "AI insights & playbooks — 10 per month",
-        "AI dashboard overview — 30 per month",
-        "Widget customisation (advanced) — 20 publishes per month",
+        "Urgent replies, prioritised review summary",
+        "PDF & CSV export, 10 per month",
+        "AI review replies, 200 per month",
+        "AI insights & playbooks, 10 per month",
+        "AI dashboard overview, 30 per month",
+        "Widget customisation (advanced), 20 publishes per month",
       ],
     },
     {
       title: "Translation",
       items: [
-        "Auto-translate while replying",
-        "Auto-translate at the dashboard",
-        "Auto-translate during import",
+        "Auto translate while replying",
+        "Auto translate at the dashboard",
+        "Auto translate during import",
         "Admin manual control of translation",
         "View translation status (total / pending)",
         `${PRO_TRANSLATIONS_PER_MONTH} translations per month (all sources)`,
@@ -115,5 +115,5 @@ export const PRO_PLAN_HIGHLIGHTS = [
   "PDF & CSV export",
   `Full translation suite (${PRO_TRANSLATIONS_PER_MONTH} / month)`,
   `${PRO_LINKED_STORES}+ store integrations`,
-  "14-day free trial · then $9/month via Shopify",
+  "14 day free trial · then $9/month via Shopify",
 ];

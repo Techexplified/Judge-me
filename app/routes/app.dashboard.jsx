@@ -61,7 +61,6 @@ import {
   Star,
   TrendingUp,
   Flag,
-  SlidersHorizontal,
   Languages,
   X,
 } from "lucide-react";
@@ -283,7 +282,7 @@ export async function action({ request }) {
         },
         spotlight:
           spotlightCandidate || {
-            quote: "Once five-star reviews come in, a standout quote will appear here.",
+            quote: "Once five star reviews come in, a standout quote will appear here.",
             author: "Your customers",
             rating: 5,
             verified: false,
@@ -1065,8 +1064,8 @@ export default function Dashboard() {
                   >
                     <option value="lastReview:desc">Newest activity</option>
                     <option value="lastReview:asc">Oldest activity</option>
-                    <option value="name:asc">Product A–Z</option>
-                    <option value="name:desc">Product Z–A</option>
+                    <option value="name:asc">Product A to Z</option>
+                    <option value="name:desc">Product Z to A</option>
                     <option value="rating:desc">Rating high → low</option>
                     <option value="rating:asc">Rating low → high</option>
                     <option value="count:desc">Most reviews</option>
@@ -1145,7 +1144,7 @@ export default function Dashboard() {
               <div style={s.aiUpgradeCard}>
                 <p style={s.aiUpgradeTitle}>Pro plan required</p>
                 <p style={s.aiUpgradeBody}>
-                  AI-powered insights, interactive analytics, playbooks, and analysis require an upgrade.
+                  AI powered insights, interactive analytics, playbooks, and analysis require an upgrade.
                   Reviews, widgets, and the editor continue to work.
                 </p>
               </div>
@@ -1153,7 +1152,7 @@ export default function Dashboard() {
               <div style={s.aiEmptyCard}>
                 <p style={s.aiEmptyTitle}>Start collecting reviews</p>
                 <p style={s.aiEmptyText}>
-                  Add the theme block to product pages or use Write a review in the app—then analysis will appear here.
+                  Add the theme block to product pages or use Write a review in the app, then analysis will appear here.
                 </p>
               </div>
             ) : resolvedAiError ? (
@@ -1620,9 +1619,6 @@ function SentimentCard({ sentiment, onSegmentClick }) {
     <Card compact style={{ ...s.kpiStatCardBottom, ...s.kpiChartCard }}>
       <div style={s.cardHeadCompact}>
         <span style={s.sentCardTitle}>Sentiment Split</span>
-        <span style={{ ...s.cardIcon, ...s.cardIconCompact, background: "#f6f6f7", color: "#5c5f62" }}>
-          <SlidersHorizontal size={14} />
-        </span>
       </div>
       <div style={s.sentBody}>
         <div style={{ ...s.donutSent, backgroundImage: c }}>

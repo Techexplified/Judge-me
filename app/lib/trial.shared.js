@@ -37,7 +37,7 @@ export const PRO_FEATURE_LABELS = [
   "PDF & CSV export",
   `Full translation suite (${PRO_TRANSLATIONS_PER_MONTH} / month)`,
   "10+ store integrations",
-  "14-day free trial",
+  "14 day free trial",
 ];
 
 /** @deprecated use PRO_TRIAL_DAYS */

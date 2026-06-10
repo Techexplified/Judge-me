@@ -202,7 +202,7 @@ export const action = async ({ request }) => {
     if (importSettings.autoTranslate) {
       if (!hasPremium) {
         return data(
-          { error: "Auto-translate requires a Pro plan. Upgrade in Settings." },
+          { error: "Auto translate requires a Pro plan. Upgrade in Settings." },
           { status: 403 },
         );
       }
@@ -512,7 +512,7 @@ export default function ImportReviewsPage() {
         }}
       >
         <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#6d7175", lineHeight: 1.5 }}>
-          Migrate reviews from Loox, Stamped, Yotpo, Judge.me, Amazon, Flipkart, and more — in under
+          Migrate reviews from Loox, Stamped, Yotpo, Judge.me, Amazon, Flipkart, and more in under
           2 minutes.
         </p>
         <div
@@ -538,7 +538,7 @@ export default function ImportReviewsPage() {
             {planStatus?.featureUsage?.review_imports
               ? ` (${planStatus.featureUsage.review_imports.remaining} remaining).`
               : "."}{" "}
-            Auto-translate during import requires Pro.
+            Auto translate during import requires Pro.
           </Banner>
         </div>
       ) : null}
@@ -720,7 +720,7 @@ export default function ImportReviewsPage() {
                 onChange={(v) => dispatch({ type: "SET_SETTINGS", settings: { filterMinRating: v } })}
               />
               <ToggleSwitch
-                label="Auto-translate imported reviews"
+                label="Auto translate imported reviews"
                 description={`Translate to ${translationTargetLabel} using your Translation settings (source and target language).`}
                 checked={wizard.settings.autoTranslate}
                 onChange={(v) => dispatch({ type: "SET_SETTINGS", settings: { autoTranslate: v } })}
@@ -754,7 +754,7 @@ export default function ImportReviewsPage() {
 
         {step === 4 ? (
           <Card
-            title="Preview — First 5 Rows"
+            title="Preview: First 5 Rows"
             description="Confirm everything looks right before importing."
             style={{ padding: 20 }}
           >

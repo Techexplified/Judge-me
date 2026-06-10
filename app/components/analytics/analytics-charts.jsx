@@ -88,7 +88,7 @@ export function RatingTrendChart({ data }) {
   const chartHeight = 220;
   return (
     <div style={modalStyles.chartBlock}>
-      <h3 style={modalStyles.chartTitle}>7-day rolling average rating</h3>
+      <h3 style={modalStyles.chartTitle}>7 day rolling average rating</h3>
       <ChartSurface height={chartHeight}>
       <ResponsiveContainer width="100%" height={chartHeight}>
         <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -200,7 +200,7 @@ export function KeywordBarChart({ data }) {
   const chartHeight = Math.max(160, data.length * 28 + 40);
   return (
     <div style={modalStyles.chartBlock}>
-      <h3 style={modalStyles.chartTitle}>Top complaint themes (1–2★ reviews)</h3>
+      <h3 style={modalStyles.chartTitle}>Top complaint themes (1 to 2★ reviews)</h3>
       <ChartSurface height={chartHeight}>
       <ResponsiveContainer width="100%" height={chartHeight}>
         <BarChart data={data} layout="vertical" margin={{ top: 8, right: 16, left: 8, bottom: 0 }}>

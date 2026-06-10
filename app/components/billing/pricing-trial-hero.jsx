@@ -123,7 +123,7 @@ const HERO_FEATURES = [
   },
   {
     title: "Grow store visits",
-    desc: "Live analytics and SEO-friendly review widgets on your storefront.",
+    desc: "Live analytics and SEO friendly review widgets on your storefront.",
   },
   {
     title: "Increase sales",
@@ -135,7 +135,7 @@ const HERO_FEATURES = [
   },
   {
     title: "Fair value",
-    desc: "14-day free trial, then billed monthly via Shopify. Cancel anytime.",
+    desc: "14 day free trial, then billed monthly via Shopify. Cancel anytime.",
   },
 ];
 

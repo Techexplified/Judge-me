@@ -100,8 +100,8 @@ export function AnalyticsUpgradeTeaser({ view, onClose }) {
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 12 }}>
           <Sparkles size={18} color={UPGRADE_NOTICE.icon} style={{ flexShrink: 0, marginTop: 2 }} />
           <p style={styles.copy}>
-            Upgrade to Pro to unlock interactive charts, drill-down insights, and product-level analytics.
-            Start with a 14-day free trial — billing handled securely by Shopify.
+            Upgrade to Pro to unlock interactive charts, drill down insights, and product level analytics.
+            Start with a 14 day free trial. Billing handled securely by Shopify.
           </p>
         </div>
         <p style={styles.sub}>Core reviews, widgets & moderation stay free.</p>

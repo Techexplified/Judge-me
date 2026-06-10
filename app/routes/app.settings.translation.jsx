@@ -233,7 +233,7 @@ export const action = async ({ request }) => {
   if (intent === "retranslate") {
     const translation = getTranslationSettings(config);
     if (!translation.enabled) {
-      return { error: "Enable storefront translation before re-translating reviews." };
+      return { error: "Enable storefront translation before retranslating reviews." };
     }
 
     return {
@@ -436,7 +436,7 @@ export default function ReviewTranslationPage() {
         }}
       >
         <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#6d7175", lineHeight: 1.5 }}>
-          Translate reviews for your storefront, imports, and new submissions — with full control
+          Translate reviews for your storefront, imports, and new submissions with full control
           over when and how.
         </p>
         <div style={{ flexShrink: 0 }}>
@@ -450,7 +450,7 @@ export default function ReviewTranslationPage() {
         {actionData?.ok && showSaved ? (
           <Banner tone="success">
             Settings saved
-            {actionData.startBulk ? " — translation started in the background." : "."}
+            {actionData.startBulk ? ". Translation started in the background." : "."}
           </Banner>
         ) : null}
 
@@ -554,8 +554,8 @@ export default function ReviewTranslationPage() {
           style={{ padding: 20 }}
         >
           <ToggleSwitch
-            label="Auto-translate new reviews"
-            description="Translate reviews submitted via your widget, write-review page, and review form."
+            label="Auto translate new reviews"
+            description="Translate reviews submitted via your widget, write review page, and review form."
             checked={autoTranslateNewReviews}
             onChange={setAutoTranslateNewReviews}
             disabled={settingsDisabled}
@@ -563,8 +563,8 @@ export default function ReviewTranslationPage() {
           />
           <div style={{ marginTop: 14 }}>
             <ToggleSwitch
-              label="Auto-translate CSV imports"
-              description={`Default ON in the import wizard — translates imported reviews to ${languageLabel(targetLanguage)}.`}
+              label="Auto translate CSV imports"
+              description={`Default ON in the import wizard. Translates imported reviews to ${languageLabel(targetLanguage)}.`}
               checked={autoTranslateImport}
               onChange={setAutoTranslateImport}
               disabled={settingsDisabled}
@@ -617,7 +617,7 @@ export default function ReviewTranslationPage() {
                 loading={busy && navigation.formData?.get("_intent") === "retranslate"}
               >
                 <RefreshCw size={16} />
-                Re-translate all (force)
+                Retranslate all (force)
               </SecondaryButton>
             ) : null}
           </div>

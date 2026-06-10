@@ -46,7 +46,7 @@ export function PricingPage({
       {!useBillingApi ? (
         <Banner tone="info">
           Upgrades open Shopify&apos;s hosted Plan page (Shopify App Pricing). Configure your Pro
-          Plan and 14-day trial in the Partner Dashboard.
+          Plan and 14 day trial in the Partner Dashboard.
         </Banner>
       ) : null}
 
@@ -204,7 +204,7 @@ export function PricingPage({
                         fontWeight: row.limit != null && row.remaining <= 0 ? 800 : 600,
                       }}
                     >
-                      {row.limit == null ? "—" : row.remaining}
+                      {row.limit == null ? "N/A" : row.remaining}
                     </td>
                   </tr>
                 ))}

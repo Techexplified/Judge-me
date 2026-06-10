@@ -143,7 +143,7 @@ export function PlanComparison({ freePrice, proPrice }) {
   const pro = {
     ...PRO_PLAN_BOX,
     priceLabel: proPrice ? `${proPrice} / month` : PRO_PLAN_BOX.priceLabel,
-    subtitle: `${PRO_TRIAL_DAYS}-day free trial · billed via Shopify`,
+    subtitle: `${PRO_TRIAL_DAYS} day free trial · billed via Shopify`,
   };
 
   return (
