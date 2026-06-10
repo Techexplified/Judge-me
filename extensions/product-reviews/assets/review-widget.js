@@ -252,7 +252,7 @@
           <div class="jd-wrapper">
             <div class="jd-left">
               <div class="jd-title">Customer Reviews</div>
-              <button type="button" class="jd-write-btn" id="jd-open-form">Write a product review</button>
+              <button type="button" class="jd-write-btn" id="jd-open-form">Write a Product Review</button>
               <div id="jd-reviews-list">${reviewsHtml}</div>
             </div>
             <div class="jd-modal-overlay" id="jd-modal" style="display:none">
