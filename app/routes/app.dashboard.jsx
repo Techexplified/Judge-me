@@ -1150,10 +1150,13 @@ export default function Dashboard() {
               </div>
             ) : totalReviews === 0 ? (
               <div style={s.aiEmptyCard}>
-                <p style={s.aiEmptyTitle}>Start collecting reviews</p>
-                <p style={s.aiEmptyText}>
-                  Add the theme block to product pages or use Write a review in the app, then analysis will appear here.
-                </p>
+                <p style={s.aiEmptyTitle}>Get started in 4 steps</p>
+                <ol style={s.aiEmptySteps}>
+                  <li>Open your Shopify theme editor</li>
+                  <li>Add the Product Reviews section to your product page</li>
+                  <li>Shoppers can start leaving reviews on your store</li>
+                  <li>Manage reviews here and view AI analysis as they come in</li>
+                </ol>
               </div>
             ) : resolvedAiError ? (
               <div style={s.aiErrorCard}>
@@ -2079,8 +2082,16 @@ const s = {
     boxShadow: shadow,
     padding: "16px",
   },
-  aiEmptyTitle: { fontSize: 14, fontWeight: 900, color: "#202223", margin: "0 0 8px" },
+  aiEmptyTitle: { fontSize: 14, fontWeight: 900, color: "#202223", margin: "0 0 10px" },
   aiEmptyText: { fontSize: 13, fontWeight: 600, color: "#6d7175", lineHeight: 1.5, margin: 0 },
+  aiEmptySteps: {
+    margin: 0,
+    paddingLeft: 20,
+    fontSize: 13,
+    fontWeight: 600,
+    color: "#6d7175",
+    lineHeight: 1.55,
+  },
 
   aiUpgradeCard: {
     background: UPGRADE_NOTICE.bg,

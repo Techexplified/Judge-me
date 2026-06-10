@@ -231,7 +231,7 @@ export function PremiumTrialBanner({ trialStatus, planStatus }) {
             : inTrial
               ? `No charge until${trialEndsLabel ? ` ${trialEndsLabel}` : " your trial ends"}. Then $${PRO_PRICE_USD}/month via Shopify.`
               : `Billed $${PRO_PRICE_USD}/month via Shopify.`}{" "}
-          Metered AI features reset on the 1st of each month. Unlimited reviews included.
+          Included AI usage refreshes on your next bill. Unlimited reviews included.
         </p>
         {endingSoon ? (
           <p style={{ ...styles.subtext, marginTop: 8, color: "#92400e" }}>

@@ -43,13 +43,6 @@ export function PricingPage({
         </Banner>
       ) : null}
 
-      {!useBillingApi ? (
-        <Banner tone="info">
-          Upgrades open Shopify&apos;s hosted Plan page (Shopify App Pricing). Configure your Pro
-          Plan and 14 day trial in the Partner Dashboard.
-        </Banner>
-      ) : null}
-
       {billingSuccess && hasPro ? (
         <Banner tone="success" icon={<CheckCircle2 size={18} />}>
           {inTrial
@@ -119,7 +112,7 @@ export function PricingPage({
       {planStatus?.featureUsage ? (
         <Card
           title={hasPro ? "Pro feature usage" : "Free Plan usage"}
-          description="Monthly limits reset on the 1st (UTC)."
+          description="Included usage refreshes on your next bill."
         >
           <FeatureUsageBars featureUsage={planStatus.featureUsage} />
         </Card>

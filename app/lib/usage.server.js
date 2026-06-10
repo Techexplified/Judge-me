@@ -27,7 +27,7 @@ export function formatFeatureLimitMessage(featureKey, used, limit) {
   if (!Number.isFinite(limit)) {
     return `${label} is unlimited on your plan.`;
   }
-  return `You've used ${used}/${limit} ${label} this month. Resets on the 1st.`;
+  return `You've used ${used}/${limit} for ${label}. More available on your next bill.`;
 }
 
 export function formatProRequiredMessage(featureKey) {

@@ -277,7 +277,7 @@ export default function ReviewFormCustomizer() {
     widgetUsage != null && widgetUsage.remaining != null && widgetUsage.remaining <= 0;
   const publishBlockedMessage =
     widgetUsage?.limit != null
-      ? `You've used all ${widgetUsage.limit} widget publishes this month. Resets on the 1st.`
+      ? `You've used all ${widgetUsage.limit} widget publishes. More available on your next bill.`
       : "Upgrade to Pro for more widget publishes.";
 
   const saveConfig = useCallback(() => {
