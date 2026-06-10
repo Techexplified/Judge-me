@@ -22,7 +22,7 @@ export const loader = async ({ request }) => {
 
   // Sidebar "JudgeMe Reviews" opens application_url (/) — forward any admin embed params to /app.
   if (hasEmbedContext(url)) {
-    throw redirect(`/app?${url.searchParams.toString()}`);
+    throw redirect(`/app/dashboard?${url.searchParams.toString()}`);
   }
 
   return { showForm: Boolean(login) };

@@ -217,7 +217,7 @@ export default function AnalyticsPage() {
 
   return (
     <div style={pageStyles.page}>
-      <Link to={mergeShopifyEmbedParams("/app", search)} style={pageStyles.back}>
+      <Link to={mergeShopifyEmbedParams("/app/dashboard", search)} style={pageStyles.back}>
         <ChevronLeft size={16} />
         Back to dashboard
       </Link>

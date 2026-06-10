@@ -76,7 +76,7 @@ export const loader = async ({ request }) => {
   const shop = normalizeShopDomain(session.shop);
 
   if (await isOnboardingComplete(shop)) {
-    throw embedRedirect("/app", request);
+    throw embedRedirect("/app/dashboard", request);
   }
 
   const url = new URL(request.url);
@@ -126,7 +126,7 @@ export const action = async ({ request }) => {
   const shop = normalizeShopDomain(session.shop);
 
   if (await isOnboardingComplete(shop)) {
-    throw embedRedirect("/app", request);
+    throw embedRedirect("/app/dashboard", request);
   }
 
   const fd = await request.formData();
@@ -225,7 +225,7 @@ export const action = async ({ request }) => {
       );
     }
 
-    throw embedRedirect("/app", request);
+    throw embedRedirect("/app/dashboard", request);
   }
 
   return data({ error: "Unknown action." }, { status: 400 });

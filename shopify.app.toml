@@ -3,7 +3,7 @@
 client_id = "98eccc305b95a11d2b9dbec18a0681d1"
 name = "JudgeMe Reviews"
 handle = "judgeme-reviews"
-application_url = "https://judge-me-sigma.vercel.app/app"
+application_url = "https://judge-me-sigma.vercel.app/app/dashboard"
 embedded = true
 
 [webhooks]
