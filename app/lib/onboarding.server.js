@@ -110,3 +110,35 @@ export async function completeOnboarding(shop, { skippedSyndication = false } = 
   await writeConfig(shop, config);
   return config.onboarding;
 }
+
+/** Clear onboarding progress so reinstall shows the wizard again. Keeps widget/translation settings. */
+export async function resetOnboardingState(shop) {
+  const row = await db.settings.findUnique({ where: { shop } });
+  if (!row?.config) return;
+
+  let config;
+  try {
+    config = JSON.parse(row.config);
+  } catch {
+    return;
+  }
+
+  delete config.onboarding;
+  delete config.storeProfile;
+
+  const hasOtherSettings = Object.keys(config).some((key) => {
+    const value = config[key];
+    if (value == null) return false;
+    if (typeof value === "object" && !Array.isArray(value)) {
+      return Object.keys(value).length > 0;
+    }
+    return String(value).trim() !== "";
+  });
+
+  if (!hasOtherSettings) {
+    await db.settings.delete({ where: { shop } }).catch(() => {});
+    return;
+  }
+
+  await writeConfig(shop, config);
+}

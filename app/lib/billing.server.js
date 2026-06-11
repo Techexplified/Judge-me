@@ -217,9 +217,11 @@ export async function ensureShopRecord(shop) {
 
   if (existing) {
     if (existing.uninstalledAt) {
+      const { resetOnboardingState } = await import("./onboarding.server.js");
+      await resetOnboardingState(shopNorm);
       await db.shop.update({
         where: { shop: shopNorm },
-        data: { uninstalledAt: null },
+        data: { uninstalledAt: null, installedAt: new Date() },
       });
     }
     return existing;

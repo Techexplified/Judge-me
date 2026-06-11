@@ -6,6 +6,7 @@ import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { authenticate } from "../shopify.server";
 import { normalizeShopDomain } from "../utils/shop.js";
 import { isOnboardingComplete } from "../lib/onboarding.server";
+import { ensureShopRecord } from "../lib/billing.server.js";
 import { embedRedirect } from "../utils/shopify-embed-nav.server.js";
 
 export const loader = async ({ request }) => {
@@ -13,6 +14,9 @@ export const loader = async ({ request }) => {
   const url = new URL(request.url);
   const pathname = url.pathname;
   const shop = normalizeShopDomain(session.shop);
+
+  // Reinstall clears onboarding when the shop was previously uninstalled.
+  await ensureShopRecord(shop);
 
   const onboardingPath = "/app/onboarding";
   const onOnboarding = pathname === onboardingPath || pathname.startsWith(`${onboardingPath}/`);

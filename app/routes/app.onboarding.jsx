@@ -10,6 +10,7 @@ import {
   useLocation,
 } from "react-router";
 import { CheckCircle2, Store } from "lucide-react";
+import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.js";
@@ -51,8 +52,18 @@ import {
 } from "../components/admin-ui";
 import { SourceGrid } from "../components/import-wizard-ui";
 import { SOURCE_LIST, SOURCE_PRESETS } from "../lib/csv-import.shared.js";
+import { buildThemeEditorProductBlockUrl } from "../lib/theme-editor-nav.shared.js";
+import {
+  OpenThemeEditorButton,
+  StorefrontSetupBadge,
+  ThemeEditorPreviewHint,
+  ThemeEditorSteps,
+  ThemeStatusCard,
+  ThemeStepActions,
+  openThemeEditorUrl,
+} from "../components/onboarding/theme-editor-guide.jsx";
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 8;
 
 function parseStep(searchParams) {
   const s = Number.parseInt(searchParams.get("step") ?? "1", 10);
@@ -68,11 +79,13 @@ function resolveOnboardingStep(requestedStep, planChoice, storeProfile, question
   if (requestedStep <= 3) return 3;
   if (requestedStep <= 4) return 4;
   if (!isQuestionnaireComplete(questionnaire)) return 5;
-  return requestedStep >= 6 ? 6 : 5;
+  if (requestedStep <= 6) return 6;
+  if (requestedStep <= 7) return 7;
+  return requestedStep >= 8 ? 8 : 7;
 }
 
 export const loader = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
 
   if (await isOnboardingComplete(shop)) {
@@ -108,6 +121,24 @@ export const loader = async ({ request }) => {
 
   const linkedCount = link?.group?.members?.length ?? 0;
 
+  let mainThemeName = "Your theme";
+  try {
+    const themeRes = await admin.graphql(`
+      query OnboardingMainTheme {
+        themes(roles: [MAIN], first: 1) {
+          nodes { name }
+        }
+      }
+    `);
+    const themeJson = await themeRes.json();
+    mainThemeName = themeJson?.data?.themes?.nodes?.[0]?.name ?? mainThemeName;
+  } catch {
+    /* optional — theme name is cosmetic */
+  }
+
+  const apiKey = globalThis.process?.env?.SHOPIFY_API_KEY || "";
+  const themeEditorUrl = buildThemeEditorProductBlockUrl(shop, apiKey);
+
   return {
     shop,
     step,
@@ -118,6 +149,8 @@ export const loader = async ({ request }) => {
     linkedCount,
     proPrice: PRO_PRICE_USD,
     proTrialDays: PRO_TRIAL_DAYS,
+    mainThemeName,
+    themeEditorUrl,
   };
 };
 
@@ -241,6 +274,8 @@ export default function Onboarding() {
     linkedFlash,
     proPrice,
     proTrialDays,
+    mainThemeName,
+    themeEditorUrl,
   } = useLoaderData();
   const actionData = useActionData();
   const submit = useSubmit();
@@ -248,10 +283,13 @@ export default function Onboarding() {
   const location = useLocation();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const shopify = useAppBridge();
 
   const goToStep = (n) => {
     navigate(mergeShopifyEmbedParams(`/app/onboarding?step=${n}`, location.search));
   };
+
+  const openThemeEditor = () => openThemeEditorUrl(themeEditorUrl, shopify);
 
   const [industry, setIndustry] = useState(storeProfile.industry || "");
   const [primaryGoal, setPrimaryGoal] = useState(storeProfile.primaryGoal || "");
@@ -665,20 +703,88 @@ export default function Onboarding() {
     );
   }
 
+  if (step === 6) {
+    return (
+      <WizardShell
+        step={6}
+        total={TOTAL_STEPS}
+        actions={
+          <ThemeStepActions
+            onBack={() => goToStep(5)}
+            onOpenEditor={openThemeEditor}
+            onContinue={() => goToStep(7)}
+            backDisabled={isSubmitting}
+            continueDisabled={isSubmitting}
+            continueLabel="Next step"
+          />
+        }
+      >
+        <StorefrontSetupBadge />
+        <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 900 }}>
+          Turn on reviews in your theme
+        </h2>
+        <p style={{ margin: "0 0 16px", color: "#6d7175", fontWeight: 600, fontSize: 13, lineHeight: 1.5 }}>
+          Shoppers only see reviews after you add the Product Reviews block to your storefront.
+          We&apos;ll open the Shopify theme editor on your product page.
+        </p>
+        <ThemeStatusCard themeName={mainThemeName} />
+        <OpenThemeEditorButton onClick={openThemeEditor} label="Enable app in theme editor" />
+        <p style={{ margin: "12px 0 0", fontSize: 12, color: "#6d7175", fontWeight: 600 }}>
+          Opens in a new tab. Come back here when you&apos;re done, or tap Next step to continue.
+        </p>
+      </WizardShell>
+    );
+  }
+
+  if (step === 7) {
+    return (
+      <WizardShell
+        step={7}
+        total={TOTAL_STEPS}
+        actions={
+          <ThemeStepActions
+            onBack={() => goToStep(6)}
+            onOpenEditor={openThemeEditor}
+            onContinue={() => goToStep(8)}
+            backDisabled={isSubmitting}
+            continueDisabled={isSubmitting}
+            continueLabel="Next step"
+          />
+        }
+      >
+        <StorefrontSetupBadge />
+        <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 900 }}>
+          Add the Product Reviews block
+        </h2>
+        <p style={{ margin: "0 0 16px", color: "#6d7175", fontWeight: 600, fontSize: 13, lineHeight: 1.5 }}>
+          Follow these steps in the theme editor. Takes about a minute.
+        </p>
+        <ThemeEditorPreviewHint />
+        <ThemeEditorSteps />
+        <OpenThemeEditorButton onClick={openThemeEditor} />
+      </WizardShell>
+    );
+  }
+
   const wantsImport = storeProfile.importingFromOtherApp === "yes";
 
   return (
     <WizardShell
-      step={6}
+      step={8}
       total={TOTAL_STEPS}
       actions={
-        <PrimaryButton
-          loading={isSubmitting}
-          disabled={isSubmitting}
-          onClick={() => submit({ intent: "finish" }, { method: "post" })}
-        >
-          {wantsImport ? "Continue to import" : "Go to dashboard"}
-        </PrimaryButton>
+        <>
+          <SecondaryButton onClick={() => goToStep(7)} disabled={isSubmitting}>
+            Back
+          </SecondaryButton>
+          <PrimaryButton
+            loading={isSubmitting}
+            disabled={isSubmitting}
+            onClick={() => submit({ intent: "finish" }, { method: "post" })}
+          >
+            {wantsImport ? "Continue to import" : "Go to dashboard"}
+          </PrimaryButton>
+        </>
       }
     >
       <div style={{ textAlign: "center", padding: "8px 0" }}>
@@ -696,11 +802,11 @@ export default function Onboarding() {
         >
           <Store size={24} color="#008060" />
         </div>
-        <h2 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 900 }}>You&apos;re All Set!</h2>
+        <h2 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 900 }}>You&apos;re all set!</h2>
         <p style={{ margin: 0, color: "#6d7175", fontWeight: 600, fontSize: 13, lineHeight: 1.5 }}>
           {wantsImport
             ? "Next, we'll help you import your reviews from your previous app."
-            : "Add the review widget to your theme, or open Integration anytime to connect more shops."}
+            : "Your dashboard is ready. If you skipped the theme step, add Product Reviews anytime from Online Store → Themes → Customize."}
         </p>
       </div>
     </WizardShell>
