@@ -122,22 +122,28 @@ export const loader = async ({ request }) => {
   const linkedCount = link?.group?.members?.length ?? 0;
 
   let mainThemeName = "Your theme";
+  let mainThemeId = "";
   try {
     const themeRes = await admin.graphql(`
       query OnboardingMainTheme {
         themes(roles: [MAIN], first: 1) {
-          nodes { name }
+          nodes { id name }
         }
       }
     `);
     const themeJson = await themeRes.json();
-    mainThemeName = themeJson?.data?.themes?.nodes?.[0]?.name ?? mainThemeName;
+    const themeNode = themeJson?.data?.themes?.nodes?.[0];
+    mainThemeName = themeNode?.name ?? mainThemeName;
+    // id comes as "gid://shopify/OnlineStoreTheme/123456" — extract the numeric part
+    if (themeNode?.id) {
+      mainThemeId = String(themeNode.id).split("/").pop() || "";
+    }
   } catch {
     /* optional — theme name is cosmetic */
   }
 
   const apiKey = globalThis.process?.env?.SHOPIFY_API_KEY || "";
-  const themeEditorUrl = buildThemeEditorProductBlockUrl(shop, apiKey);
+  const themeEditorUrl = buildThemeEditorProductBlockUrl(shop, apiKey, mainThemeId);
 
   return {
     shop,
