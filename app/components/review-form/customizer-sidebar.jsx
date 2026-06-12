@@ -8,7 +8,7 @@ import {
 import { TOKENS, UI_FONT } from "./customizer-styles.js";
 import {
   CollapsibleSection,
-  ColorPairRow,
+  ColorRow,
   ToggleRow,
   GeomSlider,
   PresetCard,
@@ -170,19 +170,11 @@ export function CustomizerSidebar({
           value={config.starStyle}
           onChange={(v) => updateConfig("starStyle", v)}
         />
-        <ColorPairRow
-          left={{
-            label: "Active star",
-            value: config.starColor,
-            onColor: (v) => updateConfig("starColor", v),
-            onHex: (v) => updateConfig("starColor", v),
-          }}
-          right={{
-            label: "Inactive",
-            value: config.inactiveStarColor,
-            onColor: (v) => updateConfig("inactiveStarColor", v),
-            onHex: (v) => updateConfig("inactiveStarColor", v),
-          }}
+        <ColorRow
+          label="Star color"
+          value={config.starColor}
+          onColor={(v) => updateConfig("starColor", v)}
+          onHex={(v) => updateConfig("starColor", v)}
         />
         <GeomSlider
           label="Star size"

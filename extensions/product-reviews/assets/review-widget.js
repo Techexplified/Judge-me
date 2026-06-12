@@ -93,6 +93,7 @@
     const shop = root.dataset.shop;
     const productId = root.dataset.productId;
     const productName = root.dataset.productName || "";
+    const productImage = root.dataset.productImage || "";
     const API = (root.dataset.apiBase || "").replace(/\/$/, "");
     if (!API || !shop) return;
 
@@ -368,6 +369,7 @@
             fd.set("shop", shop);
             fd.set("productId", productId);
             fd.set("productName", productName);
+            if (productImage) fd.set("productImage", productImage);
             fd.set("rating", String(cfg.showRatings ? currentRating : 5));
             fd.set("author", author);
             fd.set("comment", comment || "—");
@@ -381,6 +383,7 @@
                 shop,
                 productId,
                 productName,
+                productImage: productImage || undefined,
                 rating: cfg.showRatings ? currentRating : 5,
                 author,
                 comment: comment || "—",

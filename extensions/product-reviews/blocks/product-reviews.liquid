@@ -2,6 +2,7 @@
 <div id="app-reviews-root"
      data-product-id="{{ product.id }}"
      data-product-name="{{ product.title | escape }}"
+     data-product-image="{{ product.featured_image | image_url: width: 200 }}"
      data-shop="{{ shop.permanent_domain }}"
      data-api-base="/apps/judgeme-reviews">
 </div>

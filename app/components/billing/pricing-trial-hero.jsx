@@ -13,7 +13,7 @@ const styles = {
   topRow: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 24,
     flexWrap: "wrap",
     marginBottom: 28,

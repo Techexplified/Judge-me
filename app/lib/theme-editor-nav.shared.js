@@ -7,14 +7,12 @@ export function storeHandleFromShop(shop) {
 }
 
 /** Deep link: theme editor on the product template with Product Reviews block ready to add. */
-export function buildThemeEditorProductBlockUrl(shop, apiKey, themeId) {
+export function buildThemeEditorProductBlockUrl(shop, apiKey) {
   const storeHandle = storeHandleFromShop(shop);
   const params = new URLSearchParams({
     template: "product",
     addAppBlockId: `${apiKey}/${PRODUCT_REVIEWS_BLOCK_HANDLE}`,
     target: "newAppsSection",
   });
-  // Use the actual theme ID — 'current' is not reliably supported and causes 404.
-  const themeSegment = themeId || "current";
-  return `https://admin.shopify.com/store/${encodeURIComponent(storeHandle)}/themes/${themeSegment}/editor?${params.toString()}`;
+  return `https://admin.shopify.com/store/${encodeURIComponent(storeHandle)}/themes/current/editor?${params.toString()}`;
 }

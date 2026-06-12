@@ -189,6 +189,7 @@ export async function action({ request }) {
     let title;
     let email;
     let mediaFiles = [];
+    let productImage;
 
     if (contentType.includes("multipart/form-data")) {
       const fd = await request.formData();
@@ -200,6 +201,7 @@ export async function action({ request }) {
       author = fd.get("author");
       title = fd.get("title");
       email = fd.get("email");
+      productImage = fd.get("productImage");
 
       const shopNormEarly = normalizeShopDomain(shop);
       let formConfig = { showPhotos: true, showVideos: true };
@@ -246,6 +248,7 @@ export async function action({ request }) {
         author,
         title,
         email,
+        productImage,
       } = body);
     }
 
@@ -288,6 +291,7 @@ export async function action({ request }) {
       shop: shopNorm,
       productId: pid,
       productName: productName || "Unknown product",
+      productImage: (typeof productImage === "string" ? productImage : "")?.trim() || null,
       rating: Number(rating),
       title: (typeof title === "string" ? title : "")?.trim() || null,
       comment: String(comment),

@@ -261,13 +261,15 @@ export function CustomizerShell({
             boxSizing: "border-box",
           }}
         >
-          <ReviewFormPreview
-            config={config}
-            reviewContext={reviewContext}
-            isSaving={isSaving}
-            actionData={actionData}
-            onSubmitReview={onSubmitReview}
-          />
+          <div style={{ position: "sticky", top: 48, width: "100%", maxWidth: 560 }}>
+            <ReviewFormPreview
+              config={config}
+              reviewContext={reviewContext}
+              isSaving={isSaving}
+              actionData={actionData}
+              onSubmitReview={onSubmitReview}
+            />
+          </div>
         </main>
       </div>
     </div>

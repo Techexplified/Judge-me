@@ -144,13 +144,7 @@ export function OpenThemeEditorButton({ onClick, label = "Open theme editor" }) 
 
 export function openThemeEditorUrl(url, shopify) {
   try {
-    // In embedded Shopify apps, use App Bridge's open() to escape the iframe sandbox.
-    // Falls back to window.open for non-embedded contexts.
-    if (shopify?.open) {
-      shopify.open(url, "_blank");
-    } else {
-      window.open(url, "_blank", "noopener,noreferrer");
-    }
+    window.open(url, "_blank", "noopener,noreferrer");
     shopify?.toast?.show?.("Opening theme editor in a new tab…");
   } catch {
     shopify?.toast?.show?.("Could not open the theme editor. Try Online Store → Themes → Customize.", {

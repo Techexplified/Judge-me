@@ -122,28 +122,22 @@ export const loader = async ({ request }) => {
   const linkedCount = link?.group?.members?.length ?? 0;
 
   let mainThemeName = "Your theme";
-  let mainThemeId = "";
   try {
     const themeRes = await admin.graphql(`
       query OnboardingMainTheme {
         themes(roles: [MAIN], first: 1) {
-          nodes { id name }
+          nodes { name }
         }
       }
     `);
     const themeJson = await themeRes.json();
-    const themeNode = themeJson?.data?.themes?.nodes?.[0];
-    mainThemeName = themeNode?.name ?? mainThemeName;
-    // id comes as "gid://shopify/OnlineStoreTheme/123456" — extract the numeric part
-    if (themeNode?.id) {
-      mainThemeId = String(themeNode.id).split("/").pop() || "";
-    }
+    mainThemeName = themeJson?.data?.themes?.nodes?.[0]?.name ?? mainThemeName;
   } catch {
     /* optional — theme name is cosmetic */
   }
 
   const apiKey = globalThis.process?.env?.SHOPIFY_API_KEY || "";
-  const themeEditorUrl = buildThemeEditorProductBlockUrl(shop, apiKey, mainThemeId);
+  const themeEditorUrl = buildThemeEditorProductBlockUrl(shop, apiKey);
 
   return {
     shop,
@@ -444,8 +438,8 @@ export default function Onboarding() {
             </p>
             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, fontWeight: 600, color: "#6d7175" }}>
               <li>Unlimited reviews</li>
-              <li>Photo & video reviews</li>
-              <li>AI, analytics & import</li>
+              <li>Photo & Video Reviews</li>
+              <li>AI, Analytics & Import</li>
             </ul>
           </div>
         </div>
@@ -551,6 +545,9 @@ export default function Onboarding() {
         total={TOTAL_STEPS}
         actions={
           <>
+            <SecondaryButton onClick={() => goToStep(3)} disabled={isSubmitting}>
+              Back
+            </SecondaryButton>
             <SecondaryButton
               disabled={isSubmitting}
               onClick={() =>

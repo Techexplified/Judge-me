@@ -170,6 +170,8 @@ export function computeDashboardMetrics({ shop, scopedReviews, reviewsAll, now, 
     const key = review.productName || review.productId || "Unknown";
     if (!grouped[key]) {
       grouped[key] = { productName: key, productId: review.productId, productImage: review.productImage, list: [] };
+    } else if (!grouped[key].productImage && review.productImage) {
+      grouped[key].productImage = review.productImage;
     }
     grouped[key].list.push(review);
   }

@@ -131,6 +131,8 @@ export const loader = async ({ request }) => {
         reviews: [],
         totalRating: 0,
       };
+    } else if (!acc[key].productImage && review.productImage) {
+      acc[key].productImage = review.productImage;
     }
     acc[key].reviews.push(review);
     acc[key].totalRating += review.rating;
@@ -609,7 +611,7 @@ export default function ReviewsManagement() {
             }}
           >
             <strong style={{ color: "#b98900" }}>{pendingReplyTotal}</strong> review
-            {pendingReplyTotal === 1 ? "" : "s"} still need a store reply.
+            {pendingReplyTotal === 1 ? "" : "s"} still need{pendingReplyTotal === 1 ? "s" : ""} a store reply.
           </div>
         ) : null}
 
