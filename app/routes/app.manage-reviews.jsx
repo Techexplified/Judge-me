@@ -146,15 +146,16 @@ export const action = async ({ request }) => {
         admin,
         redirectPath: "/app/manage-reviews",
         withTabParam: true,
+        formData,
       });
     }
 
-    return await handleReviewsManagementAction(request);
+    return await handleReviewsManagementAction({ session, formData });
   } catch (error) {
     console.error("[manage-reviews] action failed:", error);
     return {
       ok: false,
-      error: "Could not save your reply. Please try again in a moment.",
+      error: "Something went wrong. Please try again in a moment.",
     };
   }
 };

@@ -47,8 +47,9 @@ export async function handleStoreIntegrationAction({
   admin,
   redirectPath,
   withTabParam = false,
+  formData: formDataIn,
 }) {
-  const formData = await request.formData();
+  const formData = formDataIn ?? (await request.formData());
   const intent = formData.get("intent");
   const targetShopRaw = formData.get("targetShop");
   const tabQuery = withTabParam ? "tab=integration&" : "";

@@ -115,11 +115,24 @@ export async function loadReviewsManagementData({ request, session, billing }) {
   };
 }
 
-export async function handleReviewsManagementAction(request) {
+export async function handleReviewsManagementAction(requestOrCtx) {
   try {
-    const { session } = await authenticate.admin(request);
+    let session;
+    let formData;
+
+    if (requestOrCtx && typeof requestOrCtx.formData === "function") {
+      ({ session } = await authenticate.admin(requestOrCtx));
+      formData = await requestOrCtx.formData();
+    } else {
+      session = requestOrCtx.session;
+      formData = requestOrCtx.formData;
+    }
+
+    if (!session || !formData) {
+      return { ok: false, error: "Invalid review action request." };
+    }
+
   const shop = normalizeShopDomain(session.shop);
-  const formData = await request.formData();
   const intent = formData.get("_intent");
   const reviewId = formData.get("reviewId");
 
@@ -313,7 +326,7 @@ export async function handleReviewsManagementAction(request) {
     console.error("[reviews-management] action failed:", error);
     return {
       ok: false,
-      error: "Could not save your reply. Please try again in a moment.",
+      error: "Something went wrong. Please try again in a moment.",
     };
   }
 }
