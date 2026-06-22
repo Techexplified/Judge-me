@@ -8,8 +8,7 @@ import { normalizeShopDomain } from "../utils/shop.js";
 import {
   isDatabaseUnavailable,
   isThrownResponse,
-  safeIsOnboardingComplete,
-} from "../lib/app-shell.server.js";
+} from "../lib/app-shell.shared.js";
 import { embedRedirect } from "../utils/shopify-embed-nav.server.js";
 import { PAGE_BG, SURFACE_BG, SURFACE_BORDER } from "../components/admin-ui";
 
@@ -33,6 +32,7 @@ export const loader = async ({ request }) => {
   }
 
   const shop = normalizeShopDomain(session.shop);
+  const { safeIsOnboardingComplete } = await import("../lib/app-shell.server.js");
 
   if (!onOnboarding && !(await safeIsOnboardingComplete(shop))) {
     throw embedRedirect(onboardingPath, request);
