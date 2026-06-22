@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { authenticate } from "../shopify.server";
 import { markShopUninstalled } from "../lib/billing.server.js";
 import { resetOnboardingState } from "../lib/onboarding.server.js";

@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { authenticate } from "../shopify.server";
 import {
   downgradeShopToFree,

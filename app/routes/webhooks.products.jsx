@@ -1,63 +1,76 @@
-import { authenticate } from "../shopify.server";
+export const runtime = "nodejs";
+
+import { authenticate, unauthenticated } from "../shopify.server";
 import prisma from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.server";
 import { syncReviewsForProduct } from "../lib/review-sync.server";
 
-export const action = async ({ request }) => {
-  const { topic, shop: shopRaw, admin, payload } = await authenticate.webhook(request);
-  const shop = normalizeShopDomain(shopRaw);
-
-  if (!admin) {
-    // The webhook request is not valid
-    return new Response("Unauthorized", { status: 401 });
-  }
-
+/** Webhook HMAC can succeed without an inline session; resolve admin for optional GraphQL work. */
+async function resolveAdminForShop(shop, webhookAdmin) {
+  if (webhookAdmin) return webhookAdmin;
   try {
-    if (topic === "PRODUCTS_DELETE") {
-      // Clean up the index when a product is removed from Shopify
-      await prisma.productIndex.deleteMany({
-        where: { shop, productId: payload.id.toString() }
-      });
-      console.log(`[ProductIndex] Deleted ${payload.id} from ${shop}`);
-    } 
-    else if (topic === "PRODUCTS_CREATE" || topic === "PRODUCTS_UPDATE") {
-      // Extract the primary SKU from the first variant that has one
-      const variants = payload.variants || [];
-      const primarySku = variants.find(v => v.sku && v.sku.trim() !== "")?.sku || null;
+    return (await unauthenticated.admin(shop)).admin;
+  } catch (err) {
+    console.warn(`[ProductIndex] No admin session for ${shop}, skipping review sync:`, err);
+    return null;
+  }
+}
 
-      await prisma.productIndex.upsert({
-        where: {
-          shop_productId: {
+export const action = async ({ request }) => {
+  try {
+    const { topic, shop: shopRaw, admin: webhookAdmin, payload } =
+      await authenticate.webhook(request);
+    const shop = normalizeShopDomain(shopRaw);
+
+    try {
+      if (topic === "PRODUCTS_DELETE") {
+        await prisma.productIndex.deleteMany({
+          where: { shop, productId: payload.id.toString() },
+        });
+        console.log(`[ProductIndex] Deleted ${payload.id} from ${shop}`);
+      } else if (topic === "PRODUCTS_CREATE" || topic === "PRODUCTS_UPDATE") {
+        const variants = payload.variants || [];
+        const primarySku =
+          variants.find((v) => v.sku && v.sku.trim() !== "")?.sku || null;
+
+        await prisma.productIndex.upsert({
+          where: {
+            shop_productId: {
+              shop,
+              productId: payload.id.toString(),
+            },
+          },
+          create: {
             shop,
-            productId: payload.id.toString()
-          }
-        },
-        create: {
-          shop,
-          productId: payload.id.toString(),
-          handle: payload.handle,
-          sku: primarySku,
-          title: payload.title
-        },
-        update: {
-          handle: payload.handle,
-          sku: primarySku,
-          title: payload.title
+            productId: payload.id.toString(),
+            handle: payload.handle,
+            sku: primarySku,
+            title: payload.title,
+          },
+          update: {
+            handle: payload.handle,
+            sku: primarySku,
+            title: payload.title,
+          },
+        });
+        console.log(`[ProductIndex] Upserted ${payload.id} (${primarySku}) from ${shop}`);
+
+        const admin = await resolveAdminForShop(shop, webhookAdmin);
+        if (admin) {
+          syncReviewsForProduct(admin, shop, payload.id.toString()).catch((err) =>
+            console.error(`[review-sync] webhook product ${payload.id} for ${shop}:`, err),
+          );
         }
-      });
-      console.log(`[ProductIndex] Upserted ${payload.id} (${primarySku}) from ${shop}`);
+      }
 
-      // Import review metafields on new/updated products (not only on first app install)
-      syncReviewsForProduct(admin, shop, payload.id.toString()).catch((err) =>
-        console.error(`[review-sync] webhook product ${payload.id} for ${shop}:`, err),
-      );
+      return new Response("Success", { status: 200 });
+    } catch (error) {
+      console.error(`[ProductIndex] Error processing ${topic} for ${shop}:`, error);
+      // Acknowledge receipt so Shopify does not retry a flood of product webhooks.
+      return new Response("Processed with errors", { status: 200 });
     }
-
-    return new Response("Success", { status: 200 });
-  } catch (error) {
-    console.error(`[ProductIndex] Error processing ${topic} for ${shop}:`, error);
-    // Returning 200 to acknowledge receipt and prevent Shopify from retrying excessively 
-    // if the failure was non-recoverable, though ideally we might return 500 for temporary DB issues.
-    return new Response("Processed with errors", { status: 200 });
+  } catch (err) {
+    console.error("Webhook auth/HMAC failed (products)", err);
+    return new Response("Unauthorized", { status: 401 });
   }
 };
