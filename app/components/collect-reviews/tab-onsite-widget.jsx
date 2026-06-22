@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { ArrowUpRight, Mail, MapPin, Package, Send, Star } from "lucide-react";
+import { ArrowUpRight, MapPin, Package, Send, Star, TrendingUp } from "lucide-react";
 import { SHOPIFY_GREEN, SURFACE_BG, SURFACE_BORDER } from "../admin-ui";
 import { OrderStatusPreview } from "./order-status-preview.jsx";
 
@@ -185,14 +185,14 @@ export function TabOnsiteWidget({ metrics, timing, formConfig, onTimingChange })
       >
         <StatCard
           icon={Send}
-          label="Widget Views"
+          label="Widget views"
           sublabel="This month"
           value={formatNumber(metrics.widgetViews)}
           trend={metrics.widgetViewsTrend}
         />
         <StatCard
-          icon={Mail}
-          label="Conversion Rate"
+          icon={TrendingUp}
+          label="Conversion rate"
           sublabel="Reviews per view"
           value={`${metrics.conversionRate}%`}
           trend={metrics.conversionTrend}
@@ -200,7 +200,7 @@ export function TabOnsiteWidget({ metrics, timing, formConfig, onTimingChange })
         />
         <StatCard
           icon={Star}
-          label="Review Collected"
+          label="Reviews collected"
           sublabel="Total this month"
           value={formatNumber(metrics.reviewsCollected)}
           trend={metrics.reviewsCollectedTrend}
@@ -217,7 +217,7 @@ export function TabOnsiteWidget({ metrics, timing, formConfig, onTimingChange })
             color: "#202223",
           }}
         >
-          Widget Timing
+          Widget timing
         </h3>
         <p
           style={{

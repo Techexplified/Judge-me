@@ -117,20 +117,20 @@ export async function saveOnboardingImportChoice(shop, { importKey, skipImport }
 
 export async function saveOnboardingCollectionSettings(
   shop,
-  { emailReviewRequests, photoVideoReviews },
+  { onsiteWidgetEnabled, photoVideoReviews },
 ) {
   const config = await readConfig(shop);
+  const enabled = Boolean(onsiteWidgetEnabled);
   const collection = {
-    emailReviewRequests: Boolean(emailReviewRequests),
+    onsiteWidgetEnabled: enabled,
     photoVideoReviews: Boolean(photoVideoReviews),
-    daysAfterDelivery: 7,
     savedAt: new Date().toISOString(),
   };
 
-  config.reviewRequests = {
-    ...(config.reviewRequests ?? {}),
-    enabled: collection.emailReviewRequests,
-    daysAfterDelivery: collection.daysAfterDelivery,
+  config.onsiteWidget = {
+    ...(config.onsiteWidget ?? {}),
+    enabled,
+    timing: config.onsiteWidget?.timing === "after_delivery" ? "after_delivery" : "after_fulfillment",
   };
   config.onboarding = {
     ...(config.onboarding ?? {}),

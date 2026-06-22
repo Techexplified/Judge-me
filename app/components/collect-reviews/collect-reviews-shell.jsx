@@ -1,14 +1,14 @@
 /* eslint-disable react/prop-types */
-import { Mail, FileText, Upload } from "lucide-react";
+import { FileText, LayoutGrid, Upload } from "lucide-react";
 import { PAGE_BG, SHOPIFY_GREEN, SURFACE_BORDER } from "../admin-ui";
 
 const FONT =
   "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
 export const COLLECT_TABS = [
-  { id: "widget", label: "On-site widget", icon: Mail },
-  { id: "review-form", label: "Review Form", icon: FileText },
-  { id: "import", label: "Import Reviews", icon: Upload },
+  { id: "widget", label: "Storefront widget", icon: LayoutGrid },
+  { id: "review-form", label: "Review form", icon: FileText },
+  { id: "import", label: "Import reviews", icon: Upload },
 ];
 
 const type = {
@@ -57,7 +57,7 @@ export function CollectReviewsShell({
         <div>
           <h1 style={{ margin: 0, ...type.pageTitle }}>Collect Reviews</h1>
           <p style={{ margin: "6px 0 0", ...type.subtitle }}>
-            Automate how and when review requests are sent to your customers.
+            Manage your storefront widget, review form, and imported reviews.
           </p>
         </div>
         <button

@@ -1,54 +1,72 @@
 /* eslint-disable react/prop-types */
-import { Link, useLoaderData, useLocation, useSearchParams } from "react-router";
-import { CalendarDays, ChevronLeft } from "lucide-react";
+import { useLoaderData, useSearchParams } from "react-router";
 import { UPGRADE_NOTICE } from "../components/admin-ui";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.js";
-import { mergeShopifyEmbedParams } from "../utils/shopify-embed-nav.js";
 import { getGroupShopList } from "../lib/store-group.server";
 import { REVIEW_LIST_SELECT } from "../lib/review-query.shared.js";
 import {
   hasProAccess,
   serializePlanStatus,
-  requireFeatureUsage,
+  checkFeatureAccess,
 } from "../lib/billing.server.js";
+import { resetFeatureUsageKeys } from "../lib/usage.server.js";
 import {
-  computeAnalyticsDetail,
-  computeDashboardMetrics,
+  computeAnalyticsPageMetrics,
   filterReviewsByRangeStart,
   parseDashboardRange,
   rangeLabel,
   rangeStartFromKey,
 } from "../utils/dashboard-metrics.server.js";
 import { PremiumGateBanner, PremiumTrialBadge } from "../components/premium-trial-banner";
-import { AnalyticsViewContent } from "../components/analytics/analytics-drilldown-modal.jsx";
-import { VIEW_LABELS } from "../components/analytics/analytics-styles.js";
-
-const ANALYTICS_VIEWS = ["volume", "rating", "velocity", "sentiment"];
-
-function parseAnalyticsView(searchParams) {
-  const v = searchParams.get("view");
-  return ANALYTICS_VIEWS.includes(v) ? v : "volume";
-}
+import { AnalyticsPageContent } from "../components/analytics/analytics-page.jsx";
 
 export const loader = async ({ request }) => {
   const { session, billing } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
   const url = new URL(request.url);
   const rangeKey = parseDashboardRange(url.searchParams);
-  const view = parseAnalyticsView(url.searchParams);
 
   const { getShopPlanStatus } = await import("../lib/billing.server.js");
   const planStatus = await getShopPlanStatus(shop, billing);
   const hasPremium = hasProAccess(planStatus);
 
-  let chartsBlocked = null;
-  if (hasPremium) {
-    const chartUsage = await requireFeatureUsage(planStatus, "live_graphs_charts");
-    if (!chartUsage.ok) {
-      chartsBlocked = chartUsage.message;
+  // One-time reset of analytics-related usage counters (fixes prior per-page-view consumption).
+  const settingsRow = await db.settings.findUnique({ where: { shop } });
+  let storedConfig = {};
+  if (settingsRow?.config) {
+    try {
+      storedConfig = JSON.parse(settingsRow.config);
+    } catch {
+      storedConfig = {};
     }
+  }
+  if (!storedConfig.analyticsV2UsageReset) {
+    await resetFeatureUsageKeys(shop, [
+      "live_graphs_charts",
+      "export_pdf_csv",
+      "ai_insights_playbook",
+      "ai_dashboard_overview",
+    ]);
+    const newConfig = { ...storedConfig, analyticsV2UsageReset: true };
+    await db.settings.upsert({
+      where: { shop },
+      update: { config: JSON.stringify(newConfig) },
+      create: { shop, config: JSON.stringify(newConfig) },
+    });
+  }
+
+  let chartsBlocked = null;
+  let pageData = null;
+  let exportAccess = null;
+
+  if (hasPremium) {
+    const chartAccess = await checkFeatureAccess(planStatus, "live_graphs_charts");
+    if (!chartAccess.ok) {
+      chartsBlocked = chartAccess.message;
+    }
+    exportAccess = await checkFeatureAccess(planStatus, "export_pdf_csv");
   }
 
   const targetShops = await getGroupShopList(shop);
@@ -62,196 +80,76 @@ export const loader = async ({ request }) => {
   const rangeStart = rangeStartFromKey(now, rangeKey);
   const scopedReviews = filterReviewsByRangeStart(reviewsAll, rangeStart);
 
-  const { rangeStart: metricsRangeStart } = computeDashboardMetrics({
-    shop,
-    scopedReviews,
-    reviewsAll,
-    now,
-    rangeKey,
-  });
-
-  const analyticsDetail =
-    hasPremium && !chartsBlocked
-      ? computeAnalyticsDetail({
-          scopedReviews,
-          reviewsAll,
-          now,
-          rangeKey,
-          rangeStart: metricsRangeStart,
-        })
-      : null;
+  if (hasPremium && !chartsBlocked) {
+    pageData = computeAnalyticsPageMetrics({
+      shop,
+      scopedReviews,
+      reviewsAll,
+      now,
+      rangeKey,
+      rangeStart,
+    });
+  }
 
   return {
     shop,
     rangeKey,
-    view,
     metricsRangeLabel: rangeLabel(rangeKey),
     planStatus: serializePlanStatus(planStatus),
     trialStatus: serializePlanStatus(planStatus),
     hasPremium,
-    analyticsDetail,
+    pageData,
     chartsBlocked,
-    totalReviews: scopedReviews.length,
+    exportAccess: exportAccess
+      ? {
+          ok: exportAccess.ok,
+          message: exportAccess.message,
+          remaining: exportAccess.remaining,
+        }
+      : null,
   };
-};
-
-const pageStyles = {
-  page: {
-    padding: "20px 24px 32px",
-    background: "#f3f7f5",
-    minHeight: "100vh",
-    fontFamily: "'Inter',system-ui,-apple-system,sans-serif",
-    fontSize: 14,
-    color: "#202223",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    gap: 16,
-    marginBottom: 20,
-    flexWrap: "wrap",
-  },
-  back: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-    fontSize: 13,
-    fontWeight: 700,
-    color: "#008060",
-    textDecoration: "none",
-    marginBottom: 8,
-  },
-  h1: { margin: 0, fontSize: 28, fontWeight: 900, color: "#202223" },
-  hint: { margin: "8px 0 0", fontSize: 13, fontWeight: 600, color: "#6d7175" },
-  rangeWrap: {
-    display: "inline-flex",
-    gap: 8,
-    alignItems: "center",
-    padding: "7px 12px",
-    borderRadius: 8,
-    border: "1px solid #c9cccf",
-    background: "#fff",
-    cursor: "pointer",
-  },
-  rangeSelect: {
-    border: "none",
-    outline: "none",
-    background: "transparent",
-    fontWeight: 700,
-    fontSize: 13,
-    color: "#202223",
-    cursor: "pointer",
-    fontFamily: "inherit",
-    maxWidth: 140,
-  },
-  tabs: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 20,
-  },
-  tab: (active) => ({
-    padding: "8px 14px",
-    borderRadius: 999,
-    border: active ? "1px solid #008060" : "1px solid #c9cccf",
-    background: active ? "#ecfdf3" : "#fff",
-    color: active ? "#008060" : "#202223",
-    fontSize: 12,
-    fontWeight: 800,
-    cursor: "pointer",
-    fontFamily: "inherit",
-    textDecoration: "none",
-  }),
-  panel: {
-    background: "#fff",
-    borderRadius: 8,
-    border: "1px solid #e5ebe8",
-    padding: "24px 28px",
-  },
-  footerLink: {
-    display: "inline-flex",
-    marginTop: 20,
-    fontSize: 13,
-    fontWeight: 700,
-    color: "#008060",
-    textDecoration: "none",
-  },
 };
 
 export default function AnalyticsPage() {
   const {
     rangeKey,
-    view,
     metricsRangeLabel,
     trialStatus,
     hasPremium,
-    analyticsDetail,
+    pageData,
     chartsBlocked,
-    totalReviews,
+    exportAccess,
   } = useLoaderData();
-  const { search } = useLocation();
   const [, setSearchParams] = useSearchParams();
-
-  const setView = (nextView) => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        next.set("view", nextView);
-        return next;
-      },
-      { replace: true },
-    );
-  };
 
   const setRange = (nextRange) => {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
-        next.set("range", nextRange);
+        if (nextRange === "all") next.set("range", "all");
+        else next.set("range", nextRange);
         return next;
       },
       { replace: true },
     );
   };
 
-  return (
-    <div style={pageStyles.page}>
-      <Link to={mergeShopifyEmbedParams("/app/performance-overview", search)} style={pageStyles.back}>
-        <ChevronLeft size={16} />
-        Back to dashboard
-      </Link>
-
-      <div style={pageStyles.header}>
-        <div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-            <h1 style={pageStyles.h1}>Analytics</h1>
-            <PremiumTrialBadge trialStatus={trialStatus} />
-          </div>
-          <p style={pageStyles.hint}>
-            {VIEW_LABELS[view]} · {metricsRangeLabel}
-            {totalReviews > 0 ? ` · ${totalReviews} reviews` : ""}
-          </p>
+  if (!hasPremium) {
+    return (
+      <div style={{ padding: "20px 24px 32px", background: "#f3f7f5", minHeight: "100vh" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 16 }}>
+          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 900 }}>Analytics</h1>
+          <PremiumTrialBadge trialStatus={trialStatus} />
         </div>
-        <label style={pageStyles.rangeWrap}>
-          <CalendarDays size={14} aria-hidden />
-          <select
-            aria-label="Report date range"
-            value={rangeKey}
-            onChange={(e) => setRange(e.target.value)}
-            style={pageStyles.rangeSelect}
-          >
-            <option value="7">Last 7 days</option>
-            <option value="30">Last 30 days</option>
-            <option value="90">Last 90 days</option>
-            <option value="all">All time</option>
-          </select>
-        </label>
-      </div>
-
-      {!hasPremium ? (
         <PremiumGateBanner feature="analytics" />
-      ) : chartsBlocked ? (
+      </div>
+    );
+  }
+
+  if (chartsBlocked) {
+    return (
+      <div style={{ padding: "20px 24px 32px", background: "#f3f7f5", minHeight: "100vh" }}>
+        <h1 style={{ margin: "0 0 16px", fontSize: 30, fontWeight: 900 }}>Analytics</h1>
         <div
           style={{
             background: UPGRADE_NOTICE.bg,
@@ -265,38 +163,18 @@ export default function AnalyticsPage() {
         >
           {chartsBlocked}
         </div>
-      ) : (
-        <>
-          <div style={pageStyles.tabs} role="tablist" aria-label="Analytics views">
-            {ANALYTICS_VIEWS.map((key) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={view === key}
-                style={pageStyles.tab(view === key)}
-                onClick={() => setView(key)}
-              >
-                {VIEW_LABELS[key]}
-              </button>
-            ))}
-          </div>
+      </div>
+    );
+  }
 
-          <div style={pageStyles.panel}>
-            <AnalyticsViewContent view={view} analyticsDetail={analyticsDetail} />
-            <Link
-              to={
-                view === "sentiment"
-                  ? "/app/reviews?rating=1,2"
-                  : "/app/reviews"
-              }
-              style={pageStyles.footerLink}
-            >
-              View related reviews →
-            </Link>
-          </div>
-        </>
-      )}
-    </div>
+  return (
+    <AnalyticsPageContent
+      pageData={pageData}
+      rangeKey={rangeKey}
+      metricsRangeLabel={metricsRangeLabel}
+      hasPremium={hasPremium}
+      exportAccess={exportAccess}
+      onRangeChange={setRange}
+    />
   );
 }

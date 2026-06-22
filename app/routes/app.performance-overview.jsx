@@ -10,12 +10,11 @@ import {
   ArrowUpRight,
   CalendarDays,
   ChevronDown,
-  Clock,
   ExternalLink,
-  Mail,
+  LayoutGrid,
   Percent,
-  Send,
   Star,
+  TrendingUp,
 } from "lucide-react";
 import { authenticate } from "../shopify.server";
 import { normalizeShopDomain } from "../utils/shop.js";
@@ -179,7 +178,7 @@ export default function PerformanceOverview() {
 
   const manageHref = mergeShopifyEmbedParams("/app/manage-reviews", location.search);
   const reviewsHref = mergeShopifyEmbedParams("/app/reviews", location.search);
-  const settingsHref = mergeShopifyEmbedParams("/app/collect-reviews/customize", location.search);
+  const collectHref = mergeShopifyEmbedParams("/app/collect-reviews?tab=widget", location.search);
 
   const rangeOptions = [
     { value: "30", label: "This month" },
@@ -334,19 +333,19 @@ export default function PerformanceOverview() {
         </PerformanceCard>
 
         <PerformanceCard
-          icon={Send}
-          title="Review Requests"
-          subtitle="Automated collection"
+          icon={LayoutGrid}
+          title="Storefront collection"
+          subtitle="Order status review widget"
           status={
             <StatusBadge
-              label={data.reviewRequests.statusLabel}
-              tone={data.reviewRequests.enabled ? "success" : "warning"}
+              label={data.storefrontCollection.statusLabel}
+              tone={data.storefrontCollection.enabled ? "success" : "warning"}
             />
           }
           footer={
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 20, paddingTop: 16, borderTop: `1px solid ${SURFACE_BORDER}` }}>
               <Link
-                to={settingsHref}
+                to={collectHref}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -360,10 +359,11 @@ export default function PerformanceOverview() {
                   textDecoration: "none",
                 }}
               >
-                Send Requests
-                <Send size={15} />
+                Manage widget
+                <ArrowUpRight size={16} />
               </Link>
-              <span
+              <Link
+                to={collectHref}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -371,42 +371,40 @@ export default function PerformanceOverview() {
                   fontSize: 12,
                   fontWeight: 700,
                   color: "#6d7175",
+                  textDecoration: "none",
                 }}
               >
-                View request history
+                Widget settings
                 <ExternalLink size={14} />
-              </span>
+              </Link>
             </div>
           }
         >
           <div style={{ fontSize: 12, fontWeight: 700, color: "#6d7175", marginBottom: 8 }}>
-            Pending Requests
+            Widget views this month
           </div>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <span style={{ fontSize: 42, fontWeight: 900, color: "#202223", lineHeight: 1 }}>
-              {formatNumber(data.reviewRequests.pendingRequests)}
+              {formatNumber(data.storefrontCollection.widgetViews)}
             </span>
-            <div>
+            {data.storefrontCollection.widgetViewsTrend != null ? (
               <span
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 6,
+                  gap: 4,
                   padding: "4px 10px",
                   borderRadius: 999,
-                  background: "#fff8e6",
-                  color: "#8a6116",
-                  fontSize: 11,
+                  background: "#ecfdf5",
+                  color: "#047857",
+                  fontSize: 12,
                   fontWeight: 800,
                 }}
               >
-                <Clock size={12} />
-                Awaiting response
+                {data.storefrontCollection.widgetViewsTrend > 0 ? "+" : ""}
+                {data.storefrontCollection.widgetViewsTrend}% vs last month
               </span>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "#6d7175", marginTop: 6 }}>
-                Sent in the last 30 days
-              </div>
-            </div>
+            ) : null}
           </div>
 
           <div style={{ padding: "12px 0", borderTop: `1px solid ${SURFACE_BORDER}`, marginTop: 12 }}>
@@ -414,11 +412,11 @@ export default function PerformanceOverview() {
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <Percent size={16} color="#6d7175" />
                 <span style={{ fontSize: 13, fontWeight: 600, color: "#202223" }}>
-                  Request success rate
+                  Conversion rate
                 </span>
               </div>
               <span style={{ fontSize: 14, fontWeight: 800, color: "#202223" }}>
-                {data.reviewRequests.successRate}%
+                {data.storefrontCollection.conversionRate}%
               </span>
             </div>
             <div
@@ -431,7 +429,7 @@ export default function PerformanceOverview() {
             >
               <div
                 style={{
-                  width: `${Math.min(100, data.reviewRequests.successRate)}%`,
+                  width: `${Math.min(100, data.storefrontCollection.conversionRate)}%`,
                   height: "100%",
                   background: SHOPIFY_GREEN,
                   borderRadius: 999,
@@ -439,18 +437,19 @@ export default function PerformanceOverview() {
               />
             </div>
             <div style={{ fontSize: 11, fontWeight: 600, color: "#6d7175", marginTop: 6 }}>
-              {data.reviewRequests.successRate}% conversion
+              Reviews per widget view
             </div>
           </div>
 
           <MetricRow
-            icon={Mail}
-            label="Reviews via requests"
-            value={formatNumber(data.reviewRequests.reviewsViaRequests)}
+            icon={TrendingUp}
+            label="Reviews collected this month"
+            value={formatNumber(data.storefrontCollection.reviewsCollected)}
             badge={
-              data.reviewRequests.viaRequestsPct > 0 ? (
+              data.storefrontCollection.reviewsCollectedTrend != null ? (
                 <span style={{ fontSize: 11, fontWeight: 800, color: SHOPIFY_GREEN }}>
-                  {data.reviewRequests.viaRequestsPct}% of total
+                  {data.storefrontCollection.reviewsCollectedTrend > 0 ? "+" : ""}
+                  {data.storefrontCollection.reviewsCollectedTrend}% vs last month
                 </span>
               ) : null
             }

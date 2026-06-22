@@ -594,3 +594,264 @@ export function computeAnalyticsDetail({ scopedReviews, reviewsAll, now, rangeKe
     },
   };
 }
+
+const STORE_REVIEW_PRODUCT_IDS = new Set(["store", "shop", "store-review"]);
+
+function isStoreReview(review) {
+  const pid = String(review.productId ?? "").trim().toLowerCase();
+  if (STORE_REVIEW_PRODUCT_IDS.has(pid)) return true;
+  const name = String(review.productName ?? "").trim().toLowerCase();
+  return name === "store review" || name === "store reviews";
+}
+
+function inferReviewSource(review) {
+  if (review.originalComment || review.translatedLang) return "imported";
+  if (isStoreReview(review)) return "widgets";
+  return "on_site";
+}
+
+function pctChange(current, prior) {
+  if (prior === 0) return current > 0 ? 100 : 0;
+  return Math.round(((current - prior) / prior) * 100);
+}
+
+function trendLabel(pct) {
+  return `${pct >= 0 ? "+" : ""}${pct}%`;
+}
+
+function monthKeyFromDate(d) {
+  const dt = new Date(d);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthLabelFromKey(key) {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: "short", year: "numeric" });
+}
+
+function shortMonthLabel(key) {
+  const [, m] = key.split("-").map(Number);
+  return new Date(2000, m - 1, 1).toLocaleDateString(undefined, { month: "short" });
+}
+
+function fillMonthlyBuckets(reviews, now, monthCount = 6) {
+  const buckets = [];
+  for (let i = monthCount - 1; i >= 0; i -= 1) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = monthKeyFromDate(d);
+    buckets.push({
+      key,
+      label: shortMonthLabel(key),
+      reviews: 0,
+      replies: 0,
+    });
+  }
+  const byKey = Object.fromEntries(buckets.map((b) => [b.key, b]));
+
+  for (const r of reviews) {
+    const rk = monthKeyFromDate(r.createdAt);
+    if (byKey[rk]) byKey[rk].reviews += 1;
+    if (r.reply && String(r.reply).trim()) {
+      const replyAt = r.replyDate || r.createdAt;
+      const replyKey = monthKeyFromDate(replyAt);
+      if (byKey[replyKey]) byKey[replyKey].replies += 1;
+    }
+  }
+
+  return buckets;
+}
+
+function computeSourceBreakdown(reviews) {
+  const counts = { on_site: 0, widgets: 0, imported: 0 };
+  for (const r of reviews) {
+    counts[inferReviewSource(r)] += 1;
+  }
+  const total = reviews.length || 1;
+  return [
+    {
+      key: "on_site",
+      label: "On-site widget",
+      count: counts.on_site,
+      pct: Math.round((counts.on_site / total) * 100),
+      color: "#008060",
+    },
+    {
+      key: "widgets",
+      label: "Widgets",
+      count: counts.widgets,
+      pct: Math.round((counts.widgets / total) * 100),
+      color: "#5bb98c",
+    },
+    {
+      key: "imported",
+      label: "Imported",
+      count: counts.imported,
+      pct: Math.round((counts.imported / total) * 100),
+      color: "#b4e4cf",
+    },
+  ];
+}
+
+function computeTopReviewedProductsTable(reviews, reviewsAll, rangeStart, now) {
+  const grouped = groupByProduct(reviews);
+  let priorStart;
+  let priorEnd;
+  if (rangeStart) {
+    const periodMs = now.getTime() - rangeStart.getTime();
+    priorEnd = new Date(rangeStart.getTime());
+    priorStart = new Date(rangeStart.getTime() - periodMs);
+  } else {
+    priorStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    priorEnd = new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+
+  const priorByProduct = {};
+  for (const r of reviewsAll) {
+    const d = new Date(r.createdAt);
+    if (d < priorStart || d >= priorEnd) continue;
+    const key = r.productId || r.productName || "Unknown";
+    priorByProduct[key] = (priorByProduct[key] || 0) + 1;
+  }
+
+  const PRODUCT_ICON_TONES = ["#ecfdf5", "#fef9e7", "#eff6ff", "#fdf2f8", "#fff7ed"];
+
+  return grouped
+    .map((g, idx) => {
+      const key = g.productId || g.productName || "Unknown";
+      const replied = g.list.filter((r) => r.reply && String(r.reply).trim()).length;
+      const responseRate = g.list.length ? Math.round((replied / g.list.length) * 100) : 0;
+      const avgRating =
+        g.list.length > 0
+          ? Math.round((g.list.reduce((a, r) => a + r.rating, 0) / g.list.length) * 10) / 10
+          : 0;
+      const priorCount = priorByProduct[key] || 0;
+      const trendPct = pctChange(g.list.length, priorCount);
+      const latest = g.list[0];
+      return {
+        productId: g.productId,
+        productName: g.productName,
+        productImage: latest?.productImage ?? null,
+        reviewCount: g.list.length,
+        avgRating,
+        responseRate,
+        trendPct,
+        trendLabel: trendLabel(trendPct),
+        iconTone: PRODUCT_ICON_TONES[idx % PRODUCT_ICON_TONES.length],
+      };
+    })
+    .sort((a, b) => b.reviewCount - a.reviewCount)
+    .slice(0, 5);
+}
+
+/**
+ * Metrics payload for the /app/analytics dashboard UI.
+ */
+export function computeAnalyticsPageMetrics({
+  shop,
+  scopedReviews,
+  reviewsAll,
+  now,
+  rangeKey,
+  rangeStart,
+}) {
+  const metrics = computeDashboardMetrics({
+    shop,
+    scopedReviews,
+    reviewsAll,
+    now,
+    rangeKey,
+  });
+
+  const total = scopedReviews.length;
+  const withReply = scopedReviews.filter((r) => r.reply && String(r.reply).trim()).length;
+  const responseRate = total ? Math.round((withReply / total) * 100) : 0;
+
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const reviewsThisMonth = reviewsAll.filter((r) => new Date(r.createdAt) >= monthStart).length;
+  const reviewsPrevMonth = reviewsAll.filter((r) => {
+    const d = new Date(r.createdAt);
+    return d >= prevMonthStart && d < monthStart;
+  }).length;
+  const monthTrendPct = pctChange(reviewsThisMonth, reviewsPrevMonth);
+
+  const withMedia = scopedReviews.filter((r) => Array.isArray(r.media) && r.media.length > 0).length;
+  const priorMediaEnd = rangeStart ? new Date(rangeStart.getTime()) : monthStart;
+  const priorMediaPeriodStart = rangeStart
+    ? new Date(rangeStart.getTime() - (now.getTime() - rangeStart.getTime()))
+    : new Date(now.getFullYear(), now.getMonth() - 2, 1);
+  const mediaPrior = reviewsAll.filter((r) => {
+    const d = new Date(r.createdAt);
+    return (
+      d >= priorMediaPeriodStart &&
+      d < priorMediaEnd &&
+      Array.isArray(r.media) &&
+      r.media.length > 0
+    );
+  }).length;
+  const mediaTrendPct = pctChange(withMedia, mediaPrior);
+
+  const repliedPrior = reviewsAll.filter((r) => {
+    const d = new Date(r.createdAt);
+    const start = rangeStart || prevMonthStart;
+    const end = rangeStart ? new Date(rangeStart.getTime()) : monthStart;
+    const priorStart = rangeStart
+      ? new Date(rangeStart.getTime() - (now.getTime() - rangeStart.getTime()))
+      : prevMonthStart;
+    return d >= priorStart && d < end;
+  });
+  const priorResponseRate = repliedPrior.length
+    ? Math.round(
+        (repliedPrior.filter((r) => r.reply && String(r.reply).trim()).length / repliedPrior.length) *
+          100,
+      )
+    : 0;
+  const responseTrendPct = responseRate - priorResponseRate;
+
+  const ratingCounts = [5, 4, 3, 2, 1].map((star) => {
+    const count = scopedReviews.filter((r) => r.rating === star).length;
+    return {
+      star,
+      count,
+      pct: total ? Math.round((count / total) * 100) : 0,
+    };
+  });
+
+  const positivePct = total
+    ? Math.round(
+        (scopedReviews.filter((r) => r.rating >= 4).length / total) * 100,
+      )
+    : 0;
+
+  const monthlyChart = fillMonthlyBuckets(reviewsAll, now, 6);
+  const sourceBreakdown = computeSourceBreakdown(scopedReviews);
+  const topProducts = computeTopReviewedProductsTable(
+    scopedReviews,
+    reviewsAll,
+    rangeStart,
+    now,
+  );
+
+  return {
+    kpis: {
+      totalReviews: metrics.kpis.totalReviews,
+      totalTrend: metrics.kpis.totalTrend,
+      avgRating: metrics.kpis.avgRating,
+      avgDelta: metrics.kpis.avgDelta,
+      reviewsThisMonth: String(reviewsThisMonth),
+      reviewsThisMonthTrend: trendLabel(monthTrendPct),
+      reviewsThisMonthLabel: monthLabelFromKey(monthKeyFromDate(now)),
+      responseRate: `${responseRate}%`,
+      responseRateTrend: trendLabel(responseTrendPct),
+      mediaReviews: String(withMedia),
+      mediaTrend: trendLabel(mediaTrendPct),
+    },
+    ratingDistribution: ratingCounts,
+    positivePct,
+    avgRating: metrics.kpis.avgRating,
+    monthlyChart,
+    sourceBreakdown,
+    topProducts,
+    totalReviews: total,
+  };
+}

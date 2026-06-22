@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import { OrderStatusPreview } from "../collect-reviews/order-status-preview.jsx";
 import { OnboardingHeading } from "./onboarding-shell.jsx";
 
 function SettingToggle({ label, description, checked, onChange, proBadge, disabled }) {
@@ -77,9 +78,9 @@ function SettingToggle({ label, description, checked, onChange, proBadge, disabl
 }
 
 export function StepCollect({
-  emailReviewRequests,
+  onsiteWidgetEnabled,
   photoVideoReviews,
-  onEmailChange,
+  onOnsiteWidgetChange,
   onPhotoVideoChange,
   hasPro,
   accentColor = "#008060",
@@ -88,18 +89,18 @@ export function StepCollect({
     <div>
       <OnboardingHeading
         title="Start collecting reviews"
-        subtitle="Automate requests so reviews come in without manual work."
+        subtitle="Turn on storefront collection so reviews come in without manual work."
       />
 
       <SettingToggle
-        label="Email review requests"
-        description="Sent automatically 7 days after delivery"
-        checked={emailReviewRequests}
-        onChange={onEmailChange}
+        label="Storefront review widget"
+        description="Show a review prompt on the order status page after fulfillment or delivery"
+        checked={onsiteWidgetEnabled}
+        onChange={onOnsiteWidgetChange}
       />
 
       <SettingToggle
-        label="Photo & video reviews"
+        label="Photo and video reviews"
         description="Let customers upload images and videos with their review"
         checked={photoVideoReviews}
         onChange={onPhotoVideoChange}
@@ -107,56 +108,12 @@ export function StepCollect({
         disabled={!hasPro}
       />
 
-      <div
-        style={{
-          marginTop: 20,
-          background: "#faf8f5",
-          borderRadius: 12,
-          padding: 20,
-        }}
-      >
-        <p
-          style={{
-            margin: "0 0 12px",
-            fontSize: 11,
-            fontWeight: 700,
-            color: "#6d7175",
-            letterSpacing: "0.06em",
-          }}
-        >
-          EMAIL PREVIEW
-        </p>
-        <div
-          style={{
-            background: "#fff",
-            borderRadius: 10,
-            padding: "24px 28px",
-            border: "1px solid #e5ebe8",
-          }}
-        >
-          <h4 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 800, color: "#202223" }}>
-            How was your order, Maya?
-          </h4>
-          <p style={{ margin: "0 0 20px", fontSize: 14, color: "#6d7175", fontWeight: 500 }}>
-            Tell us what you think. It only takes a minute.
-          </p>
-          <button
-            type="button"
-            style={{
-              padding: "10px 20px",
-              borderRadius: 8,
-              border: "none",
-              background: accentColor,
-              color: "#fff",
-              fontWeight: 700,
-              fontSize: 14,
-              fontFamily: "inherit",
-              cursor: "default",
-            }}
-          >
-            Write a review
-          </button>
-        </div>
+      <div style={{ marginTop: 20 }}>
+        <OrderStatusPreview
+          timing="after_fulfillment"
+          buttonColor={accentColor}
+          accentColor={accentColor}
+        />
       </div>
     </div>
   );

@@ -172,3 +172,11 @@ export async function requireFeatureUsage(planStatus, featureKey, amount = 1) {
 export async function resetFeatureUsageForShop(shop, monthKey = currentMonthKey()) {
   await db.featureUsage.deleteMany({ where: { shop, monthKey } });
 }
+
+/** Reset specific metered features for a shop (e.g. after analytics UI migration). */
+export async function resetFeatureUsageKeys(shop, featureKeys, monthKey = currentMonthKey()) {
+  if (!featureKeys?.length) return;
+  await db.featureUsage.deleteMany({
+    where: { shop, monthKey, featureKey: { in: featureKeys } },
+  });
+}

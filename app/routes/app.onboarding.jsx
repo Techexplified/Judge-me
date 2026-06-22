@@ -32,6 +32,7 @@ import {
 import { embedRedirect } from "../utils/shopify-embed-nav.server.js";
 import { getShopPlanStatus } from "../lib/billing.server.js";
 import { SOURCE_PRESETS } from "../lib/csv-import.shared.js";
+import { loadShopConfig } from "../lib/collect-reviews.server.js";
 import { Banner } from "../components/admin-ui";
 import { OnboardingShell } from "../components/onboarding/onboarding-shell.jsx";
 import { StepAppearance } from "../components/onboarding/step-appearance.jsx";
@@ -86,6 +87,7 @@ export const loader = async ({ request }) => {
   }
 
   const planStatus = await getShopPlanStatus(shop, billing);
+  const shopConfig = await loadShopConfig(shop);
 
   const defaultAccent =
     appearance?.accentColor ||
@@ -101,8 +103,11 @@ export const loader = async ({ request }) => {
     accentColor: defaultAccent,
     brandLogoUrl: formConfig.brandLogoUrl || null,
     importChoice: onboarding?.importChoice ?? "",
-    emailReviewRequests:
-      collection?.emailReviewRequests ?? collection?.enabled ?? true,
+    onsiteWidgetEnabled:
+      collection?.onsiteWidgetEnabled ??
+      shopConfig?.onsiteWidget?.enabled ??
+      collection?.emailReviewRequests ??
+      true,
     photoVideoReviews:
       collection?.photoVideoReviews ??
       (formConfig.showPhotos !== false && formConfig.showVideos !== false),
@@ -179,12 +184,12 @@ export const action = async ({ request }) => {
   }
 
   if (intent === "finish") {
-    const emailReviewRequests = fd.get("emailReviewRequests") === "true";
+    const onsiteWidgetEnabled = fd.get("onsiteWidgetEnabled") === "true";
     const photoVideoRequests = fd.get("photoVideoReviews") === "true";
 
     if (!alreadyComplete) {
       await saveOnboardingCollectionSettings(shop, {
-        emailReviewRequests,
+        onsiteWidgetEnabled,
         photoVideoReviews: photoVideoRequests,
       });
       await completeOnboarding(shop);
@@ -229,7 +234,7 @@ export default function Onboarding() {
     accentColor: savedAccent,
     brandLogoUrl: savedLogo,
     importChoice: savedImport,
-    emailReviewRequests: savedEmail,
+    onsiteWidgetEnabled: savedOnsiteWidget,
     photoVideoReviews: savedPhotoVideo,
     hasPro,
   } = useLoaderData();
@@ -263,7 +268,7 @@ export default function Onboarding() {
   const [brandLogoUrl, setBrandLogoUrl] = useState(savedLogo || null);
   const [logoError, setLogoError] = useState(null);
   const [importChoice, setImportChoice] = useState(savedImport || "");
-  const [emailReviewRequests, setEmailReviewRequests] = useState(savedEmail);
+  const [onsiteWidgetEnabled, setOnsiteWidgetEnabled] = useState(savedOnsiteWidget);
   const [photoVideoReviews, setPhotoVideoReviews] = useState(
     hasPro ? savedPhotoVideo : false,
   );
@@ -294,7 +299,7 @@ export default function Onboarding() {
     setAccentColor(savedAccent);
     setBrandLogoUrl(savedLogo || null);
     setImportChoice(savedImport || "");
-    setEmailReviewRequests(savedEmail);
+    setOnsiteWidgetEnabled(savedOnsiteWidget);
     setPhotoVideoReviews(hasPro ? savedPhotoVideo : false);
   }, [
     step,
@@ -302,7 +307,7 @@ export default function Onboarding() {
     savedAccent,
     savedLogo,
     savedImport,
-    savedEmail,
+    savedOnsiteWidget,
     savedPhotoVideo,
     hasPro,
   ]);
@@ -362,7 +367,7 @@ export default function Onboarding() {
     submit(
       {
         intent: "finish",
-        emailReviewRequests: emailReviewRequests ? "true" : "false",
+        onsiteWidgetEnabled: onsiteWidgetEnabled ? "true" : "false",
         photoVideoReviews: photoVideoReviews ? "true" : "false",
       },
       { method: "post" },
@@ -420,9 +425,9 @@ export default function Onboarding() {
 
       {step === 3 ? (
         <StepCollect
-          emailReviewRequests={emailReviewRequests}
+          onsiteWidgetEnabled={onsiteWidgetEnabled}
           photoVideoReviews={photoVideoReviews}
-          onEmailChange={setEmailReviewRequests}
+          onOnsiteWidgetChange={setOnsiteWidgetEnabled}
           onPhotoVideoChange={(val) => {
             if (hasPro || !val) setPhotoVideoReviews(val);
           }}

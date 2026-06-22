@@ -17,6 +17,7 @@ import {
   hasRunProductIndexSync,
   markProductIndexSyncDone,
 } from "../lib/product-index.server.js";
+import { loadOnsiteWidgetMetrics } from "../lib/collect-reviews.server.js";
 
 const STORE_REVIEW_PRODUCT_IDS = new Set(["store", "shop", "store-review"]);
 
@@ -112,97 +113,6 @@ async function readShopConfig(shop) {
   }
 }
 
-async function fetchReviewRequestMetrics(admin, shop, reviewsAll) {
-  const config = await readShopConfig(shop);
-  const reviewRequests = config.reviewRequests ?? config.onboarding?.collection ?? {};
-  const enabled = Boolean(
-    reviewRequests.enabled ?? reviewRequests.emailReviewRequests ?? false,
-  );
-
-  const thirtyAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const thirtyAgoIso = thirtyAgo.toISOString().slice(0, 10);
-
-  let pendingRequests = 0;
-  let eligibleOrders = 0;
-
-  try {
-    const res = await admin.graphql(
-      `#graphql
-      query PerformanceOverviewOrders($query: String!) {
-        orders(first: 100, query: $query, sortKey: CREATED_AT, reverse: true) {
-          edges {
-            node {
-              id
-              email
-              createdAt
-              lineItems(first: 20) {
-                edges {
-                  node {
-                    product {
-                      id
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }`,
-      { variables: { query: `fulfillment_status:fulfilled created_at:>=${thirtyAgoIso}` } },
-    );
-    const json = await res.json();
-    const orders = json?.data?.orders?.edges?.map((e) => e.node) ?? [];
-
-    const reviewKeys = new Set(
-      reviewsAll.map((r) => {
-        const email = String(r.email ?? "").trim().toLowerCase();
-        const pid = String(r.productId ?? "").replace(/\D/g, "");
-        return `${email}:${pid}`;
-      }),
-    );
-
-    for (const order of orders) {
-      const email = String(order.email ?? "").trim().toLowerCase();
-      if (!email) continue;
-      const productIds = (order.lineItems?.edges ?? [])
-        .map((e) => e.node?.product?.id)
-        .filter(Boolean)
-        .map((id) => String(id).replace(/\D/g, ""));
-
-      if (!productIds.length) continue;
-      eligibleOrders += 1;
-
-      const hasReview = productIds.some((pid) => reviewKeys.has(`${email}:${pid}`));
-      if (!hasReview) pendingRequests += 1;
-    }
-  } catch (err) {
-    console.error("[performance-metrics] orders query failed:", err);
-  }
-
-  const reviewsViaRequests = reviewsAll.filter((r) => {
-    const email = String(r.email ?? "").trim();
-    return email.length > 0;
-  }).length;
-
-  const totalReviews = reviewsAll.length;
-  const responded = reviewsViaRequests;
-  const sentEstimate = responded + pendingRequests;
-  const successRate =
-    sentEstimate > 0 ? Math.round((responded / sentEstimate) * 100) : responded > 0 ? 100 : 0;
-  const viaRequestsPct =
-    totalReviews > 0 ? Math.round((reviewsViaRequests / totalReviews) * 100) : 0;
-
-  return {
-    enabled,
-    statusLabel: enabled ? "Sending" : "Paused",
-    pendingRequests,
-    successRate,
-    reviewsViaRequests,
-    viaRequestsPct,
-    sentInLast30Days: eligibleOrders,
-  };
-}
-
 export async function loadPerformanceOverviewData({ request, session, admin }) {
   const normalizedShop = normalizeShopDomain(session.shop);
 
@@ -262,7 +172,17 @@ export async function loadPerformanceOverviewData({ request, session, admin }) {
     (r) => new Date(r.createdAt) >= sevenAgo,
   ).length;
 
-  const reviewRequests = await fetchReviewRequestMetrics(admin, normalizedShop, productReviews);
+  const onsite = await loadOnsiteWidgetMetrics(normalizedShop);
+  const storefrontCollection = {
+    enabled: onsite.enabled !== false,
+    statusLabel: onsite.enabled !== false ? "Active" : "Paused",
+    widgetViews: onsite.metrics.widgetViews,
+    widgetViewsTrend: onsite.metrics.widgetViewsTrend,
+    conversionRate: onsite.metrics.conversionRate,
+    conversionTrend: onsite.metrics.conversionTrend,
+    reviewsCollected: onsite.metrics.reviewsCollected,
+    reviewsCollectedTrend: onsite.metrics.reviewsCollectedTrend,
+  };
 
   const appRatingBanner = storedConfig.appRatingBanner ?? {};
   const showRatingBanner =
@@ -286,7 +206,7 @@ export async function loadPerformanceOverviewData({ request, session, admin }) {
       collectedThisWeek,
       active: productReviews.length > 0,
     },
-    reviewRequests,
+    storefrontCollection,
   };
 }
 
