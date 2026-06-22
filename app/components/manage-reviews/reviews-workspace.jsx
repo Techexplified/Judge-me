@@ -496,7 +496,7 @@ function StatCard({ title, value, icon, subtitle, trend, isRating }) {
   );
 }
 
-function ProductReviewsModal({ product, currentShop, modeReply, onClose, translation, premium, aiAvailable }) {
+export function ProductReviewsModal({ product, currentShop, modeReply, onClose, translation, premium, aiAvailable }) {
   return (
     <div style={modalStyles.overlay} onClick={onClose} role="presentation">
       <div
