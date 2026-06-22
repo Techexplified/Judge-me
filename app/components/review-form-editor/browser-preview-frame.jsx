@@ -8,6 +8,7 @@ const ZOOM_LEVELS = [0.75, 1, 1.25];
 export function BrowserPreviewFrame({
   shopDomain,
   productHandle = "sample-product",
+  previewUrl,
   viewport = "desktop",
   children,
 }) {
@@ -15,7 +16,9 @@ export function BrowserPreviewFrame({
   const [fullscreen, setFullscreen] = useState(false);
   const zoom = ZOOM_LEVELS[zoomIndex];
   const previewWidth = viewport === "mobile" ? 390 : 920;
-  const url = `${shopDomain || "your-store.myshopify.com"}/products/${productHandle}/review`;
+  const url =
+    previewUrl ||
+    `${shopDomain || "your-store.myshopify.com"}/products/${productHandle}/review`;
 
   return (
     <div

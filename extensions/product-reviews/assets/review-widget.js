@@ -195,7 +195,7 @@
     if (productImage) {
       return `<img src="${esc(productImage)}" alt="" style="width:100%;height:100%;object-fit:cover" />`;
     }
-    return `<span style="font-size:36px">🧴</span>`;
+    return `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="4" width="14" height="16" rx="3" stroke="${esc(cfg.primaryColor)}" stroke-width="1.8"/><path d="M9 8h6" stroke="${esc(cfg.primaryColor)}" stroke-width="1.8" stroke-linecap="round"/></svg>`;
   }
 
   function createReviewFlow({
@@ -203,7 +203,6 @@
     textContext,
     productImage,
     gap,
-    inputRadius,
     pl,
     onSubmit,
     onComplete,
@@ -697,7 +696,7 @@
         .jd-left { flex: 1; min-width: 280px; }
         .jd-shell {
           background: ${cfg.backgroundColor || "#fff"};
-          border-radius: ${cfg.borderRadius}px;
+          border-radius: 18px;
           padding: ${gap + 12}px;
           box-shadow: ${shadowCss(cfg.shadowLevel)};
           border: 1px solid #e8eef3;
@@ -712,7 +711,7 @@
         }
         .jd-flow-panel {
           width: 100%; max-width: 480px;
-          background: ${cardBg}; padding: ${gap + 16}px; border-radius: ${cfg.borderRadius}px;
+          background: ${cardBg}; padding: ${gap + 16}px; border-radius: 24px;
           box-shadow: ${shadowCss(cfg.shadowLevel)}; border: 1px solid #e8eef3;
           position: relative; max-height: 90vh; overflow-y: auto;
           box-sizing: border-box; color: ${cfg.textColor}; font-family: ${ff};
@@ -782,7 +781,7 @@
       `;
       document.head.appendChild(style);
 
-      function renderShowcaseCard(r) {
+      const renderShowcaseCard = (r) => {
         const img = (r.media || []).find((m) => m.type === "image");
         const imgHtml = img
           ? `<img class="jd-showcase-img" src="${esc(img.url)}" alt="" loading="lazy" />`
@@ -797,14 +796,14 @@
               <div class="jd-verified" style="margin-top:8px">✓ Verified</div>
             </div>
           </article>`;
-      }
+      };
 
-      function renderList(reviews) {
+      const renderList = (reviews) => {
         if (!reviews.length) {
           return '<p style="color:#718096">No reviews yet. Be the first!</p>';
         }
         return `<div class="jd-showcase-grid">${reviews.map(renderShowcaseCard).join("")}</div>`;
-      }
+      };
 
       let activeTab = "product";
       const productHtml = renderList(reviewsData);
@@ -839,7 +838,6 @@
         textContext,
         productImage,
         gap,
-        inputRadius,
         pl,
         onSubmit: async ({ rating: reviewRating, author, comment, mediaFiles }) => {
           let res;

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Buffer } from "node:buffer";
 import { useSubmit, useLoaderData, useNavigation, useActionData, useRouteError } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
@@ -20,6 +21,9 @@ const PRODUCT_PREVIEW_QUERY = `
       title
       handle
       onlineStoreUrl
+      featuredImage {
+        url
+      }
     }
   }
 `;
@@ -32,6 +36,9 @@ const FIRST_PRODUCT_PREVIEW_QUERY = `
           title
           handle
           onlineStoreUrl
+          featuredImage {
+            url
+          }
         }
       }
     }
@@ -56,18 +63,18 @@ async function resolveStorefrontPreview(admin, shopDomain, productId) {
       });
       const node = (await res.json())?.data?.product;
       const url = storefrontUrlFromProduct(node, shopDomain);
-      if (url) return { url, title: node?.title ?? null };
+      if (url) return { url, title: node?.title ?? null, image: node?.featuredImage?.url ?? null };
     }
 
     const res = await admin.graphql(FIRST_PRODUCT_PREVIEW_QUERY);
     const node = (await res.json())?.data?.products?.edges?.[0]?.node;
     const url = storefrontUrlFromProduct(node, shopDomain);
-    if (url) return { url, title: node?.title ?? null };
+    if (url) return { url, title: node?.title ?? null, image: node?.featuredImage?.url ?? null };
   } catch (err) {
     console.error("[review-form-editor] storefront preview", err);
   }
 
-  return { url: null, title: null };
+  return { url: null, title: null, image: null };
 }
 
 export const loader = async ({ request }) => {
@@ -86,7 +93,7 @@ export const loader = async ({ request }) => {
   let formConfig = mergeFormConfig({});
   let widgetUsage = null;
   let planStatus = null;
-  let storefrontPreview = { url: null, title: null };
+  let storefrontPreview = { url: null, title: null, image: null };
 
   try {
     const settings = await db.settings.findUnique({ where: { shop } });
@@ -108,7 +115,11 @@ export const loader = async ({ request }) => {
 
   return {
     savedConfig: formConfig,
-    reviewContext: { productId, productName, productImage },
+    reviewContext: {
+      productId,
+      productName: storefrontPreview.title || productName,
+      productImage: productImage || storefrontPreview.image,
+    },
     shopDomain: shop,
     storefrontPreview,
     planStatus: planStatus ? serializePlanStatus(planStatus) : null,
@@ -312,7 +323,7 @@ export const action = async ({ request }) => {
 };
 
 export default function ReviewFormCustomizeRoute() {
-  const { savedConfig, storefrontPreview, widgetUsage, shopDomain } = useLoaderData();
+  const { savedConfig, reviewContext, storefrontPreview, widgetUsage, shopDomain } = useLoaderData();
   const actionData = useActionData();
   const navigation = useNavigation();
   const submit = useSubmit();
@@ -336,26 +347,36 @@ export default function ReviewFormCustomizeRoute() {
 
   useEffect(() => {
     if (actionData?.ok) {
-      setSaveError("");
-      setShowSaveToast(true);
+      queueMicrotask(() => {
+        setSaveError("");
+        setShowSaveToast(true);
+      });
       const t = setTimeout(() => setShowSaveToast(false), 4000);
       return () => clearTimeout(t);
     }
     if (actionData?.ok === false) {
-      setSaveError(actionData.publishError || "Could not save settings. Please try again.");
+      queueMicrotask(() => {
+        setSaveError(actionData.publishError || "Could not save settings. Please try again.");
+      });
     }
     if (actionData?.logoError) {
-      setSaveError(actionData.logoError);
+      queueMicrotask(() => {
+        setSaveError(actionData.logoError);
+      });
     }
     if (actionData?.autofillError) {
-      setAutofillError(actionData.autofillError);
+      queueMicrotask(() => {
+        setAutofillError(actionData.autofillError);
+      });
     }
   }, [actionData]);
 
   useEffect(() => {
     if (actionData?.autofillCopy) {
-      setAutofillError("");
-      patchConfig(actionData.autofillCopy);
+      queueMicrotask(() => {
+        setAutofillError("");
+        patchConfig(actionData.autofillCopy);
+      });
     }
   }, [actionData?.autofillCopy, patchConfig]);
 
@@ -434,6 +455,8 @@ export default function ReviewFormCustomizeRoute() {
       autofillLoading={autofillLoading}
       autofillError={autofillError}
       shopDomain={shopDomain}
+      reviewContext={reviewContext}
+      storefrontPreview={storefrontPreview}
       publishBlocked={publishBlocked}
       publishBlockedMessage={publishBlockedMessage}
     />

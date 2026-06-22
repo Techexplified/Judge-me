@@ -13,8 +13,8 @@ import {
 import { EDITOR_TOKENS, UI_FONT } from "./editor-tokens.js";
 import { FlowStepper, getVisibleFlowSteps } from "./flow-stepper.jsx";
 
-const SAMPLE = {
-  productName: "Botanical Glow Serum",
+const DEFAULT_PREVIEW_CONTEXT = {
+  productName: "Preview product",
   productImage: null,
   orderNumber: "4521",
   orderDate: "Nov 22",
@@ -51,6 +51,7 @@ function PreviewStar({ index, displayRating, config }) {
 function RatingStepPreview({
   config,
   gap,
+  product,
   textContext,
   displayRating,
   onRatingChange,
@@ -84,15 +85,15 @@ function RatingStepPreview({
               overflow: "hidden",
             }}
           >
-            {SAMPLE.productImage ? (
+            {product.image ? (
               /* eslint-disable-next-line jsx-a11y/img-redundant-alt */
               <img
-                src={SAMPLE.productImage}
+                src={product.image}
                 alt=""
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
             ) : (
-              <span style={{ fontSize: 36 }}>🧴</span>
+              <ImagePlus size={34} color={config.primaryColor} />
             )}
           </div>
 
@@ -123,7 +124,7 @@ function RatingStepPreview({
               letterSpacing: "-0.01em",
             }}
           >
-            {SAMPLE.productName}
+            {product.name}
           </div>
           <div style={{ fontSize: 13, color: EDITOR_TOKENS.textMuted, marginBottom: 20 }}>
             {orderMetaLine}
@@ -211,7 +212,7 @@ function RatingStepPreview({
   );
 }
 
-export function ReviewFlowPreview({ config, shopDomain, activeStep, onStepChange }) {
+export function ReviewFlowPreview({ config, shopDomain, reviewContext, activeStep, onStepChange }) {
   const [previewRating, setPreviewRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const ff = fontStack(config.typography);
@@ -220,10 +221,17 @@ export function ReviewFlowPreview({ config, shopDomain, activeStep, onStepChange
   const displayRating = hoverRating || previewRating;
   const steps = getVisibleFlowSteps(config);
   const step = activeStep || steps[0]?.id || "rating";
+  const product = {
+    name:
+      reviewContext?.productName?.trim() ||
+      DEFAULT_PREVIEW_CONTEXT.productName,
+    image: reviewContext?.productImage || DEFAULT_PREVIEW_CONTEXT.productImage,
+  };
   const textContext = {
-    item: SAMPLE.productName,
-    order: SAMPLE.orderNumber,
-    date: SAMPLE.orderDate,
+    item: product.name,
+    store: shopDomain?.replace(".myshopify.com", "").replace(/-/g, " ") || "",
+    order: DEFAULT_PREVIEW_CONTEXT.orderNumber,
+    date: DEFAULT_PREVIEW_CONTEXT.orderDate,
   };
   const inputRadius = Math.max(4, config.borderRadius * 0.75);
 
@@ -232,7 +240,7 @@ export function ReviewFlowPreview({ config, shopDomain, activeStep, onStepChange
       <div
         style={{
           background: "#FFFFFF",
-          borderRadius: Math.max(config.borderRadius, 14),
+          borderRadius: 18,
           boxShadow: shadowCss(config.shadowLevel),
           border: `1px solid ${DIVIDER}`,
           padding: step === "rating" ? "24px 24px 20px" : gap + 8,
@@ -244,6 +252,7 @@ export function ReviewFlowPreview({ config, shopDomain, activeStep, onStepChange
           <RatingStepPreview
             config={config}
             gap={gap}
+            product={product}
             textContext={textContext}
             displayRating={displayRating}
             onRatingChange={setPreviewRating}

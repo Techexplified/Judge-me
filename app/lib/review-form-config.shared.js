@@ -288,7 +288,7 @@ export function mergeFormConfig(saved) {
   base.fontSize = Math.min(20, Math.max(12, Number(base.fontSize) || 14));
   base.spacing = Math.min(32, Math.max(8, Number(base.spacing) || 16));
   if (base.radiusPreset === "custom") {
-    base.borderRadius = Math.min(48, Math.max(0, Number(base.borderRadius) || 12));
+    base.borderRadius = Math.min(999, Math.max(0, Number(base.borderRadius) || 12));
   } else {
     base.borderRadius = radiusFromPreset(base.radiusPreset, Number(base.borderRadius) || 12);
   }
@@ -386,7 +386,7 @@ export function buildFormCssVars(config) {
  * @param {number} index - star index 1-5
  * @param {ReturnType<typeof mergeFormConfig>} config
  */
-export function isStarActive(index, rating, config) {
+export function isStarActive(index, rating) {
   return index <= rating;
 }
 

@@ -28,6 +28,8 @@ export function ReviewFormEditorShell({
   autofillLoading,
   autofillError,
   shopDomain,
+  reviewContext,
+  storefrontPreview,
   publishBlocked = false,
   publishBlockedMessage = "",
 }) {
@@ -164,7 +166,7 @@ export function ReviewFormEditorShell({
       )}
 
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <        aside
+        <aside
           style={{
             width: activePanel === "style" ? 400 : 360,
             minWidth: 300,
@@ -207,10 +209,15 @@ export function ReviewFormEditorShell({
           ) : null}
         </aside>
 
-        <BrowserPreviewFrame shopDomain={shopDomain} viewport={viewport}>
+        <BrowserPreviewFrame
+          shopDomain={shopDomain}
+          previewUrl={storefrontPreview?.url}
+          viewport={viewport}
+        >
           <ReviewFlowPreview
             config={config}
             shopDomain={shopDomain}
+            reviewContext={reviewContext}
             activeStep={previewStep}
             onStepChange={setPreviewStep}
           />
