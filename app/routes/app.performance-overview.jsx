@@ -20,6 +20,7 @@ import {
 import { authenticate } from "../shopify.server";
 import { normalizeShopDomain } from "../utils/shop.js";
 import { mergeShopifyEmbedParams } from "../utils/shopify-embed-nav.js";
+import { safeEnsureShopRecord } from "../lib/app-shell.server.js";
 import {
   dismissAppRatingBanner,
   loadPerformanceOverviewData,
@@ -30,6 +31,7 @@ import { PAGE_BG, SURFACE_BG, SURFACE_BORDER } from "../components/admin-ui";
 
 export const loader = async ({ request }) => {
   const { session, admin } = await authenticate.admin(request);
+  await safeEnsureShopRecord(normalizeShopDomain(session.shop));
   return loadPerformanceOverviewData({ request, session, admin });
 };
 

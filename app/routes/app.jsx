@@ -1,35 +1,81 @@
 // routes/app.jsx
 /* global globalThis */
-import { Outlet, useLoaderData, useRouteError, useLocation } from "react-router";
+import { isRouteErrorResponse, Outlet, useLoaderData, useRouteError, useLocation, data } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { authenticate } from "../shopify.server";
 import { normalizeShopDomain } from "../utils/shop.js";
-import { isOnboardingComplete } from "../lib/onboarding.server";
-import { ensureShopRecord } from "../lib/billing.server.js";
+import {
+  isDatabaseUnavailable,
+  isThrownResponse,
+  safeIsOnboardingComplete,
+} from "../lib/app-shell.server.js";
 import { embedRedirect } from "../utils/shopify-embed-nav.server.js";
+import { PAGE_BG, SURFACE_BG, SURFACE_BORDER } from "../components/admin-ui";
 
 export const loader = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
   const url = new URL(request.url);
   const pathname = url.pathname;
-  const shop = normalizeShopDomain(session.shop);
-
-  // Reinstall clears onboarding when the shop was previously uninstalled.
-  await ensureShopRecord(shop);
-
   const onboardingPath = "/app/onboarding";
   const onOnboarding = pathname === onboardingPath || pathname.startsWith(`${onboardingPath}/`);
+  const apiKey = globalThis.process?.env?.SHOPIFY_API_KEY || "";
 
-  if (!onOnboarding && !(await isOnboardingComplete(shop))) {
+  let session;
+  try {
+    ({ session } = await authenticate.admin(request));
+  } catch (error) {
+    if (isThrownResponse(error)) throw error;
+    if (isDatabaseUnavailable(error)) {
+      console.error("[app] authenticate.admin failed (database):", error);
+      throw data({ serviceUnavailable: true }, { status: 503 });
+    }
+    throw error;
+  }
+
+  const shop = normalizeShopDomain(session.shop);
+
+  if (!onOnboarding && !(await safeIsOnboardingComplete(shop))) {
     throw embedRedirect(onboardingPath, request);
   }
 
   return {
-    apiKey: globalThis.process?.env?.SHOPIFY_API_KEY || "",
+    apiKey,
     hideNav: onOnboarding,
   };
 };
+
+function ServiceUnavailablePanel() {
+  return (
+    <div
+      style={{
+        padding: "32px 24px",
+        minHeight: "60vh",
+        background: PAGE_BG,
+        fontFamily: "'Inter',system-ui,-apple-system,sans-serif",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 560,
+          margin: "0 auto",
+          background: SURFACE_BG,
+          border: `1px solid ${SURFACE_BORDER}`,
+          borderRadius: 12,
+          padding: 24,
+        }}
+      >
+        <h1 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 800, color: "#202223" }}>
+          Temporarily unavailable
+        </h1>
+        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "#6d7175" }}>
+          We could not reach the app database right now. This is not caused by AI or OpenRouter —
+          those features only run on specific pages. Refresh in a moment, or check that your
+          DATABASE_URL and DIRECT_URL environment variables are set on Vercel.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   const { apiKey, hideNav } = useLoaderData();
@@ -66,7 +112,29 @@ export default function App() {
 }
 
 export function ErrorBoundary() {
-  return boundary.error(useRouteError());
+  const error = useRouteError();
+
+  if (isRouteErrorResponse(error) && error.status === 503 && error.data?.serviceUnavailable) {
+    return (
+      <AppProvider embedded apiKey={globalThis.process?.env?.SHOPIFY_API_KEY || ""}>
+        <ServiceUnavailablePanel />
+      </AppProvider>
+    );
+  }
+
+  if (isRouteErrorResponse(error)) {
+    return boundary.error(error);
+  }
+
+  if (isDatabaseUnavailable(error)) {
+    return (
+      <AppProvider embedded apiKey={globalThis.process?.env?.SHOPIFY_API_KEY || ""}>
+        <ServiceUnavailablePanel />
+      </AppProvider>
+    );
+  }
+
+  return boundary.error(error);
 }
 export const headers = (headersArgs) => {
   return boundary.headers(headersArgs);

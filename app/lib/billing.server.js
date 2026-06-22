@@ -315,9 +315,13 @@ export async function getShopPlanStatus(shop, billing = null) {
   await ensureShopRecord(shop);
 
   if (billing) {
-    const { BILLING_TEST_MODE } = await import("../shopify.server.js");
-    const billingCheck = await billing.check({ isTest: BILLING_TEST_MODE });
-    await syncSubscriptionFromShopify(shop, billingCheck);
+    try {
+      const { BILLING_TEST_MODE } = await import("../shopify.server.js");
+      const billingCheck = await billing.check({ isTest: BILLING_TEST_MODE });
+      await syncSubscriptionFromShopify(shop, billingCheck);
+    } catch (err) {
+      console.error("[billing] billing.check failed:", err);
+    }
   }
 
   await maybeGrantGraceTrial(shop);

@@ -28,8 +28,9 @@ const shopify = shopifyApp({
   appUrl: process.env.SHOPIFY_APP_URL || "",
   authPathPrefix: "/auth",
   sessionStorage: new PrismaSessionStorage(sessionPrisma, {
-    connectionRetries: 20,
-    connectionRetryIntervalMs: 3000,
+    // Keep retries short — Vercel/stream SSR times out around 10s.
+    connectionRetries: 3,
+    connectionRetryIntervalMs: 1000,
   }),
   distribution: AppDistribution.AppStore,
   future: {
