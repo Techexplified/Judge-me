@@ -135,7 +135,7 @@ const FEATURE_CARDS = [
     Icon: Globe,
     title: "Full translation suite for global stores",
     desc: `Auto translate on reply, dashboard, and import. ${PRO_TRANSLATIONS_PER_MONTH} translations per month on Pro.`,
-    tab: "/app/settings/translation",
+    tab: "/app/widgets/translation",
     cta: "Translation settings",
   },
   {
@@ -153,8 +153,8 @@ const FEATURE_CARDS = [
     Icon: Link2,
     title: "Store integrations across your network",
     desc: PRO_PLAN_BOX.sections[0].items[4],
-    tab: "/app/settings/integration",
-    cta: "Integration settings",
+    tab: "/app/manage-reviews?tab=integration",
+    cta: "Store integration",
   },
   {
     tone: "sky",
@@ -162,7 +162,7 @@ const FEATURE_CARDS = [
     Icon: Download,
     title: "Unlimited CSV imports from other apps",
     desc: "Import reviews from Judge.me, Loox, Yotpo, and more without monthly caps.",
-    tab: "/app/settings/import",
+    tab: "/app/collect-reviews?tab=import",
     cta: "Import reviews",
   },
   {
@@ -180,7 +180,7 @@ const FEATURE_CARDS = [
     Icon: Palette,
     title: "Advanced widget customisation",
     desc: "Layout presets, brand colors, typography, and trust badges, 20 publishes per month.",
-    tab: "/app/settings/customizations",
+    tab: "/app/collect-reviews/customize",
     cta: "Customizations",
   },
 ];

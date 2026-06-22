@@ -6,7 +6,7 @@ import {
   shopifyApp,
 } from "@shopify/shopify-app-react-router/server";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
-import prisma from "./db.server";
+import prisma, { sessionPrisma } from "./db.server";
 
 export const PRO_PLAN = "JudgeMe Pro";
 export const PRO_PRICE_USD = 9;
@@ -27,8 +27,8 @@ const shopify = shopifyApp({
   scopes: process.env.SCOPES?.split(","),
   appUrl: process.env.SHOPIFY_APP_URL || "",
   authPathPrefix: "/auth",
-  sessionStorage: new PrismaSessionStorage(prisma, {
-    connectionRetries: 10,
+  sessionStorage: new PrismaSessionStorage(sessionPrisma, {
+    connectionRetries: 20,
     connectionRetryIntervalMs: 3000,
   }),
   distribution: AppDistribution.AppStore,

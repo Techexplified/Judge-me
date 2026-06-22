@@ -3,7 +3,10 @@ import {
   applyLayoutPreset,
   pickFormConfigForSave,
   migrateLayoutPreset,
+  migrateRadiusPreset,
   radiusFromPreset,
+  resolveFormText,
+  resolveRatingPageTitle,
 } from "../app/lib/review-form-config.shared.js";
 
 let failed = 0;
@@ -42,7 +45,30 @@ assert(saved.layoutPreset === "modern", "pick includes form keys");
 assert(Object.keys(saved).length >= 20, "pick has expected form keys");
 
 assert(migrateLayoutPreset("brandLed") === "luxury", "brandLed migrates");
+assert(migrateRadiusPreset("medium") === "default", "medium radius migrates to default");
 assert(radiusFromPreset("pill") === 999, "pill radius");
+assert(radiusFromPreset("sharp") === 0, "sharp radius is 0");
+assert(radiusFromPreset("slight") === 6, "slight radius is 6");
+
+const resolved = resolveFormText("Rate {{item}} from {{store}}", {
+  item: "Serum",
+  store: "Maple Oak",
+});
+assert(resolved === "Rate Serum from Maple Oak", "resolveFormText replaces tokens");
+
+const cfg = mergeFormConfig({});
+const ratingTitle = resolveRatingPageTitle(cfg, { item: "Botanical Serum" });
+assert(
+  ratingTitle === "How would you rate this product?",
+  "resolveRatingPageTitle uses clean generic title",
+);
+const customCfg = mergeFormConfig({ ratingPageTitle: "Rate {{item}} please" });
+const customTitle = resolveRatingPageTitle(customCfg, { item: "Botanical Serum" });
+assert(customTitle.includes("Botanical Serum"), "resolveRatingPageTitle still supports {{item}} token");
+const fallbackTitle = resolveRatingPageTitle(cfg, { item: "" });
+assert(fallbackTitle === cfg.ratingPageTitleFallback, "resolveRatingPageTitle uses fallback");
+
+assert(cfg.cardBackgroundColor === "#FFFFFF", "cardBackgroundColor default");
 
 if (failed) {
   console.error(`\n${failed} test(s) failed`);

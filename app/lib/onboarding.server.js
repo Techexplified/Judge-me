@@ -1,4 +1,24 @@
 import db from "../db.server.js";
+import { mergeFormConfig, normalizeHex } from "./review-form-config.shared.js";
+import {
+  ONBOARDING_IMPORT_SOURCES,
+  ONBOARDING_VERSION,
+  buildOnboardingFormConfig,
+  isNewOnboardingComplete,
+} from "./onboarding.shared.js";
+
+export {
+  ONBOARDING_LAYOUT_OPTIONS,
+  ONBOARDING_ACCENT_COLORS,
+  ONBOARDING_IMPORT_SOURCES,
+  ONBOARDING_IMPORT_KEYS,
+  ONBOARDING_VERSION,
+  buildOnboardingFormConfig,
+  isNewOnboardingComplete,
+  isOnboardingAppearanceComplete,
+  isOnboardingImportComplete,
+  resolveOnboardingStep,
+} from "./onboarding.shared.js";
 
 async function readConfig(shop) {
   const row = await db.settings.findUnique({ where: { shop } });
@@ -21,11 +41,14 @@ async function writeConfig(shop, config) {
 export async function getOnboardingState(shop) {
   const config = await readConfig(shop);
   return {
-    completed: Boolean(config.onboarding?.completedAt),
+    completed: isNewOnboardingComplete(config.onboarding),
     onboarding: config.onboarding ?? null,
     storeProfile: config.storeProfile ?? null,
     questionnaire: config.onboarding?.questionnaire ?? null,
     planChoice: config.onboarding?.planChoice ?? null,
+    appearance: config.onboarding?.appearance ?? null,
+    collection: config.onboarding?.collection ?? config.reviewRequests ?? null,
+    formConfig: mergeFormConfig(config),
   };
 }
 
@@ -33,6 +56,91 @@ export function isQuestionnaireComplete(questionnaire) {
   return Boolean(
     questionnaire?.judgemeGoal?.trim() && questionnaire?.discoverySource?.trim(),
   );
+}
+
+export async function saveOnboardingBrandLogo(shop, dataUrl) {
+  const config = await readConfig(shop);
+  const merged = mergeFormConfig({ ...config, brandLogoUrl: dataUrl });
+  await writeConfig(shop, { ...config, ...merged, brandLogoUrl: dataUrl });
+  return dataUrl;
+}
+
+export async function removeOnboardingBrandLogo(shop) {
+  const config = await readConfig(shop);
+  const merged = mergeFormConfig({ ...config, brandLogoUrl: null });
+  await writeConfig(shop, { ...config, ...merged, brandLogoUrl: null });
+  return null;
+}
+
+export async function saveOnboardingAppearance(shop, { layoutPreset, accentColor }) {
+  const config = await readConfig(shop);
+  const appearance = {
+    layoutPreset: String(layoutPreset ?? "modern").trim(),
+    accentColor: normalizeHex(accentColor) || "#0d9488",
+    savedAt: new Date().toISOString(),
+  };
+  const formConfig = buildOnboardingFormConfig(appearance.layoutPreset, appearance.accentColor);
+  if (config.brandLogoUrl) {
+    formConfig.brandLogoUrl = config.brandLogoUrl;
+  }
+  config.onboarding = {
+    ...(config.onboarding ?? {}),
+    appearance,
+  };
+  Object.assign(config, formConfig);
+  await writeConfig(shop, config);
+  return appearance;
+}
+
+export async function saveOnboardingImportChoice(shop, { importKey, skipImport }) {
+  const config = await readConfig(shop);
+  const skipped = Boolean(skipImport);
+  const channel = skipped ? "" : String(importKey ?? "").trim();
+  const importSource = skipped
+    ? ""
+    : String(ONBOARDING_IMPORT_SOURCES[channel] ?? channel ?? "").trim();
+
+  config.storeProfile = {
+    ...(config.storeProfile ?? {}),
+    importingFromOtherApp: skipped ? "no" : "yes",
+    importSource: skipped ? "" : importSource,
+    importChannel: channel,
+  };
+  config.onboarding = {
+    ...(config.onboarding ?? {}),
+    importChoice: skipped ? "skip" : channel,
+    importConfiguredAt: new Date().toISOString(),
+  };
+  await writeConfig(shop, config);
+  return config.storeProfile;
+}
+
+export async function saveOnboardingCollectionSettings(
+  shop,
+  { emailReviewRequests, photoVideoReviews },
+) {
+  const config = await readConfig(shop);
+  const collection = {
+    emailReviewRequests: Boolean(emailReviewRequests),
+    photoVideoReviews: Boolean(photoVideoReviews),
+    daysAfterDelivery: 7,
+    savedAt: new Date().toISOString(),
+  };
+
+  config.reviewRequests = {
+    ...(config.reviewRequests ?? {}),
+    enabled: collection.emailReviewRequests,
+    daysAfterDelivery: collection.daysAfterDelivery,
+  };
+  config.onboarding = {
+    ...(config.onboarding ?? {}),
+    collection,
+  };
+  config.showPhotos = collection.photoVideoReviews;
+  config.showVideos = collection.photoVideoReviews;
+
+  await writeConfig(shop, config);
+  return collection;
 }
 
 export async function savePlanChoice(shop, choice) {
@@ -52,8 +160,8 @@ export async function getPlanChoice(shop) {
 }
 
 export async function isOnboardingComplete(shop) {
-  const { completed } = await getOnboardingState(shop);
-  return completed;
+  const config = await readConfig(shop);
+  return isNewOnboardingComplete(config.onboarding);
 }
 
 export async function saveStoreProfile(shop, profile) {
@@ -87,7 +195,7 @@ export async function saveQuestionnaire(shop, answers) {
   return config.onboarding.questionnaire;
 }
 
-/** Record syndication choice before the questionnaire (step 4). */
+/** Record syndication choice before the questionnaire (legacy step 4). */
 export async function saveSyndicationChoice(shop, skippedSyndication) {
   const config = await readConfig(shop);
   config.onboarding = {
@@ -105,6 +213,7 @@ export async function completeOnboarding(shop, { skippedSyndication = false } = 
   config.onboarding = {
     ...(config.onboarding ?? {}),
     completedAt: new Date().toISOString(),
+    version: ONBOARDING_VERSION,
     skippedSyndication: Boolean(skipped),
   };
   await writeConfig(shop, config);

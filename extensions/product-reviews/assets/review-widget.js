@@ -15,10 +15,11 @@
     textColor: "#0f172a",
     starColor: "#F59E0B",
     inactiveStarColor: "#E5E7EB",
-    starStyle: "filled",
-    starSize: 20,
+    starStyle: "outline",
+    starSize: 32,
     buttonColor: "#059669",
     backgroundColor: "#F8FAFC",
+    cardBackgroundColor: "#FFFFFF",
     brandLogoUrl: null,
     showPhotos: true,
     showVideos: true,
@@ -30,9 +31,58 @@
     fontSize: 14,
     typography: "Inter (System)",
     layoutPreset: "modern",
+    secondaryColor: "#64748b",
     trustBadgeEnabled: true,
     trustBadgeText: "Protected by SSL. We never share your info.",
+    ratingPageTitle: "How would you rate this product?",
+    ratingPageTitleFallback: "How would you rate this product?",
+    starLabelHigh: "Love it!",
+    starLabelLow: "Dislike it",
+    formTitle: "Write a Review",
+    formSubtitle: "Share your experience with this product. Your feedback helps other shoppers decide.",
+    nameFieldLabel: "Your Name",
+    reviewFieldLabel: "Your Review",
+    reviewFieldPlaceholder: "What did you love about this product? How has it helped you? Any tips for others?",
+    photoPageTitle: "Add photos to your review",
+    photoUploadTitle: "Add Photos",
+    photoUploadHint: "Drag & drop or click to upload · PNG, JPG up to 5MB",
+    videoPageTitle: "Add a video to your review",
+    videoUploadTitle: "Add Video",
+    videoUploadHint: "Drag & drop or click to upload · MP4, WebM up to 50MB",
+    videoSkipLabel: "Skip for now",
+    submitButtonText: "Post Review",
+    verifiedPurchaseLabel: "Verified Purchase",
+    orderMetaLine: "Order #{{order}} · Purchased {{date}}",
+    privacyFooterText: "Your data is secure and never shared.",
   };
+
+  function resolveFormText(template, context) {
+    const item = (context.item || "").trim();
+    const store = (context.store || "").trim();
+    const order = (context.order || "").trim();
+    const date = (context.date || "").trim();
+    return String(template || "")
+      .replace(/\{\{item\}\}/gi, item)
+      .replace(/\{\{store\}\}/gi, store)
+      .replace(/\{\{order\}\}/gi, order)
+      .replace(/\{\{date\}\}/gi, date)
+      .trim();
+  }
+
+  function resolveRatingPageTitle(cfg, context) {
+    const item = (context.item || "").trim();
+    if (item) return resolveFormText(cfg.ratingPageTitle, context);
+    return cfg.ratingPageTitleFallback || DEFAULT_CFG.ratingPageTitleFallback;
+  }
+
+  function getVisibleFlowSteps(cfg) {
+    const steps = ["rating"];
+    if (cfg.showWrittenReviews !== false) steps.push("written");
+    if (cfg.showPhotos !== false) steps.push("photo");
+    if (cfg.showVideos !== false) steps.push("video");
+    steps.push("submit");
+    return steps;
+  }
 
   function mergeConfig(saved) {
     const c = { ...DEFAULT_CFG, ...(saved || {}) };
@@ -44,13 +94,20 @@
     c.starSize = Math.min(40, Math.max(14, Number(c.starSize) || 20));
     c.fontSize = Math.min(20, Math.max(12, Number(c.fontSize) || 14));
     c.borderRadius = Number(c.borderRadius) || 12;
+    c.spacing = Math.min(32, Math.max(8, Number(c.spacing) || 16));
+    if (c.ratingPageTitle === "How would you rate {{item}} ?") {
+      c.ratingPageTitle = DEFAULT_CFG.ratingPageTitle;
+    }
+    if (c.ratingPageTitleFallback === "How would you rate this item?") {
+      c.ratingPageTitleFallback = DEFAULT_CFG.ratingPageTitleFallback;
+    }
     return c;
   }
 
   function shadowCss(level) {
-    if (level === "low") return "0 2px 8px rgba(15,23,42,0.06)";
-    if (level === "high") return "0 16px 48px rgba(15,23,42,0.12)";
-    return "0 8px 32px rgba(15,23,42,0.08)";
+    if (level === "low") return "0 2px 8px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04)";
+    if (level === "high") return "0 16px 48px rgba(15,23,42,0.12), 0 4px 12px rgba(15,23,42,0.08)";
+    return "0 8px 32px rgba(15,23,42,0.08), 0 2px 6px rgba(15,23,42,0.04)";
   }
 
   function fontFamily(cfg) {
@@ -86,6 +143,476 @@
     return d.innerHTML;
   }
 
+  function formatOrderDate(raw) {
+    if (!raw) return "";
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return String(raw).trim();
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
+  function readReviewContext(root, shop, productName) {
+    const params = new URLSearchParams(window.location.search);
+    const order =
+      params.get("judgeme_order") ||
+      params.get("order") ||
+      root.dataset.orderNumber ||
+      "";
+    const dateRaw =
+      params.get("judgeme_date") ||
+      params.get("order_date") ||
+      root.dataset.orderDate ||
+      "";
+    const date = formatOrderDate(dateRaw) || String(dateRaw || "").trim();
+    const autoOpen =
+      params.get("judgeme_review") === "1" || params.get("review") === "1";
+
+    return {
+      item: productName,
+      store: shop.replace(".myshopify.com", "").replace(/-/g, " "),
+      order: String(order).replace(/^#/, "").trim(),
+      date,
+      autoOpen,
+    };
+  }
+
+  function stripAutoOpenParam() {
+    try {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has("judgeme_review") && !url.searchParams.has("review")) return;
+      url.searchParams.delete("judgeme_review");
+      url.searchParams.delete("review");
+      window.history.replaceState({}, "", url.toString());
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function hasOrderMeta(context) {
+    return !!(context.order || context.date);
+  }
+
+  function productAvatarHtml(cfg, productImage) {
+    if (productImage) {
+      return `<img src="${esc(productImage)}" alt="" style="width:100%;height:100%;object-fit:cover" />`;
+    }
+    return `<span style="font-size:36px">🧴</span>`;
+  }
+
+  function createReviewFlow({
+    cfg,
+    textContext,
+    productImage,
+    gap,
+    inputRadius,
+    pl,
+    onSubmit,
+    onComplete,
+  }) {
+    const steps = getVisibleFlowSteps(cfg);
+    let stepIndex = 0;
+    let rating = 0;
+    let author = "";
+    let comment = "";
+    let photoFiles = [];
+    let videoFiles = [];
+    let complete = false;
+
+    const ratingTitle = resolveRatingPageTitle(cfg, textContext);
+    const orderMetaLine = resolveFormText(cfg.orderMetaLine, textContext);
+    const showOrderMeta = hasOrderMeta(textContext) && orderMetaLine;
+    const trustText = cfg.privacyFooterText || cfg.trustBadgeText;
+
+    const els = {
+      overlay: null,
+      content: null,
+      progress: null,
+      back: null,
+      next: null,
+      skip: null,
+      msg: null,
+    };
+
+    function currentStep() {
+      if (complete) return "privacy";
+      return steps[stepIndex] || "rating";
+    }
+
+    function renderStars(container, value, interactive) {
+      container.innerHTML = "";
+      for (let i = 1; i <= 5; i++) {
+        const active = i <= value;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.style.cssText =
+          "border:none;background:transparent;padding:4px;cursor:pointer;font-size:" +
+          cfg.starSize +
+          "px;line-height:1;color:" +
+          (active ? cfg.starColor : cfg.starColor) +
+          ";opacity:" +
+          (active ? "1" : cfg.starStyle === "outline" ? "0.85" : "0.45");
+        btn.textContent = starChar(i, value, cfg);
+        if (interactive) {
+          btn.onclick = () => {
+            rating = i;
+            renderStars(container, rating, true);
+          };
+        }
+        container.appendChild(btn);
+      }
+    }
+
+    function bindUploadZone(zone, input, previews, files, accept) {
+      if (!zone || !input) return;
+      zone.onclick = () => input.click();
+      zone.ondragover = (e) => e.preventDefault();
+      zone.ondrop = (e) => {
+        e.preventDefault();
+        addMediaFiles(e.dataTransfer.files, files, previews, accept);
+      };
+      input.onchange = () => {
+        addMediaFiles(input.files, files, previews, accept);
+        input.value = "";
+      };
+    }
+
+    function addMediaFiles(fileList, files, previews, accept) {
+      Array.from(fileList || []).forEach((file) => {
+        const ok = accept.some((prefix) =>
+          prefix.endsWith("/*") ? file.type.startsWith(prefix.replace("/*", "/")) : file.type === prefix,
+        );
+        if (!ok) return;
+        files.push(file);
+        const url = URL.createObjectURL(file);
+        const el = file.type.startsWith("video/")
+          ? Object.assign(document.createElement("video"), { src: url, muted: true, playsInline: true })
+          : Object.assign(document.createElement("img"), { src: url, alt: "" });
+        el.style.cssText = "width:72px;height:72px;object-fit:cover;border-radius:8px";
+        if (previews) previews.appendChild(el);
+      });
+    }
+
+    function renderStep() {
+      const step = currentStep();
+      els.content.innerHTML = "";
+
+      if (step === "rating") {
+        const imageSize = Math.min(96, Math.max(72, cfg.starSize * 2.75));
+        const innerRadius = Math.max(10, cfg.borderRadius - 2);
+        const wrap = document.createElement("div");
+        wrap.innerHTML = `
+          <div style="border:1px solid #E8EEF3;border-radius:${cfg.borderRadius}px;background:${cfg.cardBackgroundColor || "#fff"};padding:28px 24px 24px;text-align:center">
+            <div style="width:${imageSize}px;height:${imageSize}px;border-radius:${innerRadius}px;background:#F0F7F4;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;overflow:hidden">
+              ${productAvatarHtml(cfg, productImage)}
+            </div>
+            <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:999px;background:#ECFDF5;color:${cfg.primaryColor};font-size:11px;font-weight:700;margin-bottom:12px">
+              ✓ ${esc(cfg.verifiedPurchaseLabel)}
+            </span>
+            <div style="font-weight:700;font-size:18px;color:${cfg.textColor || "#202223"};margin-bottom:4px;letter-spacing:-0.01em">${esc(textContext.item || "Product")}</div>
+            ${showOrderMeta ? `<div style="font-size:13px;color:#6d7175;margin-bottom:20px">${esc(orderMetaLine)}</div>` : `<div style="margin-bottom:20px"></div>`}
+            <div style="height:1px;background:#E8EEF3;margin:0 0 20px"></div>
+            <p style="text-align:center;font-weight:600;font-size:16px;margin:0 0 ${gap + 4}px;color:${cfg.textColor || "#202223"};letter-spacing:-0.01em">${esc(ratingTitle)}</p>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:18px;padding-top:16px;border-top:1px solid #E8EEF3;font-size:12px;color:#6d7175">
+            🔒 ${esc(trustText)}
+          </div>
+          <p style="text-align:center;margin:14px 0 0;font-size:11px;color:#94a3b8">Powered by JudgeMe Reviews</p>
+        `;
+        const starBlock = document.createElement("div");
+        starBlock.style.cssText = "display:inline-flex;flex-direction:column;align-items:stretch;gap:8px;margin-bottom:4px";
+        const starRow = document.createElement("div");
+        starRow.style.cssText = "display:flex;gap:10px;justify-content:center";
+        renderStars(starRow, rating, cfg.showRatings !== false);
+        starBlock.appendChild(starRow);
+
+        const labels = document.createElement("div");
+        labels.style.cssText =
+          "display:flex;justify-content:space-between;font-size:11px;color:#6d7175;font-weight:500;padding:0 4px;min-width:" +
+          (cfg.starSize * 5 + 40) +
+          "px;margin:0 auto";
+        labels.innerHTML = `<span>${esc(cfg.starLabelLow)}</span><span>${esc(cfg.starLabelHigh)}</span>`;
+        starBlock.appendChild(labels);
+
+        const innerCard = wrap.querySelector("div[style*='border:1px solid #E8EEF3']");
+        if (innerCard) innerCard.appendChild(starBlock);
+        els.content.appendChild(wrap);
+        return;
+      }
+
+      if (step === "written") {
+        els.content.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:${gap}px">
+            <h3 style="margin:0;font-size:${pl.titleSize}px;font-weight:800;color:${cfg.textColor}">${esc(cfg.formTitle)}</h3>
+            ${pl.hideSubtitle ? "" : `<p style="margin:0;color:#6d7175;font-size:14px;line-height:1.5">${esc(cfg.formSubtitle)}</p>`}
+            <label style="font-weight:700">${esc(cfg.nameFieldLabel)} <span style="color:#dc2626">*</span></label>
+            <input id="jd-flow-author" class="jd-input" placeholder="e.g. Sarah M." autocomplete="name" value="${esc(author)}" />
+            <label style="font-weight:700">${esc(cfg.reviewFieldLabel)} <span style="color:#dc2626">*</span></label>
+            <textarea id="jd-flow-comment" class="jd-input" style="min-height:100px;resize:vertical" maxlength="500" placeholder="${esc(cfg.reviewFieldPlaceholder)}">${esc(comment)}</textarea>
+          </div>`;
+        return;
+      }
+
+      if (step === "photo") {
+        els.content.innerHTML = `
+          <div style="text-align:center">
+            <h3 style="margin:0 0 8px;font-size:18px;font-weight:800;color:${cfg.textColor}">${esc(cfg.photoPageTitle)}</h3>
+            <div class="jd-upload" id="jd-photo-zone" style="margin-top:${gap}px">
+              <div style="font-size:28px;margin-bottom:8px">🖼️</div>
+              <div style="font-weight:700">${esc(cfg.photoUploadTitle)}</div>
+              <div style="font-size:12px;color:#6d7175;margin-top:6px">${esc(cfg.photoUploadHint)}</div>
+            </div>
+            <input type="file" id="jd-photo-input" multiple style="display:none" accept="image/png,image/jpeg,image/jpg,image/webp" />
+            <div id="jd-photo-previews" class="jd-media-grid"></div>
+          </div>`;
+        bindUploadZone(
+          document.getElementById("jd-photo-zone"),
+          document.getElementById("jd-photo-input"),
+          document.getElementById("jd-photo-previews"),
+          photoFiles,
+          ["image/png", "image/jpeg", "image/jpg", "image/webp"],
+        );
+        const photoPreviews = document.getElementById("jd-photo-previews");
+        photoFiles.forEach((file) => {
+          const url = URL.createObjectURL(file);
+          const el = Object.assign(document.createElement("img"), { src: url, alt: "" });
+          el.style.cssText = "width:72px;height:72px;object-fit:cover;border-radius:8px";
+          if (photoPreviews) photoPreviews.appendChild(el);
+        });
+        return;
+      }
+
+      if (step === "video") {
+        els.content.innerHTML = `
+          <div style="text-align:center">
+            <h3 style="margin:0 0 8px;font-size:18px;font-weight:800;color:${cfg.textColor}">${esc(cfg.videoPageTitle)}</h3>
+            <div class="jd-upload" id="jd-video-zone" style="margin-top:${gap}px">
+              <div style="font-size:28px;margin-bottom:8px">🎬</div>
+              <div style="font-weight:700">${esc(cfg.videoUploadTitle)}</div>
+              <div style="font-size:12px;color:#6d7175;margin-top:6px">${esc(cfg.videoUploadHint)}</div>
+            </div>
+            <input type="file" id="jd-video-input" multiple style="display:none" accept="video/mp4,video/webm" />
+            <div id="jd-video-previews" class="jd-media-grid"></div>
+          </div>`;
+        bindUploadZone(
+          document.getElementById("jd-video-zone"),
+          document.getElementById("jd-video-input"),
+          document.getElementById("jd-video-previews"),
+          videoFiles,
+          ["video/mp4", "video/webm"],
+        );
+        const videoPreviews = document.getElementById("jd-video-previews");
+        videoFiles.forEach((file) => {
+          const url = URL.createObjectURL(file);
+          const el = Object.assign(document.createElement("video"), { src: url, muted: true, playsInline: true });
+          el.style.cssText = "width:72px;height:72px;object-fit:cover;border-radius:8px";
+          if (videoPreviews) videoPreviews.appendChild(el);
+        });
+        return;
+      }
+
+      if (step === "submit") {
+        els.content.innerHTML = `
+          <div style="text-align:center;padding:${gap}px 0">
+            <h3 style="margin:0 0 16px;font-size:18px;font-weight:800;color:${cfg.textColor}">${esc(cfg.formTitle)}</h3>
+            <p style="margin:0 0 20px;font-size:14px;color:#6d7175;line-height:1.5">Ready to share your review? Tap below to publish.</p>
+          </div>`;
+        return;
+      }
+
+      if (step === "privacy") {
+        els.content.innerHTML = `
+          <div style="text-align:center;padding:${gap}px 0">
+            <div style="font-size:40px;margin-bottom:12px">✓</div>
+            <h3 style="margin:0 0 12px;font-size:20px;font-weight:800;color:${cfg.primaryColor}">Thank you!</h3>
+            <p style="margin:0 0 20px;font-size:14px;color:#6d7175">Your review has been published.</p>
+            <div style="display:inline-flex;align-items:center;gap:8px;font-size:12px;color:#6d7175;margin-bottom:16px">
+              🔒 ${esc(trustText)}
+            </div>
+            <div style="font-size:11px;color:#94a3b8">Powered by JudgeMe Reviews</div>
+          </div>`;
+      }
+    }
+
+    function syncNav() {
+      const step = currentStep();
+      if (complete) {
+        els.progress.textContent = "Review submitted";
+        els.back.style.display = "none";
+        els.next.textContent = "Close";
+        els.next.style.display = "inline-flex";
+        els.skip.style.display = "none";
+        return;
+      }
+
+      els.progress.textContent = `Step ${stepIndex + 1} of ${steps.length}`;
+      els.back.style.display = stepIndex > 0 ? "inline-flex" : "none";
+      els.skip.style.display = step === "video" ? "inline-flex" : "none";
+
+      if (step === "submit") {
+        els.next.innerHTML = `✓ ${esc(cfg.submitButtonText)}`;
+      } else {
+        els.next.textContent = "Continue";
+      }
+    }
+
+    function persistWrittenFields() {
+      if (currentStep() !== "written" && steps.includes("written")) {
+        const authorEl = document.getElementById("jd-flow-author");
+        const commentEl = document.getElementById("jd-flow-comment");
+        if (authorEl) author = authorEl.value.trim();
+        if (commentEl) comment = commentEl.value.trim();
+      }
+    }
+
+    function validateCurrentStep() {
+      const step = currentStep();
+      els.msg.textContent = "";
+      els.msg.style.color = "";
+
+      if (step === "rating" && cfg.showRatings !== false && rating < 1) {
+        els.msg.style.color = "#dc2626";
+        els.msg.textContent = "Please select a star rating.";
+        return false;
+      }
+
+      if (step === "written" && cfg.showWrittenReviews !== false) {
+        persistWrittenFields();
+        if (!author) {
+          els.msg.style.color = "#dc2626";
+          els.msg.textContent = "Please enter your name.";
+          return false;
+        }
+        if (!comment) {
+          els.msg.style.color = "#dc2626";
+          els.msg.textContent = "Please write your review.";
+          return false;
+        }
+      }
+
+      if (step === "submit" && cfg.showWrittenReviews !== false) {
+        if (steps.includes("written")) persistWrittenFields();
+        if (!author || !comment) {
+          els.msg.style.color = "#dc2626";
+          els.msg.textContent = "Please complete the review step.";
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    async function handleNext() {
+      if (complete) {
+        close();
+        if (typeof onComplete === "function") onComplete();
+        return;
+      }
+
+      const step = currentStep();
+      if (step === "written") persistWrittenFields();
+
+      if (step !== "submit") {
+        if (!validateCurrentStep()) return;
+        stepIndex += 1;
+        renderStep();
+        syncNav();
+        return;
+      }
+
+      if (!validateCurrentStep()) return;
+
+      els.next.disabled = true;
+      els.msg.style.color = "#64748b";
+      els.msg.textContent = "Submitting…";
+
+      try {
+        await onSubmit({
+          rating: cfg.showRatings !== false ? rating : 5,
+          author: author || "Anonymous",
+          comment: comment || "—",
+          mediaFiles: [...photoFiles, ...videoFiles],
+        });
+        complete = true;
+        renderStep();
+        syncNav();
+        els.msg.textContent = "";
+      } catch (err) {
+        els.msg.style.color = "#dc2626";
+        els.msg.textContent = err.message || "Could not submit review.";
+        els.next.disabled = false;
+      }
+    }
+
+    function handleBack() {
+      if (complete || stepIndex === 0) return;
+      if (currentStep() === "written") persistWrittenFields();
+      stepIndex -= 1;
+      renderStep();
+      syncNav();
+    }
+
+    function handleSkip() {
+      if (currentStep() !== "video") return;
+      stepIndex += 1;
+      renderStep();
+      syncNav();
+    }
+
+    function open() {
+      if (!els.overlay) return;
+      stepIndex = 0;
+      rating = 0;
+      author = "";
+      comment = "";
+      photoFiles = [];
+      videoFiles = [];
+      complete = false;
+      els.msg.textContent = "";
+      els.next.disabled = false;
+      renderStep();
+      syncNav();
+      els.overlay.style.display = "flex";
+    }
+
+    function close() {
+      if (els.overlay) els.overlay.style.display = "none";
+    }
+
+    function mount(container) {
+      container.innerHTML = `
+        <div class="jd-modal-overlay" id="jd-modal" style="display:none">
+          <div class="jd-flow-panel" id="jd-flow-panel">
+            <button type="button" class="jd-close-modal" id="jd-close-form" aria-label="Close">×</button>
+            <div class="jd-flow-progress" id="jd-flow-progress"></div>
+            <div class="jd-step-content" id="jd-step-content"></div>
+            <div class="jd-flow-nav">
+              <button type="button" class="jd-flow-back" id="jd-flow-back">Back</button>
+              <button type="button" class="jd-flow-skip" id="jd-flow-skip">${esc(cfg.videoSkipLabel)}</button>
+              <button type="button" class="jd-flow-next" id="jd-flow-next">Continue</button>
+            </div>
+            <p class="jd-flow-msg" id="jd-flow-msg"></p>
+          </div>
+        </div>`;
+
+      els.overlay = document.getElementById("jd-modal");
+      els.content = document.getElementById("jd-step-content");
+      els.progress = document.getElementById("jd-flow-progress");
+      els.back = document.getElementById("jd-flow-back");
+      els.next = document.getElementById("jd-flow-next");
+      els.skip = document.getElementById("jd-flow-skip");
+      els.msg = document.getElementById("jd-flow-msg");
+
+      document.getElementById("jd-close-form").onclick = close;
+      els.overlay.onclick = (e) => {
+        if (e.target === els.overlay) close();
+      };
+      els.back.onclick = handleBack;
+      els.next.onclick = handleNext;
+      els.skip.onclick = handleSkip;
+    }
+
+    return { mount, open, close };
+  }
+
   async function init() {
     const root = document.getElementById("app-reviews-root");
     if (!root) return;
@@ -100,269 +627,221 @@
     root.innerHTML = '<p style="color:#64748b">Loading reviews…</p>';
 
     try {
-      const [settingsRes, reviewsRes] = await Promise.all([
+      const [settingsRes, reviewsRes, storeMetaRes] = await Promise.all([
         fetch(`${API}/api/public/settings?shop=${encodeURIComponent(shop)}&t=${Date.now()}`),
         fetch(
           `${API}/api/public/reviews?productId=${encodeURIComponent(productId)}&shop=${encodeURIComponent(shop)}`,
         ),
+        fetch(
+          `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=store&limit=50`,
+        ),
       ]);
 
       const settingsData = await settingsRes.json();
-      const reviewsData = await reviewsRes.json();
-      const cfg = mergeConfig(settingsData.config || {});
+      let reviewsData = await reviewsRes.json();
+      const storeMeta = storeMetaRes.ok ? await storeMetaRes.json() : { reviews: [], filters: {} };
+      let storeReviews = storeMeta.reviews || [];
+
+      const isDesignMode =
+        Boolean(window.Shopify?.designMode) ||
+        /[?&]preview_theme_id=/.test(window.location.search);
+
+      const SAMPLE_REVIEWS = [
+        {
+          id: "sample-1",
+          author: "Sarah M.",
+          rating: 5,
+          comment: "Incredible quality and super fast shipping!",
+          createdAt: new Date().toISOString(),
+          media: [],
+          verified: true,
+        },
+        {
+          id: "sample-2",
+          author: "Alex B.",
+          rating: 5,
+          comment: "Love this product — exactly as described.",
+          createdAt: new Date().toISOString(),
+          media: [],
+          verified: true,
+        },
+      ];
+
+      if (reviewsData.length === 0 && isDesignMode) {
+        reviewsData = SAMPLE_REVIEWS;
+      }
+      if (storeReviews.length === 0 && isDesignMode) {
+        storeReviews = SAMPLE_REVIEWS.map((r) => ({ ...r, id: `store-${r.id}` }));
+      }
+
+      const productCount = Array.isArray(reviewsData) ? reviewsData.length : 0;
+      const storeCount = storeReviews.length || storeMeta.filters?.store || 0;
+      const hasSavedConfig = settingsData?.config && typeof settingsData.config === "object";
+      if (!hasSavedConfig) {
+        console.warn(
+          "[JudgeMe Reviews] No saved shop styling found — using defaults. Complete onboarding or save in Collect Reviews → Review Form.",
+        );
+      }
+      const cfg = mergeConfig(hasSavedConfig ? settingsData.config : {});
       const pl = presetLayout(cfg);
       const gap = Math.round(cfg.spacing * pl.gapScale);
       const inputRadius = Math.max(4, Math.round(cfg.borderRadius * 0.75));
       const ff = fontFamily(cfg);
+      const cardBg = cfg.cardBackgroundColor || "#FFFFFF";
+      const textContext = readReviewContext(root, shop, productName);
 
       const style = document.createElement("style");
       style.textContent = `
         .jd-root { font-family: ${ff}; font-size: ${cfg.fontSize}px; color: ${cfg.textColor}; margin: 40px 0; }
         .jd-wrapper { display: flex; gap: 48px; align-items: flex-start; flex-wrap: wrap; }
         .jd-left { flex: 1; min-width: 280px; }
-        .jd-modal-overlay {
-          position: fixed;
-          top: 0; left: 0; right: 0; bottom: 0;
-          background: rgba(15, 23, 42, 0.6);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 999999;
-          padding: 16px;
-        }
-        .jd-right {
-          width: 100%;
-          max-width: 560px;
-          background: #fff; padding: ${gap + 16}px; border-radius: ${cfg.borderRadius}px;
-          box-shadow: ${shadowCss(cfg.shadowLevel)}; border: 1px solid #e8eef3;
-          position: relative;
-          max-height: 90vh;
-          overflow-y: auto;
+        .jd-shell {
+          background: ${cfg.backgroundColor || "#fff"};
+          border-radius: ${cfg.borderRadius}px;
+          padding: ${gap + 12}px;
+          box-shadow: ${shadowCss(cfg.shadowLevel)};
+          border: 1px solid #e8eef3;
           box-sizing: border-box;
-          color: ${cfg.textColor};
-          font-family: ${ff};
+        }
+        .jd-list-logo { width: 48px; height: 48px; object-fit: contain; display: block; margin-bottom: 12px; border-radius: ${Math.max(4, Math.round(cfg.borderRadius * 0.5))}px; }
+        .jd-modal-overlay {
+          position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(15, 23, 42, 0.6);
+          display: flex; align-items: center; justify-content: center;
+          z-index: 999999; padding: 16px;
+        }
+        .jd-flow-panel {
+          width: 100%; max-width: 480px;
+          background: ${cardBg}; padding: ${gap + 16}px; border-radius: ${cfg.borderRadius}px;
+          box-shadow: ${shadowCss(cfg.shadowLevel)}; border: 1px solid #e8eef3;
+          position: relative; max-height: 90vh; overflow-y: auto;
+          box-sizing: border-box; color: ${cfg.textColor}; font-family: ${ff};
         }
         .jd-close-modal {
-          position: absolute;
-          top: 14px;
-          right: 14px;
-          border: none;
-          background: none;
-          font-size: 24px;
-          cursor: pointer;
-          color: #94a3b8;
-          line-height: 1;
-          padding: 4px;
+          position: absolute; top: 14px; right: 14px; border: none; background: none;
+          font-size: 24px; cursor: pointer; color: #94a3b8; line-height: 1; padding: 4px;
         }
-        .jd-close-modal:hover {
-          color: #64748b;
+        .jd-close-modal:hover { color: #64748b; }
+        .jd-flow-progress { font-size: 12px; font-weight: 600; color: #6d7175; margin-bottom: 16px; }
+        .jd-step-content { min-height: 120px; }
+        .jd-flow-nav { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 20px; }
+        .jd-flow-back, .jd-flow-skip, .jd-flow-next {
+          padding: 12px 18px; border-radius: ${inputRadius}px; font-weight: 700; font-size: 14px;
+          cursor: pointer; font-family: inherit; border: none;
         }
-        .jd-title { font-size: 26px; font-weight: 800; margin-bottom: 20px; }
+        .jd-flow-back { background: #fff; border: 1px solid #e2e8f0 !important; color: ${cfg.textColor}; margin-right: auto; }
+        .jd-flow-skip { background: transparent; color: #6d7175; border: none !important; }
+        .jd-flow-next { background: ${cfg.buttonColor}; color: #fff; flex: 1; max-width: 100%; justify-content: center; }
+        .jd-flow-next:disabled { opacity: 0.7; cursor: wait; }
+        .jd-flow-msg { text-align: center; font-size: 13px; font-weight: 600; margin: 10px 0 0; min-height: 18px; }
+        .jd-title { font-size: ${pl.titleSize}px; font-weight: 800; margin: 0 0 6px; color: ${cfg.primaryColor}; line-height: 1.2; }
+        .jd-subtitle { margin: 0 0 ${gap}px; font-size: 14px; color: ${cfg.secondaryColor || "#6d7175"}; line-height: 1.5; }
         .jd-review { padding: 24px 0; border-bottom: 1px solid #edf2f7; }
         .jd-review:last-child { border-bottom: none; }
         .jd-stars { display: flex; gap: 2px; margin: 6px 0; }
         .jd-comment { line-height: 1.65; word-break: break-word; }
-        .jd-media-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .jd-media-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; justify-content: flex-start; }
         .jd-media-grid img, .jd-media-grid video { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; }
-        .jd-input { width: 100%; padding: 12px; margin: 8px 0 12px; border: 1px solid #e2e8f0; border-radius: ${inputRadius}px; box-sizing: border-box; font-family: inherit; font-size: inherit; }
-        .jd-submit { width: 100%; padding: 14px; background: ${cfg.buttonColor}; color: #fff; border: none; border-radius: ${inputRadius}px; font-weight: 700; cursor: pointer; font-size: 15px; }
-        .jd-submit:disabled { opacity: 0.7; cursor: wait; }
-        .jd-star-input span { cursor: pointer; line-height: 1; }
-        .jd-upload { border: 2px dashed #e2e8f0; border-radius: ${inputRadius}px; padding: 16px; text-align: center; color: #64748b; font-size: 12px; cursor: pointer; margin: 8px 0 12px; background: #f8fafc; }
-        .jd-trust { text-align: center; font-size: 12px; color: #94a3b8; margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .jd-logo { max-height: 48px; max-width: 140px; object-fit: contain; display: block; margin: 0 auto 12px; }
-        .jd-icon-box { width: 52px; height: 52px; border-radius: 12px; background: ${cfg.primaryColor}; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; color: #fff; font-size: 24px; }
-        .jd-form-title { font-size: ${pl.titleSize}px; font-weight: 800; text-align: center; margin: 0 0 8px; }
-        .jd-form-sub { text-align: center; color: #94a3b8; font-size: 14px; margin: 0 0 ${gap}px; line-height: 1.5; }
-        .jd-write-btn { padding: 12px 24px; border-radius: ${inputRadius}px; border: 1px solid ${cfg.textColor}; background: transparent; font-weight: 600; cursor: pointer; margin-bottom: 20px; }
+        .jd-input { width: 100%; padding: 12px 14px; border: 1px solid #e2e8f0; border-radius: ${inputRadius}px; box-sizing: border-box; font-family: inherit; font-size: inherit; }
+        .jd-upload { border: 2px dashed #e2e8f0; border-radius: ${inputRadius}px; padding: 24px; text-align: center; cursor: pointer; background: #f8fafc; }
+        .jd-write-btn {
+          padding: 12px 24px;
+          border-radius: ${inputRadius}px;
+          border: none;
+          background: ${cfg.buttonColor};
+          color: #fff;
+          font-weight: 700;
+          cursor: pointer;
+          margin-bottom: ${gap}px;
+          font-family: inherit;
+          font-size: inherit;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          box-shadow: 0 1px 2px rgba(15,23,42,0.08);
+          transition: opacity 0.15s ease;
+        }
+        .jd-write-btn:hover { opacity: 0.92; }
         .jd-reply-box { margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: ${inputRadius}px; font-size: 14px; color: #475569; }
+        .jd-tabs { display: flex; gap: 8px; margin-bottom: ${gap}px; flex-wrap: wrap; }
+        .jd-tab {
+          padding: 8px 14px; border-radius: 999px; border: 1px solid #e2e8f0; background: #fff;
+          font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+        }
+        .jd-tab.active { background: ${cfg.primaryColor}; color: #fff; border-color: ${cfg.primaryColor}; }
+        .jd-showcase-grid {
+          display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px;
+        }
+        .jd-showcase-card {
+          border: 1px solid #edf2f7; border-radius: ${inputRadius}px; overflow: hidden; background: ${cardBg};
+        }
+        .jd-showcase-img { width: 100%; height: 140px; object-fit: cover; display: block; background: #f1f5f9; }
+        .jd-showcase-body { padding: 12px; }
+        .jd-verified { font-size: 11px; color: ${cfg.primaryColor}; font-weight: 700; }
       `;
       document.head.appendChild(style);
 
-      const reviewsHtml =
-        reviewsData.length === 0
-          ? '<p style="color:#718096">No reviews yet. Be the first!</p>'
-          : reviewsData
-              .map((r) => {
-                const mediaHtml = (r.media || [])
-                  .map((m) => {
-                    if (m.type === "video") {
-                      return `<video src="${esc(m.url)}" controls muted playsinline></video>`;
-                    }
-                    return `<img src="${esc(m.url)}" alt="" loading="lazy" />`;
-                  })
-                  .join("");
-                return `
-              <div class="jd-review">
-                <div style="font-weight:700;font-size:16px">${esc(r.author)}</div>
-                <div class="jd-stars">${starsHtml(r.rating, cfg)}</div>
-                <div style="font-size:13px;color:#718096;margin-bottom:8px">
-                  ${new Date(r.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
-                </div>
-                <div class="jd-comment">${esc(r.comment)}</div>
-                ${mediaHtml ? `<div class="jd-media-grid">${mediaHtml}</div>` : ""}
-                ${r.reply ? `<div class="jd-reply-box"><strong>Store Response</strong><p style="margin:6px 0 0">${esc(r.reply)}</p></div>` : ""}
-              </div>`;
-              })
-              .join("");
+      function renderShowcaseCard(r) {
+        const img = (r.media || []).find((m) => m.type === "image");
+        const imgHtml = img
+          ? `<img class="jd-showcase-img" src="${esc(img.url)}" alt="" loading="lazy" />`
+          : `<div class="jd-showcase-img"></div>`;
+        return `
+          <article class="jd-showcase-card">
+            ${imgHtml}
+            <div class="jd-showcase-body">
+              <div style="font-weight:700;font-size:14px">${esc(r.author)}</div>
+              <div class="jd-stars">${starsHtml(r.rating, cfg)}</div>
+              <div class="jd-comment" style="font-size:13px;margin-top:6px">${esc(r.comment)}</div>
+              <div class="jd-verified" style="margin-top:8px">✓ Verified</div>
+            </div>
+          </article>`;
+      }
 
-      const logoHeader = cfg.brandLogoUrl
-        ? `<img class="jd-logo" src="${cfg.brandLogoUrl}" alt="" />`
-        : `<div class="jd-icon-box">★</div>`;
+      function renderList(reviews) {
+        if (!reviews.length) {
+          return '<p style="color:#718096">No reviews yet. Be the first!</p>';
+        }
+        return `<div class="jd-showcase-grid">${reviews.map(renderShowcaseCard).join("")}</div>`;
+      }
 
-      const subtitle = pl.hideSubtitle
-        ? ""
-        : `<p class="jd-form-sub">Share your experience with this product. Your feedback helps other shoppers decide.</p>`;
+      let activeTab = "product";
+      const productHtml = renderList(reviewsData);
+      const storeHtml = renderList(storeReviews);
 
-      const ratingsBlock = cfg.showRatings
-        ? `<label style="font-weight:700;display:block;margin-bottom:8px">How would you rate this product?</label>
-           <div class="jd-star-input" id="jd-star-input" style="margin-bottom:8px">${[1, 2, 3, 4, 5]
-             .map((i) => `<span data-v="${i}">${starChar(i, 5, cfg)}</span>`)
-             .join("")}</div>
-           <p id="jd-rating-label" style="text-align:center;font-size:13px;color:#94a3b8;margin:0 0 12px">5 out of 5 stars</p>`
+      const listLogoHtml = cfg.brandLogoUrl
+        ? `<img class="jd-list-logo" src="${esc(cfg.brandLogoUrl)}" alt="" />`
         : "";
-
-      const writtenBlock = cfg.showWrittenReviews
-        ? `<label style="font-weight:700">Your Name <span style="color:#dc2626">*</span></label>
-           <input id="jd-author" class="jd-input" placeholder="e.g. Sarah M." autocomplete="name" />
-           <label style="font-weight:700">Your Review <span style="color:#dc2626">*</span></label>
-           <textarea id="jd-comment" class="jd-input" style="min-height:120px;resize:vertical" maxlength="500" placeholder="What did you love about this product?"></textarea>`
-        : "";
-
-      const showMedia = cfg.showPhotos !== false || cfg.showVideos !== false;
-      const mediaBlock = showMedia
-        ? `<label style="font-weight:700;display:block;margin-bottom:6px">Add Photos</label>
-           <div class="jd-upload" id="jd-upload-zone">Drag & drop or click to upload · PNG, JPG up to 5MB</div>
-           <input type="file" id="jd-media-input" multiple style="display:none" accept="${
-             cfg.showPhotos !== false && cfg.showVideos !== false
-               ? "image/png,image/jpeg,image/jpg,image/webp,video/mp4,video/webm"
-               : cfg.showVideos !== false
-                 ? "video/mp4,video/webm"
-                 : "image/png,image/jpeg,image/jpg,image/webp"
-           }" />
-           <div id="jd-media-previews" class="jd-media-grid"></div>`
-        : "";
-
-      const trustBlock =
-        cfg.trustBadgeEnabled !== false
-          ? `<div class="jd-trust">🔒 ${esc(cfg.trustBadgeText)}</div>`
-          : "";
 
       root.innerHTML = `
         <div class="jd-root">
           <div class="jd-wrapper">
             <div class="jd-left">
-              <div class="jd-title">Customer Reviews</div>
-              <button type="button" class="jd-write-btn" id="jd-open-form">Write a Product Review</button>
-              <div id="jd-reviews-list">${reviewsHtml}</div>
-            </div>
-            <div class="jd-modal-overlay" id="jd-modal" style="display:none">
-              <div class="jd-right" id="jd-form-panel">
-                <button type="button" class="jd-close-modal" id="jd-close-form">×</button>
-                ${logoHeader}
-                <h3 class="jd-form-title">Write a Review</h3>
-                ${subtitle}
-                ${ratingsBlock}
-                ${writtenBlock}
-                ${mediaBlock}
-                <button type="button" class="jd-submit" id="jd-submit">Post Review</button>
-                <p id="jd-form-msg" style="text-align:center;font-size:13px;font-weight:600;margin-top:10px"></p>
-                ${trustBlock}
+              <div class="jd-shell">
+                ${listLogoHtml}
+                <div class="jd-title">Customer Reviews</div>
+                <p class="jd-subtitle">${esc(cfg.formSubtitle || `Reviews for ${productName || "this product"}.`)}</p>
+                <div class="jd-tabs">
+                  <button type="button" class="jd-tab active" data-tab="product">Product reviews (${productCount})</button>
+                  <button type="button" class="jd-tab" data-tab="store">Store reviews (${storeCount})</button>
+                </div>
+                <button type="button" class="jd-write-btn" id="jd-open-form">Write a Product Review</button>
+                <div id="jd-reviews-list">${productHtml}</div>
               </div>
             </div>
+            <div id="jd-flow-mount"></div>
           </div>
         </div>`;
 
-      const modal = document.getElementById("jd-modal");
-      const openBtn = document.getElementById("jd-open-form");
-      const closeBtn = document.getElementById("jd-close-form");
-      if (openBtn && modal) {
-        openBtn.onclick = () => {
-          modal.style.display = "flex";
-        };
-      }
-      if (closeBtn && modal) {
-        closeBtn.onclick = () => {
-          modal.style.display = "none";
-        };
-        modal.onclick = (e) => {
-          if (e.target === modal) {
-            modal.style.display = "none";
-          }
-        };
-      }
-
-      let currentRating = 5;
-      const starEls = document.querySelectorAll("#jd-star-input span");
-      const updateStars = (val) => {
-        starEls.forEach((s) => {
-          const idx = Number(s.dataset.v);
-          s.textContent = starChar(idx, val, cfg);
-          s.style.color = idx <= val ? cfg.starColor : cfg.inactiveStarColor;
-          s.style.opacity = cfg.starStyle === "outline" && idx > val ? 0.45 : 1;
-        });
-        const lbl = document.getElementById("jd-rating-label");
-        if (lbl) lbl.textContent = `${val} out of 5 stars`;
-      };
-      starEls.forEach((star) => {
-        star.onclick = () => {
-          currentRating = Number(star.dataset.v);
-          updateStars(currentRating);
-        };
-      });
-      if (starEls.length) updateStars(5);
-
-      const mediaFiles = [];
-      const mediaInput = document.getElementById("jd-media-input");
-      const uploadZone = document.getElementById("jd-upload-zone");
-      const previews = document.getElementById("jd-media-previews");
-
-      if (uploadZone && mediaInput) {
-        uploadZone.onclick = () => mediaInput.click();
-        uploadZone.ondragover = (e) => e.preventDefault();
-        uploadZone.ondrop = (e) => {
-          e.preventDefault();
-          addFiles(e.dataTransfer.files);
-        };
-        mediaInput.onchange = () => {
-          addFiles(mediaInput.files);
-          mediaInput.value = "";
-        };
-      }
-
-      function addFiles(fileList) {
-        Array.from(fileList || []).forEach((file) => {
-          mediaFiles.push(file);
-          const url = URL.createObjectURL(file);
-          const el = file.type.startsWith("video/")
-            ? Object.assign(document.createElement("video"), { src: url, muted: true, playsInline: true })
-            : Object.assign(document.createElement("img"), { src: url, alt: "" });
-          if (previews) previews.appendChild(el);
-        });
-      }
-
-      const submitBtn = document.getElementById("jd-submit");
-      if (!submitBtn) return;
-
-      submitBtn.onclick = async () => {
-        const authorEl = document.getElementById("jd-author");
-        const commentEl = document.getElementById("jd-comment");
-        const author = authorEl?.value?.trim() || "Anonymous";
-        const comment = commentEl?.value?.trim() || "";
-        const msg = document.getElementById("jd-form-msg");
-        const btn = submitBtn;
-
-        if (cfg.showWrittenReviews !== false && !comment) {
-          msg.style.color = "#e53e3e";
-          msg.textContent = "Please write a review.";
-          return;
-        }
-
-        btn.disabled = true;
-        msg.style.color = "#64748b";
-        msg.textContent = "Submitting…";
-
-        try {
+      const flow = createReviewFlow({
+        cfg,
+        textContext,
+        productImage,
+        gap,
+        inputRadius,
+        pl,
+        onSubmit: async ({ rating: reviewRating, author, comment, mediaFiles }) => {
           let res;
           if (mediaFiles.length > 0) {
             const fd = new FormData();
@@ -370,9 +849,9 @@
             fd.set("productId", productId);
             fd.set("productName", productName);
             if (productImage) fd.set("productImage", productImage);
-            fd.set("rating", String(cfg.showRatings ? currentRating : 5));
+            fd.set("rating", String(reviewRating));
             fd.set("author", author);
-            fd.set("comment", comment || "—");
+            fd.set("comment", comment);
             mediaFiles.forEach((f) => fd.append("media", f));
             res = await fetch(`${API}/api/public/reviews`, { method: "POST", body: fd });
           } else {
@@ -384,27 +863,52 @@
                 productId,
                 productName,
                 productImage: productImage || undefined,
-                rating: cfg.showRatings ? currentRating : 5,
+                rating: reviewRating,
                 author,
-                comment: comment || "—",
+                comment,
               }),
             });
           }
-
-          if (res.ok) {
-            msg.style.color = "#16a34a";
-            msg.textContent = "Thanks for your review!";
-            setTimeout(() => init(), 1200);
-          } else {
+          if (!res.ok) {
             const err = await res.json().catch(() => ({}));
-            throw new Error(err.error || "Failed");
+            throw new Error(err.error || "Failed to submit review");
           }
-        } catch (e) {
-          msg.style.color = "#e53e3e";
-          msg.textContent = e.message || "Error submitting review.";
-          btn.disabled = false;
-        }
-      };
+        },
+        onComplete: () => setTimeout(() => init(), 400),
+      });
+
+      flow.mount(document.getElementById("jd-flow-mount"));
+
+      const openBtn = document.getElementById("jd-open-form");
+      if (openBtn) openBtn.onclick = () => flow.open();
+
+      const listEl = document.getElementById("jd-reviews-list");
+      root.querySelectorAll(".jd-tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          activeTab = tab.getAttribute("data-tab") || "product";
+          root.querySelectorAll(".jd-tab").forEach((t) => {
+            t.classList.toggle("active", t.getAttribute("data-tab") === activeTab);
+          });
+          if (listEl) {
+            listEl.innerHTML = activeTab === "store" ? storeHtml : productHtml;
+          }
+          if (openBtn) {
+            openBtn.textContent =
+              activeTab === "store" ? "Write a Store Review" : "Write a Product Review";
+          }
+        });
+      });
+
+      fetch(`${API}/api/public/widget-event`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shop, event: "review_showcase_view", productId }),
+      }).catch(() => {});
+
+      if (textContext.autoOpen) {
+        flow.open();
+        stripAutoOpenParam();
+      }
     } catch (e) {
       console.error("[JudgeMe Reviews]", e);
       root.innerHTML = '<p style="color:#e53e3e">Could not load reviews.</p>';

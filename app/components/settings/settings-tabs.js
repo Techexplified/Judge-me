@@ -1,9 +1,5 @@
 export const SETTINGS_TABS = [
   { id: "pricing", label: "Pricing", path: "/app/settings" },
-  { id: "integration", label: "Integration", path: "/app/settings/integration" },
-  { id: "translation", label: "Translation", path: "/app/settings/translation" },
-  { id: "customizations", label: "Customizations", path: "/app/settings/customizations" },
-  { id: "import", label: "Import", path: "/app/settings/import" },
 ];
 
 export function getActiveSettingsTab(pathname) {

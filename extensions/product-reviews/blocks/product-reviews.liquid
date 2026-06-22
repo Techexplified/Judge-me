@@ -1,3 +1,9 @@
+{% comment %}
+  Optional URL params for post-purchase review flow:
+  ?judgeme_review=1 — auto-open the review form
+  ?judgeme_order=4521 — order number for {{order}} token
+  ?judgeme_date=Nov%2022 — purchase date for {{date}} token
+{% endcomment %}
 {% if block.settings.enable %}
 <div id="app-reviews-root"
      data-product-id="{{ product.id }}"
@@ -11,7 +17,7 @@
 
 {% schema %}
 {
-  "name": "Product Reviews",
+  "name": "Review Showcase",
   "target": "section",
   "settings": [
     {

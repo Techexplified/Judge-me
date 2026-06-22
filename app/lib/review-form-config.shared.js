@@ -1,9 +1,21 @@
 /** @typedef {'minimal'|'modern'|'luxury'|'shopifyNative'} LayoutPreset */
 /** @typedef {'filled'|'outline'|'emoji'} StarStyle */
 /** @typedef {'low'|'medium'|'high'} ShadowLevel */
-/** @typedef {'sharp'|'medium'|'pill'} RadiusPreset */
+/** @typedef {'sharp'|'slight'|'default'|'rounded'|'pill'|'custom'} RadiusPreset */
 
 export const ACCENT = "#059669";
+
+/** One-click theme colors for the Style & Color panel. */
+export const QUICK_THEME_PALETTES = [
+  "#0A5C36",
+  "#2563EB",
+  "#7C3AED",
+  "#DC2626",
+  "#EA580C",
+  "#0D9488",
+  "#DB2777",
+  "#1E3A5F",
+];
 
 export const TYPOGRAPHY_OPTIONS = [
   { value: "Inter (System)", stack: "'Inter', system-ui, -apple-system, sans-serif" },
@@ -15,7 +27,42 @@ export const TYPOGRAPHY_OPTIONS = [
 export const SHADOW_LEVELS = ["low", "medium", "high"];
 export const LAYOUT_PRESETS = ["minimal", "modern", "luxury", "shopifyNative"];
 export const STAR_STYLES = ["filled", "outline", "emoji"];
-export const RADIUS_PRESETS = ["sharp", "medium", "pill"];
+export const RADIUS_PRESETS = ["sharp", "slight", "default", "rounded", "pill", "custom"];
+
+/** @type {Array<{ id: RadiusPreset, label: string, px: number | null }>} */
+export const CORNER_PRESET_OPTIONS = [
+  { id: "sharp", label: "Sharp", px: 0 },
+  { id: "slight", label: "Slight", px: 6 },
+  { id: "default", label: "Default", px: 12 },
+  { id: "rounded", label: "Rounded", px: 18 },
+  { id: "pill", label: "Pill", px: 999 },
+  { id: "custom", label: "Custom", px: null },
+];
+
+export const FORM_TEXT_TOKENS = ["{{item}}", "{{store}}", "{{order}}", "{{date}}"];
+
+export const FORM_TEXT_KEYS = [
+  "ratingPageTitle",
+  "ratingPageTitleFallback",
+  "starLabelHigh",
+  "starLabelLow",
+  "formTitle",
+  "formSubtitle",
+  "nameFieldLabel",
+  "reviewFieldLabel",
+  "reviewFieldPlaceholder",
+  "photoPageTitle",
+  "photoUploadTitle",
+  "photoUploadHint",
+  "videoPageTitle",
+  "videoUploadTitle",
+  "videoUploadHint",
+  "videoSkipLabel",
+  "submitButtonText",
+  "verifiedPurchaseLabel",
+  "orderMetaLine",
+  "privacyFooterText",
+];
 
 export const defaultFormConfig = {
   primaryColor: "#059669",
@@ -24,17 +71,38 @@ export const defaultFormConfig = {
   textColor: "#0f172a",
   starColor: "#F59E0B",
   inactiveStarColor: "#E5E7EB",
-  starStyle: "filled",
-  starSize: 20,
+  starStyle: "outline",
+  starSize: 32,
   buttonColor: "#059669",
   backgroundColor: "#F8FAFC",
+  cardBackgroundColor: "#FFFFFF",
   brandLogoUrl: null,
   showPhotos: true,
   showVideos: true,
   showRatings: true,
   showWrittenReviews: true,
   borderRadius: 12,
-  radiusPreset: "medium",
+  radiusPreset: "default",
+  ratingPageTitle: "How would you rate this product?",
+  ratingPageTitleFallback: "How would you rate this product?",
+  starLabelHigh: "Love it!",
+  starLabelLow: "Dislike it",
+  formTitle: "Write a Review",
+  formSubtitle: "Share your experience with this product. Your feedback helps other shoppers decide.",
+  nameFieldLabel: "Your Name",
+  reviewFieldLabel: "Your Review",
+  reviewFieldPlaceholder: "What did you love about this product? How has it helped you? Any tips for others?",
+  photoPageTitle: "Add photos to your review",
+  photoUploadTitle: "Add Photos",
+  photoUploadHint: "Drag & drop or click to upload · PNG, JPG up to 5MB",
+  videoPageTitle: "Add a video to your review",
+  videoUploadTitle: "Add Video",
+  videoUploadHint: "Drag & drop or click to upload · MP4, WebM up to 50MB",
+  videoSkipLabel: "Skip for now",
+  submitButtonText: "Post Review",
+  verifiedPurchaseLabel: "Verified Purchase",
+  orderMetaLine: "Order #{{order}} · Purchased {{date}}",
+  privacyFooterText: "Your data is secure and never shared.",
   spacing: 16,
   shadowLevel: "medium",
   fontSize: 14,
@@ -56,7 +124,7 @@ export const PRESET_BUNDLES = {
     starColor: "#F59E0B",
     inactiveStarColor: "#E5E7EB",
     borderRadius: 8,
-    radiusPreset: "sharp",
+    radiusPreset: "slight",
     spacing: 12,
     shadowLevel: "low",
     fontSize: 14,
@@ -72,12 +140,12 @@ export const PRESET_BUNDLES = {
     starColor: "#F59E0B",
     inactiveStarColor: "#E5E7EB",
     borderRadius: 12,
-    radiusPreset: "medium",
+    radiusPreset: "default",
     spacing: 16,
     shadowLevel: "medium",
     fontSize: 14,
     typography: "Inter (System)",
-    starSize: 20,
+    starSize: 32,
   },
   luxury: {
     layoutPreset: "luxury",
@@ -88,7 +156,7 @@ export const PRESET_BUNDLES = {
     starColor: "#d97706",
     inactiveStarColor: "#d6d3d1",
     borderRadius: 16,
-    radiusPreset: "medium",
+    radiusPreset: "rounded",
     spacing: 20,
     shadowLevel: "high",
     fontSize: 15,
@@ -131,10 +199,17 @@ export function migrateLayoutPreset(preset) {
   return LEGACY_PRESET_MAP[preset] || "modern";
 }
 
+export function migrateRadiusPreset(preset) {
+  if (preset === "medium") return "default";
+  if (RADIUS_PRESETS.includes(preset)) return preset;
+  return "default";
+}
+
 export function radiusFromPreset(preset, fallback = 12) {
-  if (preset === "sharp") return 4;
-  if (preset === "pill") return 999;
-  if (preset === "medium") return 12;
+  const mapped = migrateRadiusPreset(preset);
+  const match = CORNER_PRESET_OPTIONS.find((o) => o.id === mapped);
+  if (match && match.px != null) return match.px;
+  if (mapped === "custom") return typeof fallback === "number" ? fallback : 12;
   return typeof fallback === "number" ? fallback : 12;
 }
 
@@ -145,9 +220,43 @@ export function shadowFromPreset(preset) {
 }
 
 export function radiusPresetFromValue(px) {
-  if (px <= 6) return "sharp";
-  if (px >= 48) return "pill";
-  return "medium";
+  const n = Number(px);
+  if (!Number.isFinite(n)) return "default";
+  if (n <= 0) return "sharp";
+  if (n <= 6) return "slight";
+  if (n <= 12) return "default";
+  if (n <= 18) return "rounded";
+  if (n >= 48) return "pill";
+  return "custom";
+}
+
+/**
+ * @param {string} template
+ * @param {{ item?: string, store?: string, order?: string, date?: string }} context
+ */
+export function resolveFormText(template, context = {}) {
+  const item = context.item?.trim() || "";
+  const store = context.store?.trim() || "";
+  const order = context.order?.trim() || "";
+  const date = context.date?.trim() || "";
+  return String(template || "")
+    .replace(/\{\{item\}\}/gi, item)
+    .replace(/\{\{store\}\}/gi, store)
+    .replace(/\{\{order\}\}/gi, order)
+    .replace(/\{\{date\}\}/gi, date)
+    .trim();
+}
+
+/**
+ * @param {ReturnType<typeof mergeFormConfig>} config
+ * @param {{ item?: string, store?: string, order?: string }} context
+ */
+export function resolveRatingPageTitle(config, context = {}) {
+  const item = context.item?.trim() || "";
+  const title = item
+    ? resolveFormText(config.ratingPageTitle, context)
+    : config.ratingPageTitleFallback || defaultFormConfig.ratingPageTitleFallback;
+  return title || defaultFormConfig.ratingPageTitleFallback;
 }
 
 /**
@@ -162,15 +271,27 @@ export function mergeFormConfig(saved) {
   base.layoutPreset = migrateLayoutPreset(base.layoutPreset);
   if (!SHADOW_LEVELS.includes(base.shadowLevel)) base.shadowLevel = "medium";
   if (!STAR_STYLES.includes(base.starStyle)) base.starStyle = "filled";
+  base.radiusPreset = migrateRadiusPreset(base.radiusPreset);
   if (!RADIUS_PRESETS.includes(base.radiusPreset)) {
     base.radiusPreset = radiusPresetFromValue(Number(base.borderRadius) || 12);
   }
   if (!Array.isArray(base.flowRules)) base.flowRules = [];
 
+  if (base.ratingPageTitle === "How would you rate {{item}} ?") {
+    base.ratingPageTitle = defaultFormConfig.ratingPageTitle;
+  }
+  if (base.ratingPageTitleFallback === "How would you rate this item?") {
+    base.ratingPageTitleFallback = defaultFormConfig.ratingPageTitleFallback;
+  }
+
   base.starSize = Math.min(40, Math.max(14, Number(base.starSize) || 20));
   base.fontSize = Math.min(20, Math.max(12, Number(base.fontSize) || 14));
   base.spacing = Math.min(32, Math.max(8, Number(base.spacing) || 16));
-  base.borderRadius = radiusFromPreset(base.radiusPreset, Number(base.borderRadius) || 12);
+  if (base.radiusPreset === "custom") {
+    base.borderRadius = Math.min(48, Math.max(0, Number(base.borderRadius) || 12));
+  } else {
+    base.borderRadius = radiusFromPreset(base.radiusPreset, Number(base.borderRadius) || 12);
+  }
 
   const hexFields = [
     "primaryColor",
@@ -181,10 +302,15 @@ export function mergeFormConfig(saved) {
     "inactiveStarColor",
     "buttonColor",
     "backgroundColor",
+    "cardBackgroundColor",
   ];
   for (const key of hexFields) {
     const n = normalizeHex(base[key]);
     if (n) base[key] = n;
+  }
+
+  for (const key of FORM_TEXT_KEYS) {
+    if (base[key] != null) base[key] = String(base[key]);
   }
 
   if (base.accentColor && !saved?.buttonColor) {
@@ -242,6 +368,7 @@ export function buildFormCssVars(config) {
     "--jd-accent": config.accentColor,
     "--jd-button": config.buttonColor,
     "--jd-bg": config.backgroundColor,
+    "--jd-card-bg": config.cardBackgroundColor || "#FFFFFF",
     "--jd-text": config.textColor,
     "--jd-star": config.starColor,
     "--jd-star-inactive": config.inactiveStarColor,

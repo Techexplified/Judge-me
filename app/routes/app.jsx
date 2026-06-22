@@ -36,19 +36,26 @@ export default function App() {
   const { pathname } = useLocation();
 
   // Determine which nav item is active based on the current pathname
-  const isDashboard =
-    pathname === "/app/dashboard" || pathname === "/app" || pathname === "/app/";
+  const isPerformanceOverview =
+    pathname === "/app/performance-overview" ||
+    pathname === "/app/dashboard" ||
+    pathname === "/app" ||
+    pathname === "/app/";
+  const isManageReviews = pathname.startsWith("/app/manage-reviews");
+  const isCollectReviews = pathname.startsWith("/app/collect-reviews");
+  const isWidgets = pathname.startsWith("/app/widgets");
   const isAnalytics = pathname.startsWith("/app/analytics");
-  const isReviews = pathname.startsWith("/app/reviews") || pathname.startsWith("/app/write-review");
   const isSettings = pathname.startsWith("/app/settings") || pathname.startsWith("/app/settings");
 
   return (
     <AppProvider embedded apiKey={apiKey}>
       {!hideNav ? (
         <s-app-nav>
-          <s-link href="/app/dashboard" selected={isDashboard ? "" : undefined}>Dashboard</s-link>
+          <s-link href="/app/performance-overview" selected={isPerformanceOverview ? "" : undefined}>Performance Overview</s-link>
+          <s-link href="/app/manage-reviews" selected={isManageReviews ? "" : undefined}>Manage Reviews</s-link>
+          <s-link href="/app/collect-reviews" selected={isCollectReviews ? "" : undefined}>Collect Reviews</s-link>
+          <s-link href="/app/widgets" selected={isWidgets ? "" : undefined}>Widgets</s-link>
           <s-link href="/app/analytics" selected={isAnalytics ? "" : undefined}>Analytics</s-link>
-          <s-link href="/app/reviews" selected={isReviews ? "" : undefined}>Reviews</s-link>
           <s-link href="/app/settings" selected={isSettings ? "" : undefined}>Settings</s-link>
         </s-app-nav>
       ) : null}
@@ -65,13 +72,35 @@ export const headers = (headersArgs) => {
   return boundary.headers(headersArgs);
 };
 
-export function shouldRevalidate({ currentUrl, nextUrl, defaultShouldRevalidate }) {
+export function shouldRevalidate({ currentUrl, nextUrl, formMethod, defaultShouldRevalidate }) {
   const leavingOnboarding =
     currentUrl.pathname.startsWith("/app/onboarding") &&
     !nextUrl.pathname.startsWith("/app/onboarding");
   if (leavingOnboarding) return true;
-  if (currentUrl.pathname.startsWith("/app/") && nextUrl.pathname.startsWith("/app/")) {
+
+  const enteringOnboarding =
+    !currentUrl.pathname.startsWith("/app/onboarding") &&
+    nextUrl.pathname.startsWith("/app/onboarding");
+  if (enteringOnboarding) return true;
+
+  if (
+    currentUrl.pathname.startsWith("/app/onboarding") &&
+    nextUrl.pathname.startsWith("/app/onboarding") &&
+    currentUrl.search !== nextUrl.search
+  ) {
+    return true;
+  }
+
+  if (formMethod && formMethod.toUpperCase() !== "GET") return true;
+
+  // apiKey + hideNav are stable across normal /app pages — skip parent loader on tab nav.
+  if (
+    currentUrl.pathname.startsWith("/app/") &&
+    nextUrl.pathname.startsWith("/app/") &&
+    !nextUrl.pathname.startsWith("/app/onboarding")
+  ) {
     return false;
   }
+
   return defaultShouldRevalidate;
 }

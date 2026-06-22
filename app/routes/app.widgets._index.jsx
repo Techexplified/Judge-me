@@ -1,0 +1,90 @@
+import { useCallback } from "react";
+import { useFetcher, useLoaderData } from "react-router";
+import { useAppBridge } from "@shopify/app-bridge-react";
+import { authenticate } from "../shopify.server";
+import { normalizeShopDomain } from "../utils/shop.js";
+import { WidgetsPage } from "../components/widgets/widgets-page.jsx";
+import { loadWidgetsPageData, markWidgetInstallIntent, markCoreEmbedAcknowledged } from "../lib/widgets.server.js";
+import { openThemeEditorUrl } from "../components/onboarding/theme-editor-guide.jsx";
+import { useEmbedNavigate } from "../hooks/use-embed-navigate.js";
+
+export const loader = async ({ request }) => {
+  const { session, admin, billing } = await authenticate.admin(request);
+  return loadWidgetsPageData({ session, admin, billing });
+};
+
+export const action = async ({ request }) => {
+  const { session } = await authenticate.admin(request);
+  const shop = normalizeShopDomain(session.shop);
+  const fd = await request.formData();
+  const widgetId = String(fd.get("widgetId") ?? "").trim();
+  const intent = String(fd.get("intent") ?? "");
+  if (intent === "ack_core_embed") {
+    await markCoreEmbedAcknowledged(shop);
+    return { ok: true };
+  }
+  if (widgetId) {
+    await markWidgetInstallIntent(shop, widgetId);
+  }
+  return { ok: true };
+};
+
+export default function WidgetsIndexRoute() {
+  const data = useLoaderData();
+  const shopify = useAppBridge();
+  const embedNavigate = useEmbedNavigate();
+  const fetcher = useFetcher();
+
+  const handleAddToTheme = useCallback(
+    (widget) => {
+      if (!widget?.id) return;
+
+      if (widget.id === "review-translation-hub") {
+        embedNavigate("/app/widgets/translation");
+        return;
+      }
+
+      if (widget.id === "video-reviews-slider" && !data.premium) {
+        shopify?.toast?.show?.("Video Reviews Slider requires a Pro plan.", { isError: true });
+        embedNavigate("/app/settings");
+        return;
+      }
+
+      const url = data.themeEditorUrls?.[widget.id];
+      if (!url) {
+        shopify?.toast?.show?.("Could not build theme editor link.", { isError: true });
+        return;
+      }
+
+      const fd = new FormData();
+      fd.set("widgetId", widget.id);
+      fetcher.submit(fd, { method: "post" });
+
+      openThemeEditorUrl(url, shopify);
+      shopify?.toast?.show?.(
+        "Theme editor opened. Preview the block, then click Save. Enable JudgeMe Core in App embeds if prompted.",
+      );
+    },
+    [data.premium, data.themeEditorUrls, embedNavigate, fetcher, shopify],
+  );
+
+  const handleEnableCore = useCallback(() => {
+    if (!data.coreEmbedUrl) {
+      shopify?.toast?.show?.("Could not build app embed link.", { isError: true });
+      return;
+    }
+    const fd = new FormData();
+    fd.set("intent", "ack_core_embed");
+    fetcher.submit(fd, { method: "post" });
+    openThemeEditorUrl(data.coreEmbedUrl, shopify);
+    shopify?.toast?.show?.("Enable JudgeMe Core under Theme Settings → App embeds, then Save.");
+  }, [data.coreEmbedUrl, fetcher, shopify]);
+
+  return (
+    <WidgetsPage
+      {...data}
+      onAddToTheme={handleAddToTheme}
+      onEnableCore={handleEnableCore}
+    />
+  );
+}

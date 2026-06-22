@@ -84,7 +84,7 @@ export function ThemeStatusCard({ themeName }) {
 
 export function ThemeEditorSteps() {
   const steps = [
-    "Click Open theme editor below — Shopify opens in a new tab.",
+    "Click Open theme editor below. Shopify opens in a new tab.",
     "On the product page template, click Add block, then choose Apps.",
     "Select Product Reviews, turn on Enable reviews, and click Save.",
   ];
@@ -144,8 +144,9 @@ export function OpenThemeEditorButton({ onClick, label = "Open theme editor" }) 
 
 export function openThemeEditorUrl(url, shopify) {
   try {
-    window.open(url, "_blank", "noopener,noreferrer");
-    shopify?.toast?.show?.("Opening theme editor in a new tab…");
+    // _top navigates within Shopify admin (required for embedded apps).
+    window.open(url, "_top", "noopener,noreferrer");
+    shopify?.toast?.show?.("Opening theme editor…");
   } catch {
     shopify?.toast?.show?.("Could not open the theme editor. Try Online Store → Themes → Customize.", {
       isError: true,

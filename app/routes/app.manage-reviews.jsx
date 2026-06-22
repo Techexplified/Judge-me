@@ -1,0 +1,685 @@
+/* eslint-disable react/prop-types, jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
+import { useEffect, useMemo, useState } from "react";
+import {
+  Link,
+  useActionData,
+  useLoaderData,
+  useLocation,
+  useSearchParams,
+} from "react-router";
+import { useAppBridge } from "@shopify/app-bridge-react";
+import {
+  ArrowRight,
+  ExternalLink,
+  Link2,
+  MoreHorizontal,
+  Search,
+  Send,
+  Star,
+  Store,
+} from "lucide-react";
+import { authenticate } from "../shopify.server";
+import { mergeShopifyEmbedParams } from "../utils/shopify-embed-nav.js";
+import { loadManageReviewsData } from "../utils/performance-metrics.server.js";
+import {
+  handleStoreIntegrationAction,
+  loadStoreIntegrationGroup,
+  parseStoreIntegrationFlash,
+} from "../lib/store-integration.server.js";
+import { normalizeShopDomain } from "../utils/shop.js";
+import { IntegrationSettingsPanel } from "../components/settings/integration-settings-panel";
+import {
+  PAGE_BG,
+  SHOPIFY_GREEN,
+  SURFACE_BORDER,
+} from "../components/admin-ui";
+
+const PREVIEW_ROW_LIMIT = 5;
+
+const FONT =
+  "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
+const type = {
+  pageTitle: {
+    fontFamily: FONT,
+    fontSize: 24,
+    fontWeight: 600,
+    color: "#202223",
+    letterSpacing: "-0.01em",
+  },
+  tab: (active) => ({
+    fontFamily: FONT,
+    fontSize: 14,
+    fontWeight: active ? 600 : 500,
+    color: active ? SHOPIFY_GREEN : "#6d7175",
+  }),
+  sectionTitle: {
+    fontFamily: FONT,
+    fontSize: 14,
+    fontWeight: 600,
+    color: "#202223",
+  },
+  body: {
+    fontFamily: FONT,
+    fontSize: 13,
+    fontWeight: 500,
+    color: "#202223",
+  },
+  bodyMuted: {
+    fontFamily: FONT,
+    fontSize: 13,
+    fontWeight: 500,
+    color: "#6d7175",
+  },
+  caption: {
+    fontFamily: FONT,
+    fontSize: 12,
+    fontWeight: 500,
+    color: "#6d7175",
+  },
+  label: {
+    fontFamily: FONT,
+    fontSize: 11,
+    fontWeight: 600,
+    color: "#6d7175",
+    letterSpacing: "0.04em",
+  },
+  badge: {
+    fontFamily: FONT,
+    fontSize: 11,
+    fontWeight: 600,
+  },
+  button: {
+    fontFamily: FONT,
+    fontSize: 13,
+    fontWeight: 600,
+  },
+  input: {
+    fontFamily: FONT,
+    fontSize: 13,
+    fontWeight: 500,
+  },
+  emptyTitle: {
+    fontFamily: FONT,
+    fontSize: 18,
+    fontWeight: 600,
+    color: "#202223",
+  },
+};
+
+const MANAGE_REVIEWS_TABS = new Set(["product", "store", "integration"]);
+
+export const loader = async ({ request }) => {
+  const { session, admin } = await authenticate.admin(request);
+  const shop = normalizeShopDomain(session.shop);
+  const url = new URL(request.url);
+  const [reviewsData, { group }] = await Promise.all([
+    loadManageReviewsData({ request, session, admin }),
+    loadStoreIntegrationGroup(shop),
+  ]);
+
+  return {
+    ...reviewsData,
+    group,
+    ...parseStoreIntegrationFlash(url),
+  };
+};
+
+export const action = async ({ request }) => {
+  const { session, admin } = await authenticate.admin(request);
+
+  return handleStoreIntegrationAction({
+    request,
+    session,
+    admin,
+    redirectPath: "/app/manage-reviews",
+    withTabParam: true,
+  });
+};
+
+function SentimentBadge({ label, tone }) {
+  const styles = {
+    positive: { bg: "#ecfdf5", fg: "#047857", dot: SHOPIFY_GREEN },
+    negative: { bg: "#f1f2f3", fg: "#202223", dot: "#202223" },
+    mixed: { bg: "#f1f2f3", fg: "#616161", dot: "#616161" },
+  };
+  const c = styles[tone] || styles.mixed;
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "4px 10px",
+        borderRadius: 999,
+        background: c.bg,
+        color: c.fg,
+        ...type.badge,
+      }}
+    >
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.dot }} />
+      {label}
+    </span>
+  );
+}
+
+function StoreReviewsEmpty({ storeReviewLink }) {
+  const shopify = useAppBridge();
+  const [copied, setCopied] = useState(false);
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(storeReviewLink);
+      setCopied(true);
+      if (typeof shopify?.toast?.show === "function") {
+        shopify.toast.show("Store review link copied");
+      }
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      if (typeof shopify?.toast?.show === "function") {
+        shopify.toast.show("Could not copy link");
+      }
+    }
+  };
+
+  const shareLink = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Leave us a store review",
+          url: storeReviewLink,
+        });
+        return;
+      } catch {
+        /* fall through */
+      }
+    }
+    await copyLink();
+  };
+
+  return (
+    <div style={{ padding: "48px 24px", textAlign: "center" }}>
+      <div style={{ marginBottom: 24 }}>
+        <StoreIllustration />
+      </div>
+      <h2 style={{ margin: "0 0 10px", ...type.emptyTitle }}>
+        No store reviews yet
+      </h2>
+      <p
+        style={{
+          margin: "0 auto 28px",
+          maxWidth: 420,
+          lineHeight: 1.6,
+          ...type.bodyMuted,
+        }}
+      >
+        Share your store review link with your customers and start building trust.
+      </p>
+      <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+        <button
+          type="button"
+          onClick={copyLink}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "9px 14px",
+            borderRadius: 8,
+            border: "1px solid #c9cccf",
+            background: "#fff",
+            color: "#202223",
+            cursor: "pointer",
+            ...type.button,
+          }}
+        >
+          <Link2 size={15} />
+          {copied ? "Link copied" : "Get store review link"}
+        </button>
+        <button
+          type="button"
+          onClick={shareLink}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "9px 14px",
+            borderRadius: 8,
+            border: "none",
+            background: SHOPIFY_GREEN,
+            color: "#fff",
+            cursor: "pointer",
+            ...type.button,
+          }}
+        >
+          Share link
+          <Send size={15} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function StoreIllustration() {
+  return (
+    <svg width="180" height="120" viewBox="0 0 180 120" fill="none" aria-hidden="true">
+      <path d="M20 95 H160" stroke="#202223" strokeWidth="1.5" />
+      <rect x="55" y="45" width="70" height="50" rx="2" stroke="#202223" strokeWidth="1.5" fill="#fff" />
+      <path d="M50 45 L65 30 H115 L130 45" stroke={SHOPIFY_GREEN} strokeWidth="2" fill="#ecfdf5" />
+      <rect x="68" y="18" width="44" height="16" rx="2" fill={SHOPIFY_GREEN} />
+      {[72, 80, 88, 96, 104].map((x) => (
+        <path
+          key={x}
+          d={`M${x} 28 l2 2 -2 2 -2 -2 z`}
+          fill="#fff"
+        />
+      ))}
+      <circle cx="35" cy="78" r="10" stroke="#202223" strokeWidth="1.2" fill="none" />
+      <path d="M35 68 v20 M30 78 h10" stroke="#202223" strokeWidth="1.2" />
+      <circle cx="145" cy="82" r="6" stroke="#202223" strokeWidth="1.2" fill="none" />
+    </svg>
+  );
+}
+
+export default function ManageReviews() {
+  const {
+    products,
+    storeReviews,
+    storeReviewLink,
+    group,
+    linkedSuccess,
+    unlinkedSuccess,
+  } = useLoaderData();
+  const actionData = useActionData();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(() =>
+    MANAGE_REVIEWS_TABS.has(tabFromUrl) ? tabFromUrl : "product",
+  );
+
+  useEffect(() => {
+    if (MANAGE_REVIEWS_TABS.has(tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
+
+  const filteredProducts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let list = [...products];
+    if (q) {
+      list = list.filter(
+        (p) =>
+          String(p.productName).toLowerCase().includes(q) ||
+          String(p.handle).toLowerCase().includes(q),
+      );
+    }
+    if (sortBy === "newest") {
+      list.sort((a, b) => new Date(b.lastReviewAt || 0) - new Date(a.lastReviewAt || 0));
+    } else if (sortBy === "most") {
+      list.sort((a, b) => b.reviewCount - a.reviewCount);
+    } else if (sortBy === "rating-high") {
+      list.sort((a, b) => Number(b.avgRating) - Number(a.avgRating));
+    } else if (sortBy === "rating-low") {
+      list.sort((a, b) => Number(a.avgRating) - Number(b.avgRating));
+    }
+    return list;
+  }, [products, search, sortBy]);
+
+  const inRangeTotal = filteredProducts.length;
+  const previewProducts = filteredProducts.slice(0, PREVIEW_ROW_LIMIT);
+
+  const reviewsDetailHref = (product) => {
+    const q = new URLSearchParams();
+    q.set("product", product.productName);
+    if (product.productId) q.set("pid", product.productId);
+    return mergeShopifyEmbedParams(`/app/reviews?${q.toString()}`, location.search);
+  };
+
+  const allReviewsHref = mergeShopifyEmbedParams("/app/reviews", location.search);
+
+  const selectTab = (tabId) => {
+    setActiveTab(tabId);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (tabId === "product") {
+          next.delete("tab");
+        } else {
+          next.set("tab", tabId);
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
+  return (
+    <div style={{ ...pageStyle, background: PAGE_BG, fontFamily: FONT }}>
+      <h1 style={{ margin: "0 0 12px", ...type.pageTitle }}>Manage reviews</h1>
+
+      <div style={{ display: "flex", gap: 24, borderBottom: `1px solid ${SURFACE_BORDER}`, marginBottom: 20 }}>
+        {[
+          { id: "product", label: "Product reviews" },
+          { id: "store", label: "Store reviews" },
+          { id: "integration", label: "Store integration" },
+        ].map((tab) => {
+          const active = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => selectTab(tab.id)}
+              style={{
+                background: "none",
+                border: "none",
+                padding: "0 0 12px",
+                marginBottom: -1,
+                borderBottom: active ? `2px solid ${SHOPIFY_GREEN}` : "2px solid transparent",
+                cursor: "pointer",
+                ...type.tab(active),
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {activeTab === "integration" ? (
+        <IntegrationSettingsPanel
+          group={group}
+          linkedSuccess={linkedSuccess}
+          unlinkedSuccess={unlinkedSuccess}
+          actionError={actionData?.error}
+        />
+      ) : (
+      <div
+        style={{
+          background: "#fff",
+          border: `1px solid ${SURFACE_BORDER}`,
+          borderRadius: 12,
+          overflow: "hidden",
+          boxShadow: "0 1px 0 rgba(0,0,0,0.04)",
+        }}
+      >
+        {activeTab === "product" ? (
+          <>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 16,
+                padding: "16px 20px",
+                borderBottom: `1px solid ${SURFACE_BORDER}`,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={type.sectionTitle}>Product Reviews</span>
+                <span
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: 999,
+                    background: "#ecfdf5",
+                    color: "#047857",
+                    ...type.badge,
+                  }}
+                >
+                  {inRangeTotal} in range
+                </span>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ position: "relative" }}>
+                  <Search
+                    size={16}
+                    color="#6d7175"
+                    style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}
+                  />
+                  <input
+                    type="search"
+                    placeholder="Search products..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    style={{
+                      padding: "9px 12px 9px 36px",
+                      borderRadius: 8,
+                      border: `1px solid ${SURFACE_BORDER}`,
+                      minWidth: 220,
+                      background: "#fff",
+                      outline: "none",
+                      ...type.input,
+                    }}
+                  />
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={type.caption}>Sort by</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    style={{
+                      padding: "9px 12px",
+                      borderRadius: 8,
+                      border: `1px solid ${SURFACE_BORDER}`,
+                      background: "#fff",
+                      ...type.input,
+                    }}
+                  >
+                    <option value="newest">Newest activity</option>
+                    <option value="most">Most reviews</option>
+                    <option value="rating-high">Highest rating</option>
+                    <option value="rating-low">Lowest rating</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {filteredProducts.length === 0 ? (
+              <div style={{ padding: 40, textAlign: "center", ...type.bodyMuted }}>
+                No product reviews yet. Reviews will appear here once customers start leaving feedback.
+              </div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760, fontFamily: FONT }}>
+                  <thead>
+                    <tr style={{ background: "#f6f6f7" }}>
+                      {["PRODUCT", "RATING", "REVIEWS", "SENTIMENT", "LAST REVIEW", "ACTIONS"].map(
+                        (col) => (
+                          <th
+                            key={col}
+                            style={{
+                              textAlign: "left",
+                              padding: "12px 16px",
+                              textTransform: "uppercase",
+                              ...type.label,
+                            }}
+                          >
+                            {col}
+                          </th>
+                        ),
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewProducts.map((product) => (
+                      <tr key={`${product.productId}-${product.handle}`} style={{ borderTop: `1px solid ${SURFACE_BORDER}` }}>
+                        <td style={{ padding: "14px 16px", minWidth: 240 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            {product.productImage ? (
+                              <img
+                                src={product.productImage}
+                                alt=""
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: 8,
+                                  objectFit: "cover",
+                                  border: `1px solid ${SURFACE_BORDER}`,
+                                  flexShrink: 0,
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: 8,
+                                  background: "#f6f6f7",
+                                  border: `1px solid ${SURFACE_BORDER}`,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <Store size={16} color="#8c9196" />
+                              </div>
+                            )}
+                            <div style={{ minWidth: 0 }}>
+                              <div
+                                style={{
+                                  ...type.body,
+                                  fontWeight: 600,
+                                  lineHeight: 1.3,
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                              >
+                                {product.productName}
+                              </div>
+                              <div
+                                style={{
+                                  ...type.caption,
+                                  marginTop: 2,
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                              >
+                                {product.handle}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: "14px 16px" }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, ...type.body, fontWeight: 600 }}>
+                            <Star size={14} fill={SHOPIFY_GREEN} color={SHOPIFY_GREEN} />
+                            {product.avgRating}
+                          </span>
+                        </td>
+                        <td style={{ padding: "14px 16px", ...type.body, fontWeight: 600 }}>{product.reviewCount}</td>
+                        <td style={{ padding: "14px 16px" }}>
+                          <SentimentBadge label={product.sentiment} tone={product.sentimentTone} />
+                        </td>
+                        <td style={{ padding: "14px 16px", ...type.body, fontWeight: 500 }}>
+                          {product.lastReview}
+                        </td>
+                        <td style={{ padding: "14px 16px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <Link
+                              to={reviewsDetailHref(product)}
+                              style={{
+                                padding: "6px 12px",
+                                borderRadius: 8,
+                                border: `1px solid ${SURFACE_BORDER}`,
+                                background: "#fff",
+                                color: "#202223",
+                                textDecoration: "none",
+                                ...type.button,
+                                fontSize: 12,
+                              }}
+                            >
+                              View
+                            </Link>
+                            <Link
+                              to={reviewsDetailHref(product)}
+                              style={{
+                                padding: "6px 12px",
+                                borderRadius: 8,
+                                border: `1px solid ${SURFACE_BORDER}`,
+                                background: "#fff",
+                                color: "#202223",
+                                textDecoration: "none",
+                                ...type.button,
+                                fontSize: 12,
+                              }}
+                            >
+                              Reply
+                            </Link>
+                            <button
+                              type="button"
+                              aria-label="More actions"
+                              style={{
+                                padding: 6,
+                                borderRadius: 8,
+                                border: `1px solid ${SURFACE_BORDER}`,
+                                background: "#fff",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                              }}
+                            >
+                              <MoreHorizontal size={16} color="#6d7175" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div style={{ padding: "16px 20px", borderTop: `1px solid ${SURFACE_BORDER}`, textAlign: "center" }}>
+              <Link
+                to={allReviewsHref}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  color: SHOPIFY_GREEN,
+                  textDecoration: "none",
+                  ...type.button,
+                }}
+              >
+                View all product reviews
+                <ArrowRight size={16} />
+              </Link>
+            </div>
+          </>
+        ) : storeReviews.length > 0 ? (
+          <div style={{ padding: 20 }}>
+            <p style={type.bodyMuted}>
+              {storeReviews.length} store review{storeReviews.length === 1 ? "" : "s"} collected.
+            </p>
+            <Link
+              to={allReviewsHref}
+              style={{ color: SHOPIFY_GREEN, textDecoration: "none", ...type.button }}
+            >
+              View store reviews <ExternalLink size={14} style={{ verticalAlign: "middle" }} />
+            </Link>
+          </div>
+        ) : (
+          <StoreReviewsEmpty storeReviewLink={storeReviewLink} />
+        )}
+      </div>
+      )}
+    </div>
+  );
+}
+
+const pageStyle = {
+  padding: "20px 24px 32px",
+  minHeight: "100vh",
+  fontFamily: FONT,
+  fontSize: 14,
+  fontWeight: 500,
+  color: "#202223",
+  boxSizing: "border-box",
+  WebkitFontSmoothing: "antialiased",
+  MozOsxFontSmoothing: "grayscale",
+};

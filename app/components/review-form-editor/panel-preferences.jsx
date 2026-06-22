@@ -1,57 +1,24 @@
 /* eslint-disable react/prop-types, jsx-a11y/label-has-associated-control */
 import { useRef, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import {
-  TYPOGRAPHY_OPTIONS,
-  applyLayoutPreset,
-  radiusFromPreset,
-} from "../../lib/review-form-config.shared.js";
-import { TOKENS, UI_FONT } from "./customizer-styles.js";
-import {
-  CollapsibleSection,
   ColorRow,
-  ToggleRow,
+  CollapsibleSection,
+  FieldLabel,
   GeomSlider,
-  PresetCard,
+  LogoDropzone,
   SegmentControl,
   SegmentField,
-  ResetButton,
-  LogoDropzone,
-  LayoutPresetsHeader,
-  FieldLabel,
   StarStyleIcon,
-} from "./customizer-ui.jsx";
-
-const LAYOUT_PRESETS = [
-  { id: "minimal", label: "Minimal" },
-  { id: "modern", label: "Modern" },
-  { id: "luxury", label: "Luxury" },
-  { id: "shopifyNative", label: "Shopify Native" },
-];
+  ToggleRow,
+} from "../review-form/customizer-ui.jsx";
+import { EDITOR_TOKENS, UI_FONT } from "./editor-tokens.js";
 
 const SHADOW_LABELS = { low: "None", medium: "Soft", high: "Strong" };
-const RADIUS_LABELS = { sharp: "Sharp", medium: "Medium", pill: "Pill" };
 
-export function CustomizerSidebar({
-  config,
-  getConfig,
-  updateConfig,
-  patchConfig: patchConfigProp,
-  replaceConfig,
-  onReset,
-}) {
-  const patchConfig =
-    patchConfigProp ||
-    ((partial) => {
-      Object.entries(partial).forEach(([k, v]) => updateConfig(k, v));
-    });
+export function PanelPreferences({ config, updateConfig, patchConfig, onBack, onLogoUpload }) {
   const logoInputRef = useRef(null);
-
   const [logoError, setLogoError] = useState("");
-
-  const applyPreset = (presetId) => {
-    const current = getConfig ? getConfig() : config;
-    replaceConfig(applyLayoutPreset(presetId, current));
-  };
 
   const onLogoFile = (file) => {
     setLogoError("");
@@ -65,53 +32,15 @@ export function CustomizerSidebar({
       setLogoError("Use PNG, JPG, SVG, or WebP.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") updateConfig("brandLogoUrl", reader.result);
-    };
-    reader.readAsDataURL(file);
+    onLogoUpload(file);
   };
 
-  const radiusPx = config.borderRadius;
-
   return (
-    <div style={{ padding: "20px 18px", fontFamily: UI_FONT, overflowX: "hidden", maxWidth: "100%", boxSizing: "border-box" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 24,
-        }}
-      >
-        <h2
-          style={{
-            fontSize: 16,
-            fontWeight: 700,
-            margin: 0,
-            color: TOKENS.text,
-            letterSpacing: "-0.02em",
-          }}
-        >
-          Customize
-        </h2>
-        <ResetButton onClick={onReset} />
-      </div>
-
-      <div style={{ marginBottom: 8 }}>
-        <LayoutPresetsHeader />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-          {LAYOUT_PRESETS.map((item) => (
-            <PresetCard
-              key={item.id}
-              presetId={item.id}
-              label={item.label}
-              selected={config.layoutPreset === item.id}
-              onClick={() => applyPreset(item.id)}
-            />
-          ))}
-        </div>
-      </div>
+    <div style={{ padding: "16px", fontFamily: UI_FONT }}>
+      <button type="button" onClick={onBack} style={backBtnStyle}>
+        <ArrowLeft size={16} />
+        Preferences
+      </button>
 
       <CollapsibleSection title="Brand identity" iconType="brand" defaultOpen>
         <FieldLabel>Brand logo</FieldLabel>
@@ -133,9 +62,7 @@ export function CustomizerSidebar({
             onLogoFile(e.dataTransfer.files?.[0]);
           }}
         />
-        {logoError ? (
-          <p style={{ color: "#dc2626", fontSize: 12, margin: "0 0 10px", fontWeight: 600 }}>{logoError}</p>
-        ) : null}
+        {logoError ? <p style={{ color: "#dc2626", fontSize: 12, margin: "0 0 10px" }}>{logoError}</p> : null}
         {config.brandLogoUrl ? (
           <button
             type="button"
@@ -155,7 +82,6 @@ export function CustomizerSidebar({
             Remove logo
           </button>
         ) : null}
-
       </CollapsibleSection>
 
       <CollapsibleSection title="Stars & ratings" iconType="stars" defaultOpen>
@@ -186,52 +112,7 @@ export function CustomizerSidebar({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Typography" iconType="typography" defaultOpen={false}>
-        <FieldLabel>Font family</FieldLabel>
-        <select
-          value={config.typography}
-          onChange={(e) => updateConfig("typography", e.target.value)}
-          style={{
-            width: "100%",
-            padding: "10px 12px",
-            borderRadius: 10,
-            border: `1px solid ${TOKENS.border}`,
-            fontSize: 13,
-            fontWeight: 500,
-            marginBottom: 14,
-            fontFamily: UI_FONT,
-            color: TOKENS.text,
-            background: TOKENS.white,
-          }}
-        >
-          {TYPOGRAPHY_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.value}
-            </option>
-          ))}
-        </select>
-        <GeomSlider
-          label="Base font size"
-          min={12}
-          max={20}
-          value={config.fontSize}
-          display={`${config.fontSize}px`}
-          onChange={(v) => updateConfig("fontSize", v)}
-        />
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Review cards" iconType="cards" defaultOpen>
-        <SegmentField
-          label="Corner radius"
-          valueLabel={`${radiusPx}px`}
-          options={[
-            { value: "sharp", label: "Sharp" },
-            { value: "medium", label: "Medium" },
-            { value: "pill", label: "Pill" },
-          ]}
-          value={config.radiusPreset}
-          onChange={(v) => patchConfig({ radiusPreset: v, borderRadius: radiusFromPreset(v) })}
-        />
+      <CollapsibleSection title="Review cards" iconType="cards" defaultOpen={false}>
         <SegmentField
           label="Card shadow"
           valueLabel={SHADOW_LABELS[config.shadowLevel] || "Soft"}
@@ -253,7 +134,7 @@ export function CustomizerSidebar({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Photo & video reviews" iconType="media" defaultOpen={false}>
+      <CollapsibleSection title="Photo & video reviews" iconType="media" defaultOpen>
         <ToggleRow
           label="Allow photo uploads"
           active={config.showPhotos !== false}
@@ -289,15 +170,13 @@ export function CustomizerSidebar({
               type="text"
               value={config.trustBadgeText}
               onChange={(e) => updateConfig("trustBadgeText", e.target.value)}
-              placeholder="Protected by SSL..."
               style={{
                 width: "100%",
                 padding: "10px 12px",
                 borderRadius: 10,
-                border: `1px solid ${TOKENS.border}`,
+                border: `1px solid ${EDITOR_TOKENS.border}`,
                 fontSize: 12,
                 fontFamily: UI_FONT,
-                color: TOKENS.text,
                 boxSizing: "border-box",
               }}
             />
@@ -307,3 +186,17 @@ export function CustomizerSidebar({
     </div>
   );
 }
+
+const backBtnStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  border: "none",
+  background: "transparent",
+  padding: "0 0 16px",
+  cursor: "pointer",
+  fontFamily: UI_FONT,
+  fontSize: 15,
+  fontWeight: 700,
+  color: EDITOR_TOKENS.text,
+};

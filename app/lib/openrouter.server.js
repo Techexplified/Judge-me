@@ -268,3 +268,43 @@ Return ONLY valid JSON: {"reply":"your reply text"}`;
 
   return { reply };
 }
+
+/**
+ * @param {{ apiKey: string, storeName?: string }} opts
+ */
+export async function generateReviewFormCopy({ apiKey, storeName = "your store" }) {
+  const userContent = `You write concise, friendly e-commerce review form copy for a Shopify store named "${storeName}".
+Return ONLY valid JSON (no markdown) with exactly these string keys:
+{
+  "ratingPageTitle": "How would you rate this product?",
+  "ratingPageTitleFallback": "How would you rate this product?",
+  "starLabelHigh": "Love it!",
+  "starLabelLow": "Dislike it",
+  "formTitle": "Write a Review",
+  "formSubtitle": "1 sentence inviting feedback",
+  "nameFieldLabel": "Your Name",
+  "reviewFieldLabel": "Your Review",
+  "reviewFieldPlaceholder": "Helpful prompt for shoppers",
+  "photoPageTitle": "Add photos to your review",
+  "photoUploadTitle": "Add Photos",
+  "photoUploadHint": "Upload hint with formats",
+  "videoPageTitle": "Add a video to your review",
+  "videoUploadTitle": "Add Video",
+  "videoUploadHint": "Upload hint with formats",
+  "videoSkipLabel": "Skip for now",
+  "submitButtonText": "Post Review",
+  "verifiedPurchaseLabel": "Verified Purchase",
+  "privacyFooterText": "Short privacy reassurance"
+}
+Keep ratingPageTitle generic (e.g. "How would you rate this product?") without repeating the product name. Each value under 120 characters. Tone: warm, trustworthy, modern.`;
+
+  const out = await openRouterChat({ apiKey, userContent, temperature: 0.5 });
+  if (out.error) return { error: out.error };
+
+  const parsed = extractJsonObject(out.content);
+  if (!parsed || typeof parsed !== "object") {
+    return { error: "Could not parse AI copy output" };
+  }
+
+  return { copy: parsed };
+}
