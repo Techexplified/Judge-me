@@ -514,7 +514,7 @@ export function AnalyticsPageContent({
   const [exporting, setExporting] = useState(null);
   const [exportError, setExportError] = useState(null);
 
-  const reviewsHref = mergeShopifyEmbedParams("/app/reviews", search);
+  const reviewsHref = mergeShopifyEmbedParams("/app/manage-reviews", search);
 
   const handleExport = useCallback(
     async (type) => {

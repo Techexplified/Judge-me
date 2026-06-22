@@ -182,7 +182,7 @@ export default function PerformanceOverview() {
   );
 
   const manageHref = mergeShopifyEmbedParams("/app/manage-reviews", location.search);
-  const reviewsHref = mergeShopifyEmbedParams("/app/reviews", location.search);
+  const reviewsHref = manageHref;
   const collectHref = mergeShopifyEmbedParams("/app/collect-reviews?tab=widget", location.search);
 
   const rangeOptions = [

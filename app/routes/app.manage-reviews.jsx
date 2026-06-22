@@ -1,40 +1,35 @@
 /* eslint-disable react/prop-types, jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  Link,
   useActionData,
   useLoaderData,
   useLocation,
+  useNavigate,
   useSearchParams,
 } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
-import {
-  ArrowRight,
-  ExternalLink,
-  Link2,
-  MoreHorizontal,
-  Search,
-  Send,
-  Star,
-  Store,
-} from "lucide-react";
+import { Link2, Send, Store, Upload } from "lucide-react";
 import { authenticate } from "../shopify.server";
 import { mergeShopifyEmbedParams } from "../utils/shopify-embed-nav.js";
-import { loadManageReviewsData } from "../utils/performance-metrics.server.js";
+import { normalizeShopDomain } from "../utils/shop.js";
 import {
   handleStoreIntegrationAction,
   loadStoreIntegrationGroup,
   parseStoreIntegrationFlash,
 } from "../lib/store-integration.server.js";
-import { normalizeShopDomain } from "../utils/shop.js";
+import {
+  handleReviewsManagementAction,
+  loadReviewsManagementData,
+} from "../lib/reviews-management.server.js";
+import { reviewsManagementShouldRevalidate } from "../lib/reviews-management.shared.js";
 import { IntegrationSettingsPanel } from "../components/settings/integration-settings-panel";
+import { ReviewsWorkspace } from "../components/manage-reviews/reviews-workspace.jsx";
 import {
   PAGE_BG,
+  PrimaryButton,
   SHOPIFY_GREEN,
   SURFACE_BORDER,
 } from "../components/admin-ui";
-
-const PREVIEW_ROW_LIMIT = 5;
 
 const FONT =
   "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
@@ -53,51 +48,11 @@ const type = {
     fontWeight: active ? 600 : 500,
     color: active ? SHOPIFY_GREEN : "#6d7175",
   }),
-  sectionTitle: {
-    fontFamily: FONT,
-    fontSize: 14,
-    fontWeight: 600,
-    color: "#202223",
-  },
-  body: {
-    fontFamily: FONT,
-    fontSize: 13,
-    fontWeight: 500,
-    color: "#202223",
-  },
   bodyMuted: {
     fontFamily: FONT,
     fontSize: 13,
     fontWeight: 500,
     color: "#6d7175",
-  },
-  caption: {
-    fontFamily: FONT,
-    fontSize: 12,
-    fontWeight: 500,
-    color: "#6d7175",
-  },
-  label: {
-    fontFamily: FONT,
-    fontSize: 11,
-    fontWeight: 600,
-    color: "#6d7175",
-    letterSpacing: "0.04em",
-  },
-  badge: {
-    fontFamily: FONT,
-    fontSize: 11,
-    fontWeight: 600,
-  },
-  button: {
-    fontFamily: FONT,
-    fontSize: 13,
-    fontWeight: 600,
-  },
-  input: {
-    fontFamily: FONT,
-    fontSize: 13,
-    fontWeight: 500,
   },
   emptyTitle: {
     fontFamily: FONT,
@@ -105,16 +60,21 @@ const type = {
     fontWeight: 600,
     color: "#202223",
   },
+  button: {
+    fontFamily: FONT,
+    fontSize: 13,
+    fontWeight: 600,
+  },
 };
 
 const MANAGE_REVIEWS_TABS = new Set(["product", "store", "integration"]);
 
 export const loader = async ({ request }) => {
-  const { session, admin } = await authenticate.admin(request);
+  const { session, admin, billing } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
   const url = new URL(request.url);
   const [reviewsData, { group }] = await Promise.all([
-    loadManageReviewsData({ request, session, admin }),
+    loadReviewsManagementData({ request, session, billing }),
     loadStoreIntegrationGroup(shop),
   ]);
 
@@ -127,40 +87,23 @@ export const loader = async ({ request }) => {
 
 export const action = async ({ request }) => {
   const { session, admin } = await authenticate.admin(request);
+  const formData = await request.formData();
 
-  return handleStoreIntegrationAction({
-    request,
-    session,
-    admin,
-    redirectPath: "/app/manage-reviews",
-    withTabParam: true,
-  });
+  if (formData.has("intent")) {
+    return handleStoreIntegrationAction({
+      request,
+      session,
+      admin,
+      redirectPath: "/app/manage-reviews",
+      withTabParam: true,
+    });
+  }
+
+  return handleReviewsManagementAction(request);
 };
 
-function SentimentBadge({ label, tone }) {
-  const styles = {
-    positive: { bg: "#ecfdf5", fg: "#047857", dot: SHOPIFY_GREEN },
-    negative: { bg: "#f1f2f3", fg: "#202223", dot: "#202223" },
-    mixed: { bg: "#f1f2f3", fg: "#616161", dot: "#616161" },
-  };
-  const c = styles[tone] || styles.mixed;
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "4px 10px",
-        borderRadius: 999,
-        background: c.bg,
-        color: c.fg,
-        ...type.badge,
-      }}
-    >
-      <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.dot }} />
-      {label}
-    </span>
-  );
+export function shouldRevalidate(args) {
+  return reviewsManagementShouldRevalidate(args);
 }
 
 function StoreReviewsEmpty({ storeReviewLink }) {
@@ -285,12 +228,19 @@ export default function ManageReviews() {
     products,
     storeReviews,
     storeReviewLink,
+    stats,
+    currentShop,
+    translation,
+    premium,
+    aiAvailable,
     group,
     linkedSuccess,
     unlinkedSuccess,
   } = useLoaderData();
   const actionData = useActionData();
   const location = useLocation();
+  const navigate = useNavigate();
+  const shopify = useAppBridge();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(() =>
@@ -302,42 +252,6 @@ export default function ManageReviews() {
       setActiveTab(tabFromUrl);
     }
   }, [tabFromUrl]);
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("newest");
-
-  const filteredProducts = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    let list = [...products];
-    if (q) {
-      list = list.filter(
-        (p) =>
-          String(p.productName).toLowerCase().includes(q) ||
-          String(p.handle).toLowerCase().includes(q),
-      );
-    }
-    if (sortBy === "newest") {
-      list.sort((a, b) => new Date(b.lastReviewAt || 0) - new Date(a.lastReviewAt || 0));
-    } else if (sortBy === "most") {
-      list.sort((a, b) => b.reviewCount - a.reviewCount);
-    } else if (sortBy === "rating-high") {
-      list.sort((a, b) => Number(b.avgRating) - Number(a.avgRating));
-    } else if (sortBy === "rating-low") {
-      list.sort((a, b) => Number(a.avgRating) - Number(b.avgRating));
-    }
-    return list;
-  }, [products, search, sortBy]);
-
-  const inRangeTotal = filteredProducts.length;
-  const previewProducts = filteredProducts.slice(0, PREVIEW_ROW_LIMIT);
-
-  const reviewsDetailHref = (product) => {
-    const q = new URLSearchParams();
-    q.set("product", product.productName);
-    if (product.productId) q.set("pid", product.productId);
-    return mergeShopifyEmbedParams(`/app/reviews?${q.toString()}`, location.search);
-  };
-
-  const allReviewsHref = mergeShopifyEmbedParams("/app/reviews", location.search);
 
   const selectTab = (tabId) => {
     setActiveTab(tabId);
@@ -349,15 +263,57 @@ export default function ManageReviews() {
         } else {
           next.set("tab", tabId);
         }
+        next.delete("product");
+        next.delete("pid");
+        next.delete("mode");
         return next;
       },
       { replace: true },
     );
   };
 
+  const importHref = mergeShopifyEmbedParams("/app/collect-reviews?tab=import", location.search);
+
+  const goToImport = () => {
+    if (typeof shopify?.navigate === "function") {
+      shopify.navigate(importHref);
+    } else {
+      navigate(importHref);
+    }
+  };
+
+  const workspaceProps = {
+    embedded: true,
+    products,
+    storeReviews,
+    storeReviewLink,
+    stats,
+    currentShop,
+    translation,
+    premium,
+    aiAvailable,
+  };
+
   return (
     <div style={{ ...pageStyle, background: PAGE_BG, fontFamily: FONT }}>
-      <h1 style={{ margin: "0 0 12px", ...type.pageTitle }}>Manage reviews</h1>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 16,
+          flexWrap: "wrap",
+          marginBottom: 12,
+        }}
+      >
+        <h1 style={{ margin: 0, ...type.pageTitle }}>Manage reviews</h1>
+        {activeTab === "product" ? (
+          <PrimaryButton onClick={goToImport}>
+            <Upload size={16} />
+            Import Reviews
+          </PrimaryButton>
+        ) : null}
+      </div>
 
       <div style={{ display: "flex", gap: 24, borderBottom: `1px solid ${SURFACE_BORDER}`, marginBottom: 20 }}>
         {[
@@ -394,279 +350,13 @@ export default function ManageReviews() {
           unlinkedSuccess={unlinkedSuccess}
           actionError={actionData?.error}
         />
+      ) : activeTab === "store" && storeReviews.length === 0 ? (
+        <StoreReviewsEmpty storeReviewLink={storeReviewLink} />
       ) : (
-      <div
-        style={{
-          background: "#fff",
-          border: `1px solid ${SURFACE_BORDER}`,
-          borderRadius: 12,
-          overflow: "hidden",
-          boxShadow: "0 1px 0 rgba(0,0,0,0.04)",
-        }}
-      >
-        {activeTab === "product" ? (
-          <>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 16,
-                padding: "16px 20px",
-                borderBottom: `1px solid ${SURFACE_BORDER}`,
-                flexWrap: "wrap",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={type.sectionTitle}>Product Reviews</span>
-                <span
-                  style={{
-                    padding: "3px 8px",
-                    borderRadius: 999,
-                    background: "#ecfdf5",
-                    color: "#047857",
-                    ...type.badge,
-                  }}
-                >
-                  {inRangeTotal} in range
-                </span>
-              </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <div style={{ position: "relative" }}>
-                  <Search
-                    size={16}
-                    color="#6d7175"
-                    style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}
-                  />
-                  <input
-                    type="search"
-                    placeholder="Search products..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    style={{
-                      padding: "9px 12px 9px 36px",
-                      borderRadius: 8,
-                      border: `1px solid ${SURFACE_BORDER}`,
-                      minWidth: 220,
-                      background: "#fff",
-                      outline: "none",
-                      ...type.input,
-                    }}
-                  />
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={type.caption}>Sort by</span>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    style={{
-                      padding: "9px 12px",
-                      borderRadius: 8,
-                      border: `1px solid ${SURFACE_BORDER}`,
-                      background: "#fff",
-                      ...type.input,
-                    }}
-                  >
-                    <option value="newest">Newest activity</option>
-                    <option value="most">Most reviews</option>
-                    <option value="rating-high">Highest rating</option>
-                    <option value="rating-low">Lowest rating</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {filteredProducts.length === 0 ? (
-              <div style={{ padding: 40, textAlign: "center", ...type.bodyMuted }}>
-                No product reviews yet. Reviews will appear here once customers start leaving feedback.
-              </div>
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760, fontFamily: FONT }}>
-                  <thead>
-                    <tr style={{ background: "#f6f6f7" }}>
-                      {["PRODUCT", "RATING", "REVIEWS", "SENTIMENT", "LAST REVIEW", "ACTIONS"].map(
-                        (col) => (
-                          <th
-                            key={col}
-                            style={{
-                              textAlign: "left",
-                              padding: "12px 16px",
-                              textTransform: "uppercase",
-                              ...type.label,
-                            }}
-                          >
-                            {col}
-                          </th>
-                        ),
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {previewProducts.map((product) => (
-                      <tr key={`${product.productId}-${product.handle}`} style={{ borderTop: `1px solid ${SURFACE_BORDER}` }}>
-                        <td style={{ padding: "14px 16px", minWidth: 240 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                            {product.productImage ? (
-                              <img
-                                src={product.productImage}
-                                alt=""
-                                style={{
-                                  width: 40,
-                                  height: 40,
-                                  borderRadius: 8,
-                                  objectFit: "cover",
-                                  border: `1px solid ${SURFACE_BORDER}`,
-                                  flexShrink: 0,
-                                }}
-                              />
-                            ) : (
-                              <div
-                                style={{
-                                  width: 40,
-                                  height: 40,
-                                  borderRadius: 8,
-                                  background: "#f6f6f7",
-                                  border: `1px solid ${SURFACE_BORDER}`,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  flexShrink: 0,
-                                }}
-                              >
-                                <Store size={16} color="#8c9196" />
-                              </div>
-                            )}
-                            <div style={{ minWidth: 0 }}>
-                              <div
-                                style={{
-                                  ...type.body,
-                                  fontWeight: 600,
-                                  lineHeight: 1.3,
-                                  whiteSpace: "nowrap",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                }}
-                              >
-                                {product.productName}
-                              </div>
-                              <div
-                                style={{
-                                  ...type.caption,
-                                  marginTop: 2,
-                                  whiteSpace: "nowrap",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                }}
-                              >
-                                {product.handle}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: "14px 16px" }}>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, ...type.body, fontWeight: 600 }}>
-                            <Star size={14} fill={SHOPIFY_GREEN} color={SHOPIFY_GREEN} />
-                            {product.avgRating}
-                          </span>
-                        </td>
-                        <td style={{ padding: "14px 16px", ...type.body, fontWeight: 600 }}>{product.reviewCount}</td>
-                        <td style={{ padding: "14px 16px" }}>
-                          <SentimentBadge label={product.sentiment} tone={product.sentimentTone} />
-                        </td>
-                        <td style={{ padding: "14px 16px", ...type.body, fontWeight: 500 }}>
-                          {product.lastReview}
-                        </td>
-                        <td style={{ padding: "14px 16px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <Link
-                              to={reviewsDetailHref(product)}
-                              style={{
-                                padding: "6px 12px",
-                                borderRadius: 8,
-                                border: `1px solid ${SURFACE_BORDER}`,
-                                background: "#fff",
-                                color: "#202223",
-                                textDecoration: "none",
-                                ...type.button,
-                                fontSize: 12,
-                              }}
-                            >
-                              View
-                            </Link>
-                            <Link
-                              to={reviewsDetailHref(product)}
-                              style={{
-                                padding: "6px 12px",
-                                borderRadius: 8,
-                                border: `1px solid ${SURFACE_BORDER}`,
-                                background: "#fff",
-                                color: "#202223",
-                                textDecoration: "none",
-                                ...type.button,
-                                fontSize: 12,
-                              }}
-                            >
-                              Reply
-                            </Link>
-                            <button
-                              type="button"
-                              aria-label="More actions"
-                              style={{
-                                padding: 6,
-                                borderRadius: 8,
-                                border: `1px solid ${SURFACE_BORDER}`,
-                                background: "#fff",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                              }}
-                            >
-                              <MoreHorizontal size={16} color="#6d7175" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            <div style={{ padding: "16px 20px", borderTop: `1px solid ${SURFACE_BORDER}`, textAlign: "center" }}>
-              <Link
-                to={allReviewsHref}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  color: SHOPIFY_GREEN,
-                  textDecoration: "none",
-                  ...type.button,
-                }}
-              >
-                View all product reviews
-                <ArrowRight size={16} />
-              </Link>
-            </div>
-          </>
-        ) : storeReviews.length > 0 ? (
-          <div style={{ padding: 20 }}>
-            <p style={type.bodyMuted}>
-              {storeReviews.length} store review{storeReviews.length === 1 ? "" : "s"} collected.
-            </p>
-            <Link
-              to={allReviewsHref}
-              style={{ color: SHOPIFY_GREEN, textDecoration: "none", ...type.button }}
-            >
-              View store reviews <ExternalLink size={14} style={{ verticalAlign: "middle" }} />
-            </Link>
-          </div>
-        ) : (
-          <StoreReviewsEmpty storeReviewLink={storeReviewLink} />
-        )}
-      </div>
+        <ReviewsWorkspace
+          {...workspaceProps}
+          scope={activeTab}
+        />
       )}
     </div>
   );

@@ -215,7 +215,7 @@ export async function importReviewsAction({ request, session, admin, billing }) 
     }
 
     throw embedRedirect(
-      `/app/reviews?imported=${imported}&skipped=${Math.max(totalSkipped, batchSkipped)}`,
+      `/app/manage-reviews?imported=${imported}&skipped=${Math.max(totalSkipped, batchSkipped)}`,
       request,
     );
   }

@@ -21,7 +21,7 @@ function reviewsHref(extras = {}) {
   if (extras.product) q.set("product", extras.product);
   if (extras.pid) q.set("pid", extras.pid);
   const qs = q.toString();
-  return qs ? `/app/reviews?${qs}` : "/app/reviews";
+  return qs ? `/app/manage-reviews?${qs}` : "/app/manage-reviews";
 }
 
 function InsightBullets({ items }) {

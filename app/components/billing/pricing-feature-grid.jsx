@@ -144,7 +144,7 @@ const FEATURE_CARDS = [
     Icon: Sparkles,
     title: "AI insights, playbooks & smart replies",
     desc: "AI review replies, urgent prioritization, and actionable playbooks for your team.",
-    tab: "/app/reviews",
+    tab: "/app/manage-reviews",
     cta: "Manage reviews",
   },
   {
@@ -171,7 +171,7 @@ const FEATURE_CARDS = [
     Icon: FileText,
     title: "PDF & CSV export for reporting",
     desc: "Export review data and AI generated insights for stakeholders and campaigns.",
-    tab: "/app/reviews",
+    tab: "/app/manage-reviews",
     cta: "Export options",
   },
   {
