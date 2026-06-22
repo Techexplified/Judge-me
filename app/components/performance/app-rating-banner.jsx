@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useCallback, useEffect, useState } from "react";
-import { useFetcher } from "react-router";
+import { useFetcher, useLocation } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { Sparkles, Star, X } from "lucide-react";
 import { SHOPIFY_GREEN, SHOPIFY_GREEN_DARK, SURFACE_BORDER } from "../admin-ui";
@@ -10,6 +10,8 @@ const BANNER_DELAY_MS = 3500;
 export function AppRatingBanner({ showWhenReady, onDismissed }) {
   const shopify = useAppBridge();
   const fetcher = useFetcher();
+  const location = useLocation();
+  const actionPath = `${location.pathname}${location.search}`;
   const [visible, setVisible] = useState(false);
   const [hoveredStar, setHoveredStar] = useState(0);
   const [requesting, setRequesting] = useState(false);
@@ -22,9 +24,9 @@ export function AppRatingBanner({ showWhenReady, onDismissed }) {
 
   const dismiss = useCallback(() => {
     setVisible(false);
-    fetcher.submit({ intent: "dismissAppRating" }, { method: "post" });
+    fetcher.submit({ intent: "dismissAppRating" }, { method: "post", action: actionPath });
     onDismissed?.();
-  }, [fetcher, onDismissed]);
+  }, [actionPath, fetcher, onDismissed]);
 
   const requestReview = useCallback(async () => {
     if (requesting) return;
@@ -34,7 +36,7 @@ export function AppRatingBanner({ showWhenReady, onDismissed }) {
       if (reviewsApi && typeof reviewsApi.request === "function") {
         const result = await reviewsApi.request();
         if (result?.success) {
-          fetcher.submit({ intent: "markAppRated" }, { method: "post" });
+          fetcher.submit({ intent: "markAppRated" }, { method: "post", action: actionPath });
           setVisible(false);
           onDismissed?.();
           if (typeof shopify?.toast?.show === "function") {
@@ -54,7 +56,7 @@ export function AppRatingBanner({ showWhenReady, onDismissed }) {
     } finally {
       setRequesting(false);
     }
-  }, [fetcher, onDismissed, requesting, shopify]);
+  }, [actionPath, fetcher, onDismissed, requesting, shopify]);
 
   if (!visible) return null;
 

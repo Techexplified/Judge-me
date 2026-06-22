@@ -41,6 +41,26 @@ export const CORNER_PRESET_OPTIONS = [
 
 export const FORM_TEXT_TOKENS = ["{{item}}", "{{store}}", "{{order}}", "{{date}}"];
 
+/** Per-field typography on the rating step (null = use section default). */
+export const RATING_TEXT_STYLE_SECTIONS = {
+  ratingPageTitle: { fontSize: 16, fontWeight: 600, colorFrom: "textColor" },
+  orderMetaLine: { fontSize: 13, fontWeight: 500, color: "#6d7175" },
+  verifiedPurchaseLabel: { fontSize: 11, fontWeight: 700, colorFrom: "primaryColor" },
+  ratingPageTitleFallback: { fontSize: 16, fontWeight: 600, colorFrom: "textColor" },
+  starLabelHigh: { fontSize: 11, fontWeight: 500, color: "#6d7175" },
+  starLabelLow: { fontSize: 11, fontWeight: 500, color: "#6d7175" },
+};
+
+export const RATING_TEXT_STYLE_SECTION_IDS = Object.keys(RATING_TEXT_STYLE_SECTIONS);
+
+export const FONT_WEIGHT_OPTIONS = [
+  { value: 400, label: "Regular" },
+  { value: 500, label: "Medium" },
+  { value: 600, label: "Semibold" },
+  { value: 700, label: "Bold" },
+  { value: 800, label: "Extra bold" },
+];
+
 export const FORM_TEXT_KEYS = [
   "ratingPageTitle",
   "ratingPageTitleFallback",
@@ -103,6 +123,30 @@ export const defaultFormConfig = {
   verifiedPurchaseLabel: "Verified Purchase",
   orderMetaLine: "Order #{{order}} · Purchased {{date}}",
   privacyFooterText: "Your data is secure and never shared.",
+  ratingPageTitleColor: null,
+  ratingPageTitleFontSize: null,
+  ratingPageTitleTypography: null,
+  ratingPageTitleFontWeight: null,
+  orderMetaLineColor: null,
+  orderMetaLineFontSize: null,
+  orderMetaLineTypography: null,
+  orderMetaLineFontWeight: null,
+  verifiedPurchaseLabelColor: null,
+  verifiedPurchaseLabelFontSize: null,
+  verifiedPurchaseLabelTypography: null,
+  verifiedPurchaseLabelFontWeight: null,
+  ratingPageTitleFallbackColor: null,
+  ratingPageTitleFallbackFontSize: null,
+  ratingPageTitleFallbackTypography: null,
+  ratingPageTitleFallbackFontWeight: null,
+  starLabelHighColor: null,
+  starLabelHighFontSize: null,
+  starLabelHighTypography: null,
+  starLabelHighFontWeight: null,
+  starLabelLowColor: null,
+  starLabelLowFontSize: null,
+  starLabelLowTypography: null,
+  starLabelLowFontWeight: null,
   spacing: 16,
   shadowLevel: "medium",
   fontSize: 14,
@@ -259,6 +303,21 @@ export function resolveRatingPageTitle(config, context = {}) {
   return title || defaultFormConfig.ratingPageTitleFallback;
 }
 
+/** @returns {{ text: string, styleSection: keyof typeof RATING_TEXT_STYLE_SECTIONS }} */
+export function resolveRatingPageTitleDisplay(config, context = {}) {
+  const item = context.item?.trim() || "";
+  if (item) {
+    return {
+      text: resolveFormText(config.ratingPageTitle, context) || defaultFormConfig.ratingPageTitle,
+      styleSection: "ratingPageTitle",
+    };
+  }
+  return {
+    text: config.ratingPageTitleFallback || defaultFormConfig.ratingPageTitleFallback,
+    styleSection: "ratingPageTitleFallback",
+  };
+}
+
 /**
  * @param {Record<string, unknown>} saved
  */
@@ -309,6 +368,31 @@ export function mergeFormConfig(saved) {
     if (n) base[key] = n;
   }
 
+  for (const sectionId of RATING_TEXT_STYLE_SECTION_IDS) {
+    const colorKey = `${sectionId}Color`;
+    const sizeKey = `${sectionId}FontSize`;
+    const weightKey = `${sectionId}FontWeight`;
+    const typoKey = `${sectionId}Typography`;
+
+    const normalizedColor = normalizeHex(base[colorKey]);
+    base[colorKey] = normalizedColor || null;
+
+    const sizeRaw = Number(base[sizeKey]);
+    base[sizeKey] =
+      Number.isFinite(sizeRaw) && sizeRaw > 0
+        ? Math.min(32, Math.max(10, Math.round(sizeRaw)))
+        : null;
+
+    const weightRaw = Number(base[weightKey]);
+    base[weightKey] =
+      Number.isFinite(weightRaw) && weightRaw >= 100 ? Math.round(weightRaw) : null;
+
+    if (base[typoKey] && !TYPOGRAPHY_OPTIONS.some((o) => o.value === base[typoKey])) {
+      base[typoKey] = null;
+    }
+    if (!base[typoKey]) base[typoKey] = null;
+  }
+
   for (const key of FORM_TEXT_KEYS) {
     if (base[key] != null) base[key] = String(base[key]);
   }
@@ -338,6 +422,51 @@ export function shadowCss(level) {
 export function fontStack(typographyLabel) {
   const opt = TYPOGRAPHY_OPTIONS.find((o) => o.value === typographyLabel);
   return opt?.stack ?? TYPOGRAPHY_OPTIONS[0].stack;
+}
+
+/**
+ * Resolved inline styles for one rating-step text field.
+ * @param {ReturnType<typeof mergeFormConfig>} config
+ * @param {keyof typeof RATING_TEXT_STYLE_SECTIONS} sectionId
+ */
+export function resolveTextStyle(config, sectionId) {
+  const defaults = RATING_TEXT_STYLE_SECTIONS[sectionId] || {};
+  const defaultColor =
+    defaults.color ||
+    (defaults.colorFrom ? config[defaults.colorFrom] : config.textColor) ||
+    defaultFormConfig.textColor;
+
+  const color = normalizeHex(config[`${sectionId}Color`]) || defaultColor;
+
+  const fontSizeRaw = Number(config[`${sectionId}FontSize`]);
+  const fontSize =
+    Number.isFinite(fontSizeRaw) && fontSizeRaw > 0
+      ? Math.min(32, Math.max(10, fontSizeRaw))
+      : defaults.fontSize || config.fontSize;
+
+  const typography = config[`${sectionId}Typography`] || config.typography;
+  const fontWeightRaw = Number(config[`${sectionId}FontWeight`]);
+  const fontWeight =
+    Number.isFinite(fontWeightRaw) && fontWeightRaw >= 100
+      ? fontWeightRaw
+      : defaults.fontWeight || 400;
+
+  return {
+    color,
+    fontSize,
+    fontFamily: fontStack(typography),
+    fontWeight,
+  };
+}
+
+/** @param {ReturnType<typeof resolveTextStyle>} style */
+export function textStyleToCss(style) {
+  return {
+    color: style.color,
+    fontSize: style.fontSize,
+    fontFamily: style.fontFamily,
+    fontWeight: style.fontWeight,
+  };
 }
 
 /**

@@ -5,10 +5,12 @@ import {
   fontStack,
   presetLayout,
   resolveFormText,
-  resolveRatingPageTitle,
+  resolveRatingPageTitleDisplay,
+  resolveTextStyle,
   shadowCss,
   starCharacter,
   isStarActive,
+  textStyleToCss,
 } from "../../lib/review-form-config.shared.js";
 import { EDITOR_TOKENS, UI_FONT } from "./editor-tokens.js";
 import { FlowStepper, getVisibleFlowSteps } from "./flow-stepper.jsx";
@@ -57,9 +59,14 @@ function RatingStepPreview({
   onRatingChange,
   onHoverChange,
 }) {
-  const ratingTitle = resolveRatingPageTitle(config, textContext);
+  const ratingTitle = resolveRatingPageTitleDisplay(config, textContext);
   const orderMetaLine = resolveFormText(config.orderMetaLine, textContext);
   const imageSize = Math.min(96, Math.max(72, config.starSize * 2.75));
+  const ratingTitleStyle = textStyleToCss(resolveTextStyle(config, ratingTitle.styleSection));
+  const orderMetaStyle = textStyleToCss(resolveTextStyle(config, "orderMetaLine"));
+  const badgeStyle = textStyleToCss(resolveTextStyle(config, "verifiedPurchaseLabel"));
+  const starHighStyle = textStyleToCss(resolveTextStyle(config, "starLabelHigh"));
+  const starLowStyle = textStyleToCss(resolveTextStyle(config, "starLabelLow"));
 
   return (
     <>
@@ -105,10 +112,8 @@ function RatingStepPreview({
               padding: "5px 12px",
               borderRadius: 999,
               background: "#ECFDF5",
-              color: config.primaryColor,
-              fontSize: 11,
-              fontWeight: 700,
               marginBottom: 12,
+              ...badgeStyle,
             }}
           >
             <CheckCircle2 size={12} strokeWidth={2.5} />
@@ -126,23 +131,19 @@ function RatingStepPreview({
           >
             {product.name}
           </div>
-          <div style={{ fontSize: 13, color: EDITOR_TOKENS.textMuted, marginBottom: 20 }}>
-            {orderMetaLine}
-          </div>
+          <div style={{ ...orderMetaStyle, marginBottom: 20 }}>{orderMetaLine}</div>
 
           <div style={{ height: 1, background: DIVIDER, margin: "0 0 20px" }} />
 
           <p
             style={{
               textAlign: "center",
-              fontWeight: 600,
-              fontSize: 16,
               margin: `0 0 ${gap + 4}px`,
-              color: config.textColor || "#202223",
               letterSpacing: "-0.01em",
+              ...ratingTitleStyle,
             }}
           >
-            {ratingTitle}
+            {ratingTitle.text}
           </p>
 
           <div
@@ -177,16 +178,13 @@ function RatingStepPreview({
               style={{
                 display: "flex",
                 justifyContent: "space-between",
-                fontSize: 11,
-                color: EDITOR_TOKENS.textMuted,
-                fontWeight: 500,
                 padding: "0 4px",
                 minWidth: config.starSize * 5 + 40,
                 margin: "0 auto",
               }}
             >
-              <span>{config.starLabelLow}</span>
-              <span>{config.starLabelHigh}</span>
+              <span style={starLowStyle}>{config.starLabelLow}</span>
+              <span style={starHighStyle}>{config.starLabelHigh}</span>
             </div>
           </div>
         </div>

@@ -192,6 +192,7 @@ export function ReviewFormEditorShell({
             <PanelText
               config={config}
               updateConfig={updateConfig}
+              patchConfig={patchConfig}
               onBack={() => setActivePanel(null)}
               onAutofill={onAutofill}
               autofillLoading={autofillLoading}

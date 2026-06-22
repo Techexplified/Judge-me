@@ -54,7 +54,91 @@
     verifiedPurchaseLabel: "Verified Purchase",
     orderMetaLine: "Order #{{order}} · Purchased {{date}}",
     privacyFooterText: "Your data is secure and never shared.",
+    ratingPageTitleColor: null,
+    ratingPageTitleFontSize: null,
+    ratingPageTitleTypography: null,
+    ratingPageTitleFontWeight: null,
+    orderMetaLineColor: null,
+    orderMetaLineFontSize: null,
+    orderMetaLineTypography: null,
+    orderMetaLineFontWeight: null,
+    verifiedPurchaseLabelColor: null,
+    verifiedPurchaseLabelFontSize: null,
+    verifiedPurchaseLabelTypography: null,
+    verifiedPurchaseLabelFontWeight: null,
+    ratingPageTitleFallbackColor: null,
+    ratingPageTitleFallbackFontSize: null,
+    ratingPageTitleFallbackTypography: null,
+    ratingPageTitleFallbackFontWeight: null,
+    starLabelHighColor: null,
+    starLabelHighFontSize: null,
+    starLabelHighTypography: null,
+    starLabelHighFontWeight: null,
+    starLabelLowColor: null,
+    starLabelLowFontSize: null,
+    starLabelLowTypography: null,
+    starLabelLowFontWeight: null,
   };
+
+  const RATING_TEXT_STYLE_SECTIONS = {
+    ratingPageTitle: { fontSize: 16, fontWeight: 600, colorFrom: "textColor" },
+    orderMetaLine: { fontSize: 13, fontWeight: 500, color: "#6d7175" },
+    verifiedPurchaseLabel: { fontSize: 11, fontWeight: 700, colorFrom: "primaryColor" },
+    ratingPageTitleFallback: { fontSize: 16, fontWeight: 600, colorFrom: "textColor" },
+    starLabelHigh: { fontSize: 11, fontWeight: 500, color: "#6d7175" },
+    starLabelLow: { fontSize: 11, fontWeight: 500, color: "#6d7175" },
+  };
+
+  function normalizeHex(input) {
+    let s = String(input || "").trim();
+    if (!s) return null;
+    if (!s.startsWith("#")) s = `#${s}`;
+    return /^#[0-9A-Fa-f]{6}$/.test(s) ? s : null;
+  }
+
+  function resolveTextStyle(cfg, sectionId) {
+    const defaults = RATING_TEXT_STYLE_SECTIONS[sectionId] || {};
+    const defaultColor =
+      defaults.color ||
+      (defaults.colorFrom ? cfg[defaults.colorFrom] : cfg.textColor) ||
+      DEFAULT_CFG.textColor;
+    const color = normalizeHex(cfg[`${sectionId}Color`]) || defaultColor;
+    const fontSizeRaw = Number(cfg[`${sectionId}FontSize`]);
+    const fontSize =
+      Number.isFinite(fontSizeRaw) && fontSizeRaw > 0
+        ? Math.min(32, Math.max(10, fontSizeRaw))
+        : defaults.fontSize || cfg.fontSize;
+    const typography = cfg[`${sectionId}Typography`] || cfg.typography;
+    const fontWeightRaw = Number(cfg[`${sectionId}FontWeight`]);
+    const fontWeight =
+      Number.isFinite(fontWeightRaw) && fontWeightRaw >= 100
+        ? fontWeightRaw
+        : defaults.fontWeight || 400;
+    return {
+      color,
+      fontSize,
+      fontFamily: fontFamily({ typography }),
+      fontWeight,
+    };
+  }
+
+  function textStyleCss(style) {
+    return `color:${style.color};font-size:${style.fontSize}px;font-family:${style.fontFamily};font-weight:${style.fontWeight}`;
+  }
+
+  function resolveRatingPageTitleDisplay(cfg, context) {
+    const item = (context.item || "").trim();
+    if (item) {
+      return {
+        text: resolveFormText(cfg.ratingPageTitle, context) || DEFAULT_CFG.ratingPageTitle,
+        styleSection: "ratingPageTitle",
+      };
+    }
+    return {
+      text: cfg.ratingPageTitleFallback || DEFAULT_CFG.ratingPageTitleFallback,
+      styleSection: "ratingPageTitleFallback",
+    };
+  }
 
   function resolveFormText(template, context) {
     const item = (context.item || "").trim();
@@ -216,10 +300,16 @@
     let videoFiles = [];
     let complete = false;
 
-    const ratingTitle = resolveRatingPageTitle(cfg, textContext);
+    const ratingTitleDisplay = resolveRatingPageTitleDisplay(cfg, textContext);
+    const ratingTitle = ratingTitleDisplay.text;
     const orderMetaLine = resolveFormText(cfg.orderMetaLine, textContext);
     const showOrderMeta = hasOrderMeta(textContext) && orderMetaLine;
     const trustText = cfg.privacyFooterText || cfg.trustBadgeText;
+    const badgeStyle = textStyleCss(resolveTextStyle(cfg, "verifiedPurchaseLabel"));
+    const orderMetaStyle = textStyleCss(resolveTextStyle(cfg, "orderMetaLine"));
+    const ratingTitleStyle = textStyleCss(resolveTextStyle(cfg, ratingTitleDisplay.styleSection));
+    const starHighStyle = textStyleCss(resolveTextStyle(cfg, "starLabelHigh"));
+    const starLowStyle = textStyleCss(resolveTextStyle(cfg, "starLabelLow"));
 
     const els = {
       overlay: null,
@@ -303,13 +393,13 @@
             <div style="width:${imageSize}px;height:${imageSize}px;border-radius:${innerRadius}px;background:#F0F7F4;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;overflow:hidden">
               ${productAvatarHtml(cfg, productImage)}
             </div>
-            <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:999px;background:#ECFDF5;color:${cfg.primaryColor};font-size:11px;font-weight:700;margin-bottom:12px">
+            <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:999px;background:#ECFDF5;margin-bottom:12px;${badgeStyle}">
               ✓ ${esc(cfg.verifiedPurchaseLabel)}
             </span>
             <div style="font-weight:700;font-size:18px;color:${cfg.textColor || "#202223"};margin-bottom:4px;letter-spacing:-0.01em">${esc(textContext.item || "Product")}</div>
-            ${showOrderMeta ? `<div style="font-size:13px;color:#6d7175;margin-bottom:20px">${esc(orderMetaLine)}</div>` : `<div style="margin-bottom:20px"></div>`}
+            ${showOrderMeta ? `<div style="margin-bottom:20px;${orderMetaStyle}">${esc(orderMetaLine)}</div>` : `<div style="margin-bottom:20px"></div>`}
             <div style="height:1px;background:#E8EEF3;margin:0 0 20px"></div>
-            <p style="text-align:center;font-weight:600;font-size:16px;margin:0 0 ${gap + 4}px;color:${cfg.textColor || "#202223"};letter-spacing:-0.01em">${esc(ratingTitle)}</p>
+            <p style="text-align:center;margin:0 0 ${gap + 4}px;letter-spacing:-0.01em;${ratingTitleStyle}">${esc(ratingTitle)}</p>
           </div>
           <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:18px;padding-top:16px;border-top:1px solid #E8EEF3;font-size:12px;color:#6d7175">
             🔒 ${esc(trustText)}
@@ -325,10 +415,10 @@
 
         const labels = document.createElement("div");
         labels.style.cssText =
-          "display:flex;justify-content:space-between;font-size:11px;color:#6d7175;font-weight:500;padding:0 4px;min-width:" +
+          "display:flex;justify-content:space-between;padding:0 4px;min-width:" +
           (cfg.starSize * 5 + 40) +
           "px;margin:0 auto";
-        labels.innerHTML = `<span>${esc(cfg.starLabelLow)}</span><span>${esc(cfg.starLabelHigh)}</span>`;
+        labels.innerHTML = `<span style="${starLowStyle}">${esc(cfg.starLabelLow)}</span><span style="${starHighStyle}">${esc(cfg.starLabelHigh)}</span>`;
         starBlock.appendChild(labels);
 
         const innerCard = wrap.querySelector("div[style*='border:1px solid #E8EEF3']");
@@ -454,12 +544,10 @@
     }
 
     function persistWrittenFields() {
-      if (currentStep() !== "written" && steps.includes("written")) {
-        const authorEl = document.getElementById("jd-flow-author");
-        const commentEl = document.getElementById("jd-flow-comment");
-        if (authorEl) author = authorEl.value.trim();
-        if (commentEl) comment = commentEl.value.trim();
-      }
+      const authorEl = document.getElementById("jd-flow-author");
+      const commentEl = document.getElementById("jd-flow-comment");
+      if (authorEl) author = authorEl.value.trim();
+      if (commentEl) comment = commentEl.value.trim();
     }
 
     function validateCurrentStep() {

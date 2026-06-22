@@ -1,6 +1,6 @@
 export const runtime = "nodejs";
 
-import { authenticate, unauthenticated } from "../shopify.server";
+import { authenticate, unauthenticated, sessionStorage } from "../shopify.server";
 import prisma from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.server";
 import { syncReviewsForProduct } from "../lib/review-sync.server";
@@ -8,10 +8,17 @@ import { syncReviewsForProduct } from "../lib/review-sync.server";
 /** Webhook HMAC can succeed without an inline session; resolve admin for optional GraphQL work. */
 async function resolveAdminForShop(shop, webhookAdmin) {
   if (webhookAdmin) return webhookAdmin;
+
+  const sessions = await sessionStorage.findSessionsByShop(shop);
+  if (!sessions?.length) return null;
+
   try {
     return (await unauthenticated.admin(shop)).admin;
   } catch (err) {
-    console.warn(`[ProductIndex] No admin session for ${shop}, skipping review sync:`, err);
+    console.warn(
+      `[ProductIndex] Admin token refresh failed for ${shop}, skipping review sync:`,
+      err?.message ?? err,
+    );
     return null;
   }
 }

@@ -35,21 +35,26 @@ export const loader = async ({ request }) => {
 };
 
 export const action = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
-  const shop = normalizeShopDomain(session.shop);
-  const fd = await request.formData();
-  const intent = String(fd.get("intent") ?? "");
+  try {
+    const { session } = await authenticate.admin(request);
+    const shop = normalizeShopDomain(session.shop);
+    const fd = await request.formData();
+    const intent = String(fd.get("intent") ?? "");
 
-  if (intent === "dismissAppRating") {
-    await dismissAppRatingBanner(shop);
-    return { ok: true };
-  }
-  if (intent === "markAppRated") {
-    await markAppRatingSubmitted(shop);
-    return { ok: true };
-  }
+    if (intent === "dismissAppRating") {
+      await dismissAppRatingBanner(shop);
+      return { ok: true };
+    }
+    if (intent === "markAppRated") {
+      await markAppRatingSubmitted(shop);
+      return { ok: true };
+    }
 
-  return { ok: false };
+    return { ok: false };
+  } catch (err) {
+    console.error("[performance-overview] action failed:", err);
+    return { ok: false };
+  }
 };
 
 function formatNumber(n) {
