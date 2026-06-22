@@ -28,6 +28,7 @@ import {
 } from "../lib/reviews-management.server.js";
 import { resolveProductFromUrlParams, reviewsManagementShouldRevalidate, normalizeProductLookup } from "../lib/reviews-management.shared.js";
 import { loadManageReviewsData } from "../utils/performance-metrics.server.js";
+import { mergeShopifyEmbedParams } from "../utils/shopify-embed-nav.js";
 import { normalizeShopDomain } from "../utils/shop.js";
 import { IntegrationSettingsPanel } from "../components/settings/integration-settings-panel";
 import { ProductReviewsModal } from "../components/manage-reviews/reviews-workspace.jsx";
@@ -137,17 +138,25 @@ export const action = async ({ request }) => {
   const { session, admin } = await authenticate.admin(request);
   const formData = await request.formData();
 
-  if (formData.has("intent")) {
-    return handleStoreIntegrationAction({
-      request,
-      session,
-      admin,
-      redirectPath: "/app/manage-reviews",
-      withTabParam: true,
-    });
-  }
+  try {
+    if (formData.has("intent")) {
+      return handleStoreIntegrationAction({
+        request,
+        session,
+        admin,
+        redirectPath: "/app/manage-reviews",
+        withTabParam: true,
+      });
+    }
 
-  return handleReviewsManagementAction(request);
+    return await handleReviewsManagementAction(request);
+  } catch (error) {
+    console.error("[manage-reviews] action failed:", error);
+    return {
+      ok: false,
+      error: "Could not save your reply. Please try again in a moment.",
+    };
+  }
 };
 
 export function shouldRevalidate(args) {
@@ -335,6 +344,7 @@ export default function ManageReviews() {
     unlinkedSuccess,
   } = useLoaderData();
   const actionData = useActionData();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(() =>
@@ -397,10 +407,8 @@ export default function ManageReviews() {
     const productParam = searchParams.get("product");
     const pidParam = searchParams.get("pid");
     const modeReply = searchParams.get("mode") === "reply";
-    const tab = searchParams.get("tab");
     const productKey = normalizeProductLookup(productParam);
     const isStoreDeepLink =
-      tab === "store" ||
       productKey === "store review" ||
       productKey === "store reviews" ||
       String(pidParam ?? "").trim().toLowerCase() === "store";
@@ -442,6 +450,7 @@ export default function ManageReviews() {
   }, [products, search, sortBy]);
 
   const inRangeTotal = filteredProducts.length;
+  const replyFormAction = mergeShopifyEmbedParams("/app/manage-reviews", location.search);
 
   const selectTab = (tabId) => {
     setActiveTab(tabId);
@@ -765,6 +774,7 @@ export default function ManageReviews() {
           translation={translation}
           premium={premium}
           aiAvailable={aiAvailable}
+          formAction={replyFormAction}
         />
       ) : null}
     </div>

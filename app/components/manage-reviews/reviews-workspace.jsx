@@ -496,7 +496,7 @@ function StatCard({ title, value, icon, subtitle, trend, isRating }) {
   );
 }
 
-export function ProductReviewsModal({ product, currentShop, modeReply, onClose, translation, premium, aiAvailable }) {
+export function ProductReviewsModal({ product, currentShop, modeReply, onClose, translation, premium, aiAvailable, formAction }) {
   return (
     <div style={modalStyles.overlay} onClick={onClose} role="presentation">
       <div
@@ -514,6 +514,7 @@ export function ProductReviewsModal({ product, currentShop, modeReply, onClose, 
           aiAvailable={aiAvailable}
           onClose={onClose}
           variant="modal"
+          formAction={formAction}
         />
       </div>
     </div>
@@ -529,6 +530,7 @@ function ProductReviewsPanel({
   aiAvailable,
   variant = "inline",
   onClose,
+  formAction,
 }) {
   const scrollAreaRef = useRef(null);
   const bulkFetcher = useFetcher();
@@ -568,7 +570,7 @@ function ProductReviewsPanel({
         _intent: "translateReviews",
         reviewIds: [...selectedIds].join(","),
       },
-      { method: "post" },
+      { method: "post", action: formAction },
     );
   };
 
@@ -686,21 +688,22 @@ function ProductReviewsPanel({
       ) : (
         localReviews.map((rev) => (
           <div key={`${rev.id}-${rev.reply ?? ""}`} data-review-thread={rev.id}>
-            <ReviewDetailCard
-              review={rev}
-              currentShop={currentShop}
-              translation={translation}
-              premium={premium}
-              aiAvailable={aiAvailable}
-              selectable={canTranslate}
-              selected={selectedIds.has(rev.id)}
-              onToggleSelect={() => toggleReview(rev.id)}
-              onTranslated={(updated) => {
-                setLocalReviews((rows) =>
-                  rows.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)),
-                );
-              }}
-            />
+                <ReviewDetailCard
+                  review={rev}
+                  currentShop={currentShop}
+                  translation={translation}
+                  premium={premium}
+                  aiAvailable={aiAvailable}
+                  selectable={canTranslate}
+                  selected={selectedIds.has(rev.id)}
+                  onToggleSelect={() => toggleReview(rev.id)}
+                  onTranslated={(updated) => {
+                    setLocalReviews((rows) =>
+                      rows.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)),
+                    );
+                  }}
+                  formAction={formAction}
+                />
           </div>
         ))
       )}
@@ -794,6 +797,7 @@ function ReviewDetailCard({
   selected = false,
   onToggleSelect,
   onTranslated,
+  formAction,
 }) {
   const storeLabel =
     review.shop && review.shop !== currentShop
@@ -835,7 +839,7 @@ function ReviewDetailCard({
         reviewId: review.id,
         draftReply: replyText,
       },
-      { method: "POST" },
+      { method: "POST", action: formAction },
     );
   };
 
@@ -883,14 +887,14 @@ function ReviewDetailCard({
       return;
     }
     setSaveError(null);
-    fetcher.submit({ reviewId: review.id, reply: replyText }, { method: "POST" });
+    fetcher.submit({ reviewId: review.id, reply: replyText }, { method: "POST", action: formAction });
   };
 
   const handleTranslate = () => {
     setSaveError(null);
     fetcher.submit(
       { _intent: "translateReview", reviewId: review.id },
-      { method: "POST" },
+      { method: "POST", action: formAction },
     );
   };
 

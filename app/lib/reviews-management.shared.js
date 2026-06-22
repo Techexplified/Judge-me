@@ -52,7 +52,7 @@ export function resolveProductFromUrlParams(products, productNameRaw, pidRaw) {
   return null;
 }
 
-/** Skip full loader revalidation after translate/AI intents (client updates locally). */
+/** Skip full loader revalidation after translate/AI intents and inline reply saves. */
 export function reviewsManagementShouldRevalidate({ formData, defaultShouldRevalidate }) {
   const intent = formData?.get("_intent");
   if (
@@ -60,6 +60,9 @@ export function reviewsManagementShouldRevalidate({ formData, defaultShouldReval
     intent === "translateReviews" ||
     intent === "suggestReply"
   ) {
+    return false;
+  }
+  if (formData?.get("reviewId") && formData?.has("reply") && !intent) {
     return false;
   }
   return defaultShouldRevalidate;

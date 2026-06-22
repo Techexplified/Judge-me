@@ -116,7 +116,8 @@ export async function loadReviewsManagementData({ request, session, billing }) {
 }
 
 export async function handleReviewsManagementAction(request) {
-  const { session } = await authenticate.admin(request);
+  try {
+    const { session } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
   const formData = await request.formData();
   const intent = formData.get("_intent");
@@ -308,4 +309,11 @@ export async function handleReviewsManagementAction(request) {
     data: { reply: trimmed, replyDate: new Date() },
   });
   return { ok: true, reviewId, reply: trimmed };
+  } catch (error) {
+    console.error("[reviews-management] action failed:", error);
+    return {
+      ok: false,
+      error: "Could not save your reply. Please try again in a moment.",
+    };
+  }
 }
