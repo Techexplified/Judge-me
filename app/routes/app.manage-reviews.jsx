@@ -189,9 +189,10 @@ function SentimentBadge({ label, tone }) {
   );
 }
 
-function StoreReviewsEmpty({ storeReviewLink }) {
+function StoreReviewsTab({ storeReviewLink, reviewCount = 0, onViewReviews, onReplyToReviews }) {
   const shopify = useAppBridge();
   const [copied, setCopied] = useState(false);
+  const hasReviews = reviewCount > 0;
 
   const copyLink = async () => {
     try {
@@ -229,7 +230,7 @@ function StoreReviewsEmpty({ storeReviewLink }) {
         <StoreIllustration />
       </div>
       <h2 style={{ margin: "0 0 10px", ...type.emptyTitle }}>
-        No store reviews yet
+        {hasReviews ? "Store reviews" : "No store reviews yet"}
       </h2>
       <p
         style={{
@@ -239,9 +240,11 @@ function StoreReviewsEmpty({ storeReviewLink }) {
           ...type.bodyMuted,
         }}
       >
-        Share your store review link with your customers and start building trust.
+        {hasReviews
+          ? `${reviewCount} store review${reviewCount === 1 ? "" : "s"} collected. Share your link to collect more.`
+          : "Share your store review link with your customers and start building trust."}
       </p>
-      <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap", marginBottom: hasReviews ? 20 : 0 }}>
         <button
           type="button"
           onClick={copyLink}
@@ -281,6 +284,47 @@ function StoreReviewsEmpty({ storeReviewLink }) {
           <Send size={15} />
         </button>
       </div>
+      {hasReviews ? (
+        <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={onViewReviews}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "9px 14px",
+              borderRadius: 8,
+              border: `1px solid ${SURFACE_BORDER}`,
+              background: "#fff",
+              color: "#202223",
+              cursor: "pointer",
+              ...type.button,
+            }}
+          >
+            View store reviews
+            <ExternalLink size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={onReplyToReviews}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "9px 14px",
+              borderRadius: 8,
+              border: "none",
+              background: SHOPIFY_GREEN,
+              color: "#fff",
+              cursor: "pointer",
+              ...type.button,
+            }}
+          >
+            Reply to reviews
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -736,31 +780,13 @@ export default function ManageReviews() {
                 </div>
               )}
             </>
-          ) : storeReviews.length > 0 ? (
-            <div style={{ padding: 20 }}>
-              <p style={type.bodyMuted}>
-                {storeReviews.length} store review{storeReviews.length === 1 ? "" : "s"} collected.
-              </p>
-              <button
-                type="button"
-                onClick={() => openStoreModal(false)}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  color: SHOPIFY_GREEN,
-                  background: "none",
-                  border: "none",
-                  padding: 0,
-                  cursor: "pointer",
-                  ...type.button,
-                }}
-              >
-                View store reviews <ExternalLink size={14} />
-              </button>
-            </div>
           ) : (
-            <StoreReviewsEmpty storeReviewLink={storeReviewLink} />
+            <StoreReviewsTab
+              storeReviewLink={storeReviewLink}
+              reviewCount={storeReviews.length}
+              onViewReviews={() => openStoreModal(false)}
+              onReplyToReviews={() => openStoreModal(true)}
+            />
           )}
         </div>
       )}
