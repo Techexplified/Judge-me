@@ -15,6 +15,7 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import { normalizeShopDomain } from "../utils/shop.js";
+import { mergeShopifyEmbedParams } from "../utils/shopify-embed-nav.js";
 import { importReviewsLoader, importReviewsAction } from "../lib/import-reviews.server.js";
 import {
   loadOnsiteWidgetMetrics,
@@ -144,7 +145,15 @@ export const action = async ({ request }) => {
   }
 
   if (intent === "preview" || intent === "import") {
-    return importReviewsAction({ request, ...auth });
+    try {
+      return await importReviewsAction({ request, formData, ...auth });
+    } catch (err) {
+      console.error("[collect-reviews] import action failed:", err);
+      return data(
+        { error: "Import failed. Please check your CSV and try again." },
+        { status: 500 },
+      );
+    }
   }
 
   return data({ error: "Unknown action." }, { status: 400 });
@@ -194,6 +203,7 @@ export default function CollectReviewsPage() {
     isTabOnlySearchChange(location, navigation.location);
   const isPageLoading = navigation.state === "loading" && !isTabSwitch;
   const importDataLoaded = loaderData?.importDataLoaded === true || Boolean(importFetcher.data);
+  const importDataHref = mergeShopifyEmbedParams("/app/collect-reviews?tab=import", location.search);
   const [draftTiming, setDraftTiming] = useState(null);
   const timing = draftTiming ?? widget.timing;
   const isSaving =
@@ -215,9 +225,9 @@ export default function CollectReviewsPage() {
       importFetcher.state === "idle" &&
       !importFetcher.data
     ) {
-      importFetcher.load("/app/collect-reviews?tab=import");
+      importFetcher.load(importDataHref);
     }
-  }, [activeTab, importDataLoaded, importFetcher]);
+  }, [activeTab, importDataHref, importDataLoaded, importFetcher]);
 
   const selectTab = useCallback(
     (tabId) => {

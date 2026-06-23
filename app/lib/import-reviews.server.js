@@ -69,7 +69,7 @@ export async function importReviewsLoader({ request, session, admin, billing }) 
   };
 }
 
-export async function importReviewsAction({ request, session, admin, billing }) {
+export async function importReviewsAction({ request, session, admin, billing, formData: formDataIn }) {
   const shop = normalizeShopDomain(session.shop);
   const { getShopPlanStatus, requireFeatureUsage, checkFeatureAccess, consumeFeatureUsage } =
     await import("../lib/billing.server.js");
@@ -86,7 +86,7 @@ export async function importReviewsAction({ request, session, admin, billing }) 
   );
   const { getResolvedOpenRouterKey } = await import("../lib/openrouter.server.js");
 
-  const formData = await request.formData();
+  const formData = formDataIn ?? (await request.formData());
   const intent = formData.get("_intent");
   const payloadRaw = formData.get("payload");
 
@@ -145,7 +145,7 @@ export async function importReviewsAction({ request, session, admin, billing }) 
   }
 
   if (intent === "import") {
-    const readyCount = validated.filter((r) => r.ready).length;
+    const readyCount = validated.filter((r) => r.importable && r.productId).length;
     const importCheck = await checkFeatureAccess(planStatus, "review_imports", readyCount);
     if (!importCheck.ok) {
       return data({ error: importCheck.message }, { status: 403 });
