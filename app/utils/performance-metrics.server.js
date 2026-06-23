@@ -266,7 +266,7 @@ export async function loadManageReviewsData({ request, session, admin }) {
     if (!group.productId && review.productId) group.productId = review.productId;
     if (!group.productImage && review.productImage) group.productImage = review.productImage;
     group.reviews.push(review);
-    group.totalRating += review.rating;
+    group.totalRating += Number(review.rating) || 0;
   }
 
   const missingIds = [
@@ -340,7 +340,7 @@ export async function loadManageReviewsData({ request, session, admin }) {
     const inRange = rangeStart
       ? sorted.filter((r) => new Date(r.createdAt) >= rangeStart)
       : sorted;
-    const avg = p.totalRating / p.reviews.length;
+    const avg = p.reviews.length ? p.totalRating / p.reviews.length : 0;
     const sentiment = sentimentFromAvg(avg);
     const latest = sorted[0];
     const handle = p.handle || slugifyHandle(p.productName);

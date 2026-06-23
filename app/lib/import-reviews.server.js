@@ -1,7 +1,6 @@
 import { data } from "react-router";
 import db from "../db.server.js";
 import { normalizeShopDomain } from "../utils/shop.js";
-import { embedRedirect } from "../utils/shopify-embed-nav.server.js";
 import { hasProAccess, serializePlanStatus } from "../lib/billing.server.js";
 import {
   syncProductIndex,
@@ -214,10 +213,13 @@ export async function importReviewsAction({ request, session, admin, billing }) 
       await emitReviewCollectedFlowTrigger(shop, r, { admin });
     }
 
-    throw embedRedirect(
-      `/app/manage-reviews?imported=${imported}&skipped=${Math.max(totalSkipped, batchSkipped)}`,
-      request,
-    );
+    const skipped = Math.max(totalSkipped, batchSkipped);
+    return data({
+      ok: true,
+      imported,
+      skipped,
+      redirectTo: `/app/manage-reviews?imported=${imported}&skipped=${skipped}`,
+    });
   }
 
   return data({ error: "Unknown action." }, { status: 400 });

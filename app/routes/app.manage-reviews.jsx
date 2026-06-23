@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types, jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useActionData,
   useLoaderData,
@@ -15,6 +15,7 @@ import {
   Send,
   Star,
   Store,
+  CheckCircle2,
 } from "lucide-react";
 import { authenticate } from "../shopify.server";
 import {
@@ -36,6 +37,7 @@ import {
   PAGE_BG,
   SHOPIFY_GREEN,
   SURFACE_BORDER,
+  Banner,
 } from "../components/admin-ui";
 
 const FONT =
@@ -115,23 +117,29 @@ export const loader = async ({ request }) => {
   const { session, admin, billing } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
   const url = new URL(request.url);
-  const [tableData, modalData, { group }] = await Promise.all([
-    loadManageReviewsData({ request, session, admin }),
-    loadReviewsManagementData({ request, session, billing }),
-    loadStoreIntegrationGroup(shop),
-  ]);
 
-  return {
-    ...tableData,
-    storeReviews: modalData.storeReviews,
-    reviewProducts: modalData.products,
-    currentShop: modalData.currentShop,
-    translation: modalData.translation,
-    premium: modalData.premium,
-    aiAvailable: modalData.aiAvailable,
-    group,
-    ...parseStoreIntegrationFlash(url),
-  };
+  try {
+    const [tableData, modalData, { group }] = await Promise.all([
+      loadManageReviewsData({ request, session, admin }),
+      loadReviewsManagementData({ request, session, billing }),
+      loadStoreIntegrationGroup(shop),
+    ]);
+
+    return {
+      ...tableData,
+      storeReviews: modalData.storeReviews ?? [],
+      reviewProducts: modalData.products ?? [],
+      currentShop: modalData.currentShop,
+      translation: modalData.translation,
+      premium: modalData.premium,
+      aiAvailable: modalData.aiAvailable,
+      group,
+      ...parseStoreIntegrationFlash(url),
+    };
+  } catch (error) {
+    console.error("[manage-reviews] loader failed:", error);
+    throw error;
+  }
 };
 
 export const action = async ({ request }) => {
@@ -399,6 +407,28 @@ export default function ManageReviews() {
   const [sortBy, setSortBy] = useState("newest");
   const [modalProduct, setModalProduct] = useState(null);
   const [modalReplyMode, setModalReplyMode] = useState(false);
+  const [importBanner, setImportBanner] = useState(null);
+  const importProcessed = useRef(false);
+
+  useEffect(() => {
+    if (importProcessed.current) return;
+    const imported = searchParams.get("imported");
+    if (imported == null) return;
+    importProcessed.current = true;
+    setImportBanner({
+      imported: Number(imported),
+      skipped: Number(searchParams.get("skipped") ?? 0),
+    });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("imported");
+        next.delete("skipped");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (MANAGE_REVIEWS_TABS.has(tabFromUrl)) {
@@ -474,7 +504,7 @@ export default function ManageReviews() {
 
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
-    let list = [...products];
+    let list = [...(products ?? [])];
     if (q) {
       list = list.filter(
         (p) =>
@@ -521,6 +551,18 @@ export default function ManageReviews() {
   return (
     <div style={{ ...pageStyle, background: PAGE_BG, fontFamily: FONT }}>
       <h1 style={{ margin: "0 0 12px", ...type.pageTitle }}>Manage reviews</h1>
+
+      {importBanner ? (
+        <div style={{ marginBottom: 16 }}>
+          <Banner tone="success" icon={<CheckCircle2 size={18} />}>
+            Successfully imported {importBanner.imported.toLocaleString()} review
+            {importBanner.imported === 1 ? "" : "s"}.
+            {importBanner.skipped > 0
+              ? ` ${importBanner.skipped.toLocaleString()} duplicate or skipped row${importBanner.skipped === 1 ? "" : "s"}.`
+              : ""}
+          </Banner>
+        </div>
+      ) : null}
 
       <div style={{ display: "flex", gap: 24, borderBottom: `1px solid ${SURFACE_BORDER}`, marginBottom: 20 }}>
         {[
@@ -784,7 +826,7 @@ export default function ManageReviews() {
           ) : (
             <StoreReviewsTab
               storeReviewLink={storeReviewLink}
-              reviewCount={storeReviews.length}
+              reviewCount={(storeReviews ?? []).length}
               onViewReviews={() => openStoreModal(false)}
               onReplyToReviews={() => openStoreModal(true)}
             />

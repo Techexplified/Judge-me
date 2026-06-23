@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types, react-hooks/set-state-in-effect */
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useFetcher, useLocation } from "react-router";
+import { useEmbedNavigate } from "../../hooks/use-embed-navigate.js";
 import Papa from "papaparse";
 import { ChevronLeft } from "lucide-react";
 import {
@@ -132,6 +133,7 @@ export function ImportReviewsWizard({
   const importsRemaining = planStatus?.featureUsage?.review_imports?.remaining;
   const location = useLocation();
   const fetcher = useFetcher();
+  const embedNavigate = useEmbedNavigate();
 
   const [step, setStep] = useState(1);
   const [wizard, dispatch] = useReducer(
@@ -216,10 +218,14 @@ export function ImportReviewsWizard({
   }, [step]);
 
   useEffect(() => {
-    if (fetcher.data?.ok) {
+    if (fetcher.data?.redirectTo) {
+      embedNavigate(fetcher.data.redirectTo);
+      return;
+    }
+    if (fetcher.data?.ok && fetcher.data?.previewRows) {
       setPreviewResult(fetcher.data);
     }
-  }, [fetcher.data]);
+  }, [fetcher.data, embedNavigate]);
 
   useEffect(() => {
     const enteredStep4 = step === 4 && prevStepRef.current !== 4;
