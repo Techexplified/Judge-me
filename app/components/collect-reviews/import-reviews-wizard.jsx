@@ -143,10 +143,14 @@ export function ImportReviewsWizard({
   );
   const [fileError, setFileError] = useState(null);
   const [previewResult, setPreviewResult] = useState(null);
+  const [importResult, setImportResult] = useState(null);
   const [templateDownloaded, setTemplateDownloaded] = useState(false);
 
   const isSubmitting = fetcher.state !== "idle";
   const actionError = fetcher.data?.error ?? null;
+  const isImporting =
+    fetcher.state === "submitting" &&
+    fetcher.formData?.get("_intent") === "import";
 
   const goToStep = useCallback((n) => {
     const next = n >= 1 && n <= 4 ? n : 1;
@@ -218,12 +222,19 @@ export function ImportReviewsWizard({
   }, [step]);
 
   useEffect(() => {
-    if (fetcher.data?.redirectTo) {
-      embedNavigate(fetcher.data.redirectTo);
+    if (!fetcher.data) return;
+
+    if (fetcher.data.ok && fetcher.data.previewRows) {
+      setPreviewResult(fetcher.data);
       return;
     }
-    if (fetcher.data?.ok && fetcher.data?.previewRows) {
-      setPreviewResult(fetcher.data);
+
+    if (fetcher.data.ok && typeof fetcher.data.imported === "number") {
+      if (fetcher.data.imported > 0 && fetcher.data.redirectTo) {
+        embedNavigate(fetcher.data.redirectTo);
+        return;
+      }
+      setImportResult(fetcher.data);
     }
   }, [fetcher.data, embedNavigate]);
 
@@ -244,6 +255,7 @@ export function ImportReviewsWizard({
   }, [step]);
 
   const handleImport = () => {
+    setImportResult(null);
     const payload = JSON.stringify({
       source: wizard.source,
       mapping: wizard.mapping,
@@ -252,6 +264,40 @@ export function ImportReviewsWizard({
     });
     fetcher.submit({ _intent: "import", payload }, { method: "post" });
   };
+
+  const buildImportMessage = (res) => {
+    if (!res) return null;
+    const { imported = 0, skipped = 0, summary } = res;
+    const dups = summary?.duplicate ?? 0;
+    const notFound = summary?.productNotFound ?? 0;
+    const invalid = summary?.invalid ?? 0;
+
+    if (imported === 0) {
+      const reasons = [];
+      if (dups > 0) reasons.push(`${dups} duplicate row${dups === 1 ? "" : "s"}`);
+      if (notFound > 0)
+        reasons.push(`${notFound} row${notFound === 1 ? "" : "s"} with no matching product`);
+      if (invalid > 0)
+        reasons.push(`${invalid} row${invalid === 1 ? "" : "s"} missing required fields`);
+      const detail = reasons.length ? ` — ${reasons.join(", ")}.` : ".";
+      return {
+        tone: "warning",
+        text: `No new reviews were imported${detail}`,
+      };
+    }
+
+    const extras = [];
+    if (skipped > 0) extras.push(`${skipped} skipped`);
+    if (dups > 0 && !extras.includes(`${dups} duplicates`))
+      extras.push(`${dups} duplicate${dups === 1 ? "" : "s"}`);
+    const suffix = extras.length ? ` (${extras.join(", ")})` : "";
+    return {
+      tone: "success",
+      text: `Imported ${imported.toLocaleString()} review${imported === 1 ? "" : "s"}${suffix}.`,
+    };
+  };
+
+  const importBanner = buildImportMessage(importResult);
 
   const targetOptions = TARGET_FIELDS;
 
@@ -504,12 +550,21 @@ export function ImportReviewsWizard({
               <StepBadge step={4} />
             </div>
 
-            {fetcher.state !== "idle" && !previewResult ? (
+            {isImporting ? (
+              <div style={{ padding: 32, textAlign: "center", fontWeight: 600, color: "#6d7175" }}>
+                Importing your reviews...
+              </div>
+            ) : fetcher.state !== "idle" && !previewResult ? (
               <div style={{ padding: 32, textAlign: "center", fontWeight: 600, color: "#6d7175" }}>
                 Validating your import...
               </div>
             ) : (
               <>
+                {importBanner ? (
+                  <div style={{ marginBottom: 16 }}>
+                    <Banner tone={importBanner.tone}>{importBanner.text}</Banner>
+                  </div>
+                ) : null}
                 <PreviewTable rows={previewResult?.previewRows ?? []} />
                 <div style={{ marginTop: 20 }}>
                   <PreviewSummary summary={previewResult?.summary} settings={wizard.settings} />

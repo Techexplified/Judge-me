@@ -305,10 +305,7 @@ export default function CollectReviewsPage() {
               <CollectReviewsLoading />
             ) : (
               <Suspense fallback={<CollectReviewsLoading />}>
-                <ImportReviewsWizard
-                  key={searchParams.get("source") ?? "import"}
-                  {...importWizardProps}
-                />
+                <ImportReviewsWizard {...importWizardProps} />
               </Suspense>
             )
           ) : null}

@@ -214,11 +214,28 @@ export async function importReviewsAction({ request, session, admin, billing, fo
     }
 
     const skipped = Math.max(totalSkipped, batchSkipped);
+    const duplicates = summary.duplicate ?? 0;
+    const invalid = summary.invalid ?? 0;
+    const productNotFound = summary.productNotFound ?? 0;
+
     return data({
       ok: true,
       imported,
       skipped,
-      redirectTo: `/app/manage-reviews?imported=${imported}&skipped=${skipped}`,
+      summary: {
+        total: summary.total,
+        ready: summary.ready,
+        duplicate: duplicates,
+        invalid,
+        productNotFound,
+        lowRating: summary.lowRating ?? 0,
+      },
+      // Only navigate away on real success so the user can see duplicate / error
+      // breakdowns inline when nothing was actually imported.
+      redirectTo:
+        imported > 0
+          ? `/app/manage-reviews?imported=${imported}&skipped=${skipped}`
+          : null,
     });
   }
 
