@@ -50,6 +50,12 @@ export default function WidgetsIndexRoute() {
         return;
       }
 
+      if (widget.id === "customers-love-page" && !data.premium) {
+        shopify?.toast?.show?.("Customer's Love Page requires a Pro plan.", { isError: true });
+        embedNavigate("/app/settings");
+        return;
+      }
+
       const url = data.themeEditorUrls?.[widget.id];
       if (!url) {
         shopify?.toast?.show?.("Could not build theme editor link.", { isError: true });

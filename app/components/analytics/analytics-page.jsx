@@ -31,6 +31,8 @@ import {
 import { mergeShopifyEmbedParams } from "../../utils/shopify-embed-nav.js";
 import { PAGE_BG, SHOPIFY_GREEN, SURFACE_BG, SURFACE_BORDER } from "../admin-ui";
 import { CHART_COLORS } from "./analytics-styles.js";
+import { ProSectionBlur } from "./pro-section-blur.jsx";
+import { PremiumTrialBadge } from "../premium-trial-banner";
 
 const GREEN = SHOPIFY_GREEN;
 const GREEN_LIGHT = "#ecfdf5";
@@ -507,6 +509,7 @@ export function AnalyticsPageContent({
   rangeKey,
   metricsRangeLabel,
   hasPremium,
+  trialStatus,
   exportAccess,
   onRangeChange,
 }) {
@@ -576,91 +579,96 @@ export function AnalyticsPageContent({
     <div style={{ background: PAGE_BG, minHeight: "100vh", padding: "20px 24px 32px", boxSizing: "border-box" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap", marginBottom: 24 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 900, color: "#202223" }}>Analytics</h1>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+            <h1 style={{ margin: 0, fontSize: 30, fontWeight: 900, color: "#202223" }}>Analytics</h1>
+            {!hasPremium ? <PremiumTrialBadge trialStatus={trialStatus} /> : null}
+          </div>
           <p style={{ margin: "8px 0 0", fontSize: 13, fontWeight: 600, color: "#6d7175", maxWidth: 480 }}>
             Track review performance, trends, and conversion impact across your store.
           </p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <button
-            type="button"
-            onClick={() => handleExport("csv")}
-            disabled={!!exporting}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "10px 14px",
-              borderRadius: 8,
-              border: `1px solid ${SURFACE_BORDER}`,
-              background: "#fff",
-              fontSize: 13,
-              fontWeight: 700,
-              color: "#202223",
-              cursor: exporting ? "wait" : "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            <Download size={16} />
-            {exporting === "csv" ? "Exporting…" : "Export CSV"}
-          </button>
-          <button
-            type="button"
-            onClick={() => handleExport("pdf")}
-            disabled={!!exporting}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "10px 14px",
-              borderRadius: 8,
-              border: `1px solid ${SURFACE_BORDER}`,
-              background: "#fff",
-              fontSize: 13,
-              fontWeight: 700,
-              color: "#202223",
-              cursor: exporting ? "wait" : "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            <FileText size={16} />
-            {exporting === "pdf" ? "Generating…" : "Export PDF"}
-          </button>
-          <div style={{ position: "relative" }}>
-            <CalendarDays
-              size={14}
-              color="#6d7175"
-              style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
-            />
-            <select
-              aria-label="Date range"
-              value={rangeKey}
-              onChange={(e) => onRangeChange(e.target.value)}
+        <ProSectionBlur locked={!hasPremium} label="Export & time filter">
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => handleExport("csv")}
+              disabled={!!exporting}
               style={{
-                appearance: "none",
-                padding: "10px 36px 10px 36px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "10px 14px",
                 borderRadius: 8,
                 border: `1px solid ${SURFACE_BORDER}`,
                 background: "#fff",
                 fontSize: 13,
                 fontWeight: 700,
                 color: "#202223",
-                cursor: "pointer",
+                cursor: exporting ? "wait" : "pointer",
                 fontFamily: "inherit",
               }}
             >
-              <option value="7">Last 7 days</option>
-              <option value="30">Last 30 days</option>
-              <option value="90">Last 90 days</option>
-              <option value="all">All time</option>
-            </select>
-            <ChevronDown
-              size={16}
-              color="#6d7175"
-              style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
-            />
+              <Download size={16} />
+              {exporting === "csv" ? "Exporting…" : "Export CSV"}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleExport("pdf")}
+              disabled={!!exporting}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "10px 14px",
+                borderRadius: 8,
+                border: `1px solid ${SURFACE_BORDER}`,
+                background: "#fff",
+                fontSize: 13,
+                fontWeight: 700,
+                color: "#202223",
+                cursor: exporting ? "wait" : "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              <FileText size={16} />
+              {exporting === "pdf" ? "Generating…" : "Export PDF"}
+            </button>
+            <div style={{ position: "relative" }}>
+              <CalendarDays
+                size={14}
+                color="#6d7175"
+                style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
+              />
+              <select
+                aria-label="Date range"
+                value={rangeKey}
+                onChange={(e) => onRangeChange(e.target.value)}
+                style={{
+                  appearance: "none",
+                  padding: "10px 36px 10px 36px",
+                  borderRadius: 8,
+                  border: `1px solid ${SURFACE_BORDER}`,
+                  background: "#fff",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "#202223",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="all">All time</option>
+              </select>
+              <ChevronDown
+                size={16}
+                color="#6d7175"
+                style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
+              />
+            </div>
           </div>
-        </div>
+        </ProSectionBlur>
       </div>
 
       {exportError ? (
@@ -726,12 +734,14 @@ export function AnalyticsPageContent({
         />
       </div>
 
-      <CardShell
-        title="Reviews over time"
-        subtitle="Monthly review volume across all sources"
-      >
-        <ReviewsOverTimeChart data={monthlyChart} />
-      </CardShell>
+      <ProSectionBlur locked={!hasPremium} label="Reviews over time">
+        <CardShell
+          title="Reviews over time"
+          subtitle="Monthly review volume across all sources"
+        >
+          <ReviewsOverTimeChart data={monthlyChart} />
+        </CardShell>
+      </ProSectionBlur>
 
       <div
         style={{
@@ -741,31 +751,47 @@ export function AnalyticsPageContent({
           marginTop: 20,
         }}
       >
-        <CardShell
-          title="Rating distribution"
-          subtitle="Breakdown of 1–5 star ratings"
-          badge={
-            <span
-              style={{
-                padding: "4px 10px",
-                borderRadius: 999,
-                background: "#f6f6f7",
-                fontSize: 11,
-                fontWeight: 800,
-                color: "#6d7175",
-              }}
-            >
-              {formatNumber(totalReviews)} total
-            </span>
-          }
-        >
-          <RatingDistribution
-            distribution={ratingDistribution}
-            totalReviews={totalReviews}
-            avgRating={avgRating}
-            positivePct={positivePct}
-          />
-        </CardShell>
+        <ProSectionBlur locked={!hasPremium} label="Rating distribution">
+          <CardShell
+            title="Rating distribution"
+            subtitle="Breakdown of 1–5 star ratings"
+            badge={
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                <span
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 999,
+                    background: "#f6f6f7",
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: "#6d7175",
+                  }}
+                >
+                  {formatNumber(totalReviews)} total
+                </span>
+                {exportAccess?.remaining != null && hasPremium ? (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "#6d7175",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {exportAccess.remaining} PDF/CSV export{exportAccess.remaining === 1 ? "" : "s"} remaining
+                  </span>
+                ) : null}
+              </div>
+            }
+          >
+            <RatingDistribution
+              distribution={ratingDistribution}
+              totalReviews={totalReviews}
+              avgRating={avgRating}
+              positivePct={positivePct}
+            />
+          </CardShell>
+        </ProSectionBlur>
 
         <CardShell title="Source breakdown" subtitle="Where reviews came from">
           <SourceBreakdownChart breakdown={sourceBreakdown} totalReviews={totalReviews} />
@@ -773,19 +799,18 @@ export function AnalyticsPageContent({
       </div>
 
       <div style={{ marginTop: 20 }}>
-        <CardShell
-          title="Top reviewed products"
-          subtitle="Products ranked by total review count"
-        >
-          <TopProductsTable products={topProducts} reviewsHref={reviewsHref} />
-        </CardShell>
+        <ProSectionBlur locked={!hasPremium} label="Top reviewed products">
+          <CardShell
+            title="Top reviewed products"
+            subtitle="Products ranked by total review count"
+          >
+            <TopProductsTable products={topProducts} reviewsHref={reviewsHref} />
+          </CardShell>
+        </ProSectionBlur>
       </div>
 
       <p style={{ margin: "16px 0 0", fontSize: 12, fontWeight: 600, color: "#6d7175" }}>
         Showing data for {metricsRangeLabel.toLowerCase()}.
-        {exportAccess?.remaining != null && hasPremium
-          ? ` · ${exportAccess.remaining} PDF/CSV export${exportAccess.remaining === 1 ? "" : "s"} remaining this month`
-          : null}
       </p>
     </div>
   );

@@ -57,9 +57,9 @@ export const WIDGET_CATALOG = [
     description: "A dedicated page for all reviews, photos, and videos.",
     previewImage: customerLovePageImg,
     badge: {
-      label: "Popular",
-      bg: "#fdf2f8",
-      fg: "#be185d",
+      label: "Premium",
+      bg: "#fff7ed",
+      fg: "#c2410c",
     },
   },
 ];

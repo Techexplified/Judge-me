@@ -15,7 +15,6 @@ export const PRO_FEATURE_LIMITS = {
   urgent_reply_prioritization: 50,
   ai_widget_customization: 20,
   auto_translate: PRO_TRANSLATIONS_PER_MONTH,
-  live_graphs_charts: 20,
 };
 
 /** Free monthly quotas (null = not available on Free). */
@@ -32,7 +31,6 @@ export const PRO_ONLY_FEATURES = new Set([
   "export_pdf_csv",
   "ai_review_replies",
   "urgent_reply_prioritization",
-  "live_graphs_charts",
 ]);
 
 export const FEATURE_LABELS = {
@@ -44,7 +42,6 @@ export const FEATURE_LABELS = {
   urgent_reply_prioritization: "Urgent Reply Prioritisation",
   ai_widget_customization: "Widget publish",
   auto_translate: "Auto-Translate",
-  live_graphs_charts: "Live Graphs & Charts",
 };
 
 /** Metered keys tracked in FeatureUsage table. */
