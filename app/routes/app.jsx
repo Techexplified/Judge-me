@@ -140,7 +140,23 @@ export const headers = (headersArgs) => {
   return boundary.headers(headersArgs);
 };
 
-export function shouldRevalidate({ currentUrl, nextUrl, formMethod, defaultShouldRevalidate }) {
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+  formMethod,
+  formData,
+  defaultShouldRevalidate,
+}) {
+  // The import wizard's "preview" / "import" run through a fetcher. Re-running
+  // this parent loader (authenticate.admin + onboarding check) on those submits
+  // can throw a re-auth/onboarding redirect that reloads the whole embedded app
+  // and dumps the merchant back at step 1. Nothing here changes for a preview or
+  // import, so skip it. (A successful import navigates away on its own.)
+  if (formData) {
+    const intent = formData.get("_intent") ?? formData.get("intent");
+    if (intent === "preview" || intent === "import") return false;
+  }
+
   const leavingOnboarding =
     currentUrl.pathname.startsWith("/app/onboarding") &&
     !nextUrl.pathname.startsWith("/app/onboarding");

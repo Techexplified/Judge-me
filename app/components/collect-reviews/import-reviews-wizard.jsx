@@ -122,6 +122,37 @@ function parseCsvFile(file) {
   });
 }
 
+// Explains why a preview produced 0 importable rows, so merchants see the real
+// reason (duplicates / invalid / unmatched) instead of a generic error.
+function buildNotReadyMessage(summary) {
+  if (!summary || summary.ready > 0) return null;
+
+  const total = summary.total ?? 0;
+  const duplicate = summary.duplicate ?? 0;
+  const invalid = summary.invalid ?? 0;
+  const productNotFound = summary.productNotFound ?? 0;
+
+  // Re-importing the exact same file: everything is a known duplicate.
+  if (duplicate > 0 && invalid === 0 && productNotFound === 0) {
+    return `These ${duplicate === total ? "" : `${duplicate} `}review${
+      duplicate === 1 ? "" : "s"
+    } already exist in your store, so there's nothing new to import. To import them again, go back and turn off "Skip duplicate reviews".`;
+  }
+
+  const reasons = [];
+  if (duplicate > 0)
+    reasons.push(`${duplicate} already exist${duplicate === 1 ? "s" : ""} in your store (duplicate)`);
+  if (invalid > 0)
+    reasons.push(`${invalid} ${invalid === 1 ? "is" : "are"} missing a review text or star rating`);
+  if (productNotFound > 0)
+    reasons.push(
+      `${productNotFound} could not be matched to a product (check the product handle / ID / SKU column)`,
+    );
+
+  const detail = reasons.length ? ` — ${reasons.join(", ")}.` : ".";
+  return `None of your ${total} row${total === 1 ? "" : "s"} are ready to import${detail}`;
+}
+
 export function ImportReviewsWizard({
   hasPremium,
   planStatus,
@@ -300,6 +331,8 @@ export function ImportReviewsWizard({
   };
 
   const importBanner = buildImportMessage(importResult);
+
+  const notReadyMessage = buildNotReadyMessage(previewResult?.summary);
 
   const targetOptions = TARGET_FIELDS;
 
@@ -570,12 +603,9 @@ export function ImportReviewsWizard({
                   <PreviewSummary summary={previewResult?.summary} settings={wizard.settings} />
                   <PreviewStats summary={previewResult?.summary} />
                 </div>
-                {previewResult?.summary?.ready === 0 ? (
+                {notReadyMessage ? (
                   <div style={{ marginTop: 16 }}>
-                    <Banner tone="critical">
-                      No rows are ready to import. Check product handles/IDs match your store catalog,
-                      and verify required fields are mapped correctly.
-                    </Banner>
+                    <Banner tone="critical">{notReadyMessage}</Banner>
                   </div>
                 ) : null}
               </>

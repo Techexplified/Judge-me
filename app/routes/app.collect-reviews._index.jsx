@@ -159,7 +159,25 @@ export const action = async ({ request }) => {
   return data({ error: "Unknown action." }, { status: 400 });
 };
 
-export function shouldRevalidate({ currentUrl, nextUrl, formMethod, defaultShouldRevalidate }) {
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+  formMethod,
+  formData,
+  defaultShouldRevalidate,
+}) {
+  // The import wizard submits "preview" and "import" through a fetcher that
+  // returns its own data. Revalidating this route's loader on those submits
+  // re-runs authenticate.admin + the heavy import loader (and the import-data
+  // fetcher) on every click, which in the embedded admin churns/remounts the
+  // wizard and throws the merchant back to step 1. The preview/import results
+  // don't depend on this loader, and a successful import navigates away on its
+  // own, so skip revalidation for those intents.
+  if (formData) {
+    const intent = formData.get("_intent") ?? formData.get("intent");
+    if (intent === "preview" || intent === "import") return false;
+  }
+
   if (formMethod && formMethod.toUpperCase() !== "GET") return true;
 
   if (
