@@ -277,7 +277,6 @@ function WidgetCard({ widget, onAddToTheme, installedAt }) {
 export function WidgetsPage({
   onAddToTheme,
   onEnableCore,
-  themeName,
   widgetSettings,
   reviewCounts,
 }) {
@@ -303,11 +302,6 @@ export function WidgetsPage({
         >
           <h1 style={{ margin: 0, ...type.pageTitle }}>Widgets</h1>
           <span style={type.countBadge}>{WIDGET_CATALOG.length} available</span>
-          {themeName ? (
-            <span style={{ ...type.countBadge, background: "#ecfdf5", color: "#047857" }}>
-              {themeName}
-            </span>
-          ) : null}
         </div>
         <p style={{ margin: "8px 0 0", ...type.subtitle }}>
           Add one or more widgets to your theme. Each installs independently on its own page or

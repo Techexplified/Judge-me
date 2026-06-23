@@ -19,6 +19,40 @@ const corsHeaders = {
 
 const PUBLISHED_STATUSES = ["PUBLISHED", "APPROVED"];
 
+/** Non-blocking post-create work (translation + Flow). Never blocks the submit response. */
+async function runPostReviewCreateTasks(shopNorm, created, reviewData) {
+  try {
+    const { data: translatedData } = await maybeAutoTranslateReviewData(shopNorm, reviewData);
+    const translatedComment = translatedData?.comment ?? reviewData.comment;
+    const translatedTitle = translatedData?.title ?? reviewData.title;
+    const hasTranslation =
+      translatedData?.originalComment ||
+      translatedComment !== reviewData.comment ||
+      (translatedTitle && translatedTitle !== reviewData.title);
+
+    if (hasTranslation) {
+      await db.review.update({
+        where: { id: created.id },
+        data: {
+          originalComment: translatedData.originalComment ?? reviewData.comment,
+          originalTitle: translatedData.originalTitle ?? reviewData.title ?? null,
+          comment: translatedComment,
+          title: translatedTitle ?? reviewData.title ?? null,
+          translatedLang: translatedData.translatedLang ?? null,
+        },
+      });
+    }
+  } catch (err) {
+    console.error("[api.public.reviews] post-create translate failed (non-fatal):", err);
+  }
+
+  try {
+    await emitReviewCollectedFlowTrigger(shopNorm, created);
+  } catch (err) {
+    console.error("[api.public.reviews] post-create flow trigger failed (non-fatal):", err);
+  }
+}
+
 /** Expand product IDs for Prisma `in` queries. */
 function expandProductIds(ids) {
   const set = new Set();
@@ -300,9 +334,6 @@ export async function action({ request }) {
       status: "PUBLISHED",
     };
 
-    const { data: translatedData } = await maybeAutoTranslateReviewData(shopNorm, reviewData);
-    reviewData = translatedData;
-
     const created = await db.review.create({
       data: reviewData,
     });
@@ -312,7 +343,8 @@ export async function action({ request }) {
       await saveReviewMedia(created.id, mediaFiles);
     }
 
-    await emitReviewCollectedFlowTrigger(shopNorm, created);
+    // Return immediately — auto-translate and Flow triggers run after the response.
+    void runPostReviewCreateTasks(shopNorm, created, reviewData);
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: {

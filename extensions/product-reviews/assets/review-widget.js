@@ -542,6 +542,7 @@
         els.back.style.display = "none";
         els.next.textContent = "Close";
         els.next.style.display = "inline-flex";
+        els.next.disabled = false;
         els.skip.style.display = "none";
         return;
       }
@@ -634,6 +635,7 @@
           mediaFiles: [...photoFiles, ...videoFiles],
         });
         complete = true;
+        els.next.disabled = false;
         renderStep();
         syncNav();
         els.msg.textContent = "";
@@ -822,18 +824,26 @@
         .jd-close-modal {
           position: absolute; top: 14px; right: 14px; border: none; background: none;
           font-size: 24px; cursor: pointer; color: #94a3b8; line-height: 1; padding: 4px;
+          transform: none; animation: none;
         }
-        .jd-close-modal:hover { color: #64748b; }
+        .jd-close-modal:hover { color: #64748b; transform: none; animation: none; }
         .jd-flow-progress { font-size: 12px; font-weight: 600; color: #6d7175; margin-bottom: 16px; }
         .jd-step-content { min-height: 120px; }
         .jd-flow-nav { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 20px; }
         .jd-flow-back, .jd-flow-skip, .jd-flow-next {
           padding: 12px 18px; border-radius: ${inputRadius}px; font-weight: 700; font-size: 14px;
           cursor: pointer; font-family: inherit; border: none;
+          display: inline-flex; align-items: center; justify-content: center;
+          transform: none; animation: none;
+          transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+        }
+        .jd-flow-back:hover, .jd-flow-skip:hover, .jd-flow-next:hover,
+        .jd-flow-back:focus-visible, .jd-flow-skip:focus-visible, .jd-flow-next:focus-visible {
+          transform: none; animation: none;
         }
         .jd-flow-back { background: #fff; border: 1px solid #e2e8f0 !important; color: ${cfg.textColor}; margin-right: auto; }
         .jd-flow-skip { background: transparent; color: #6d7175; border: none !important; }
-        .jd-flow-next { background: ${cfg.buttonColor}; color: #fff; flex: 1; max-width: 100%; justify-content: center; }
+        .jd-flow-next { background: ${cfg.buttonColor}; color: #fff; flex: 1; max-width: 100%; }
         .jd-flow-next:disabled { opacity: 0.7; cursor: wait; }
         .jd-flow-msg { text-align: center; font-size: 13px; font-weight: 600; margin: 10px 0 0; min-height: 18px; }
         .jd-title { font-size: ${pl.titleSize}px; font-weight: 800; margin: 0 0 6px; color: ${cfg.primaryColor}; line-height: 1.2; }
