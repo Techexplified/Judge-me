@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { SHOPIFY_GREEN } from "../admin-ui";
 
 export const ONBOARDING_PAGE_BG = "#f1f1f1";
-export const ONBOARDING_PROGRESS_ACTIVE = "#2563eb";
+export const ONBOARDING_PROGRESS_ACTIVE = SHOPIFY_GREEN;
 export const ONBOARDING_CARD_RADIUS = 12;
 
 export function OnboardingShell({
