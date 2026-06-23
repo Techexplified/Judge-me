@@ -437,6 +437,20 @@
             <label style="font-weight:700">${esc(cfg.reviewFieldLabel)} <span style="color:#dc2626">*</span></label>
             <textarea id="jd-flow-comment" class="jd-input" style="min-height:100px;resize:vertical" maxlength="500" placeholder="${esc(cfg.reviewFieldPlaceholder)}">${esc(comment)}</textarea>
           </div>`;
+        const authorEl = els.content.querySelector("#jd-flow-author");
+        const commentEl = els.content.querySelector("#jd-flow-comment");
+        if (authorEl) {
+          authorEl.addEventListener("input", () => {
+            author = authorEl.value.trim();
+            if (els.msg) els.msg.textContent = "";
+          });
+        }
+        if (commentEl) {
+          commentEl.addEventListener("input", () => {
+            comment = commentEl.value.trim();
+            if (els.msg) els.msg.textContent = "";
+          });
+        }
         return;
       }
 
@@ -453,13 +467,13 @@
             <div id="jd-photo-previews" class="jd-media-grid"></div>
           </div>`;
         bindUploadZone(
-          document.getElementById("jd-photo-zone"),
-          document.getElementById("jd-photo-input"),
-          document.getElementById("jd-photo-previews"),
+          els.content.querySelector("#jd-photo-zone"),
+          els.content.querySelector("#jd-photo-input"),
+          els.content.querySelector("#jd-photo-previews"),
           photoFiles,
           ["image/png", "image/jpeg", "image/jpg", "image/webp"],
         );
-        const photoPreviews = document.getElementById("jd-photo-previews");
+        const photoPreviews = els.content.querySelector("#jd-photo-previews");
         photoFiles.forEach((file) => {
           const url = URL.createObjectURL(file);
           const el = Object.assign(document.createElement("img"), { src: url, alt: "" });
@@ -482,13 +496,13 @@
             <div id="jd-video-previews" class="jd-media-grid"></div>
           </div>`;
         bindUploadZone(
-          document.getElementById("jd-video-zone"),
-          document.getElementById("jd-video-input"),
-          document.getElementById("jd-video-previews"),
+          els.content.querySelector("#jd-video-zone"),
+          els.content.querySelector("#jd-video-input"),
+          els.content.querySelector("#jd-video-previews"),
           videoFiles,
           ["video/mp4", "video/webm"],
         );
-        const videoPreviews = document.getElementById("jd-video-previews");
+        const videoPreviews = els.content.querySelector("#jd-video-previews");
         videoFiles.forEach((file) => {
           const url = URL.createObjectURL(file);
           const el = Object.assign(document.createElement("video"), { src: url, muted: true, playsInline: true });
@@ -544,8 +558,9 @@
     }
 
     function persistWrittenFields() {
-      const authorEl = document.getElementById("jd-flow-author");
-      const commentEl = document.getElementById("jd-flow-comment");
+      const scope = els.content || document;
+      const authorEl = scope.querySelector("#jd-flow-author");
+      const commentEl = scope.querySelector("#jd-flow-comment");
       if (authorEl) author = authorEl.value.trim();
       if (commentEl) comment = commentEl.value.trim();
     }
@@ -680,15 +695,15 @@
           </div>
         </div>`;
 
-      els.overlay = document.getElementById("jd-modal");
-      els.content = document.getElementById("jd-step-content");
-      els.progress = document.getElementById("jd-flow-progress");
-      els.back = document.getElementById("jd-flow-back");
-      els.next = document.getElementById("jd-flow-next");
-      els.skip = document.getElementById("jd-flow-skip");
-      els.msg = document.getElementById("jd-flow-msg");
+      els.overlay = container.querySelector("#jd-modal");
+      els.content = container.querySelector("#jd-step-content");
+      els.progress = container.querySelector("#jd-flow-progress");
+      els.back = container.querySelector("#jd-flow-back");
+      els.next = container.querySelector("#jd-flow-next");
+      els.skip = container.querySelector("#jd-flow-skip");
+      els.msg = container.querySelector("#jd-flow-msg");
 
-      document.getElementById("jd-close-form").onclick = close;
+      container.querySelector("#jd-close-form").onclick = close;
       els.overlay.onclick = (e) => {
         if (e.target === els.overlay) close();
       };
@@ -963,12 +978,12 @@
         onComplete: () => setTimeout(() => init(), 400),
       });
 
-      flow.mount(document.getElementById("jd-flow-mount"));
+      flow.mount(root.querySelector("#jd-flow-mount"));
 
-      const openBtn = document.getElementById("jd-open-form");
+      const openBtn = root.querySelector("#jd-open-form");
       if (openBtn) openBtn.onclick = () => flow.open();
 
-      const listEl = document.getElementById("jd-reviews-list");
+      const listEl = root.querySelector("#jd-reviews-list");
       root.querySelectorAll(".jd-tab").forEach((tab) => {
         tab.addEventListener("click", () => {
           activeTab = tab.getAttribute("data-tab") || "product";
