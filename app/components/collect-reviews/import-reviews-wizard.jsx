@@ -166,13 +166,21 @@ export function ImportReviewsWizard({
     setTemplateDownloaded(true);
   }, [wizard.source]);
 
+  // Only read ?source= from the URL once on mount. Re-running this whenever
+  // location.search changes (e.g. after route revalidation triggered by a
+  // fetcher submit) would re-dispatch SET_SOURCE, clearing matchedFields and
+  // potentially invalidating the mapping mid-flow.
+  const initialSourceApplied = useRef(false);
   useEffect(() => {
+    if (initialSourceApplied.current) return;
+    initialSourceApplied.current = true;
     const params = new URLSearchParams(location.search);
     const sourceParam = params.get("source");
     if (sourceParam && SOURCE_PRESETS[sourceParam]) {
       dispatch({ type: "SET_SOURCE", source: sourceParam });
     }
-  }, [location.search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     setTemplateDownloaded(false);
@@ -212,15 +220,6 @@ export function ImportReviewsWizard({
   const canProceedStep2 = wizard.rows.length > 0 && !wizard.parseError;
   const canProceedStep3 = mappingValidation.valid;
 
-  const prevStepRef = useRef(step);
-
-  useEffect(() => {
-    if (step === 2 && !wizard.source) goToStep(1);
-    else if (step === 3 && wizard.rows.length === 0) goToStep(2);
-    else if (step === 4 && (!mappingValidation.valid || wizard.rows.length === 0)) goToStep(3);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
-
   useEffect(() => {
     if (!fetcher.data) return;
 
@@ -238,21 +237,24 @@ export function ImportReviewsWizard({
     }
   }, [fetcher.data, embedNavigate]);
 
-  useEffect(() => {
-    const enteredStep4 = step === 4 && prevStepRef.current !== 4;
-    prevStepRef.current = step;
-    if (enteredStep4 && wizard.rows.length > 0) {
-      setPreviewResult(null);
-      const payload = JSON.stringify({
-        source: wizard.source,
-        mapping: wizard.mapping,
-        settings: wizard.settings,
-        rows: wizard.rows,
-      });
-      fetcher.submit({ _intent: "preview", payload }, { method: "post" });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
+  const submitPreview = useCallback(() => {
+    if (wizard.rows.length === 0) return;
+    setPreviewResult(null);
+    setImportResult(null);
+    const payload = JSON.stringify({
+      source: wizard.source,
+      mapping: wizard.mapping,
+      settings: wizard.settings,
+      rows: wizard.rows,
+    });
+    fetcher.submit({ _intent: "preview", payload }, { method: "post" });
+  }, [fetcher, wizard.mapping, wizard.rows, wizard.settings, wizard.source]);
+
+  const handleGoToPreview = useCallback(() => {
+    if (!canProceedStep3 || wizard.rows.length === 0) return;
+    goToStep(4);
+    submitPreview();
+  }, [canProceedStep3, goToStep, submitPreview, wizard.rows.length]);
 
   const handleImport = () => {
     setImportResult(null);
@@ -522,9 +524,7 @@ export function ImportReviewsWizard({
               </SecondaryButton>
               <PrimaryButton
                 disabled={!canProceedStep3}
-                onClick={() => {
-                  if (canProceedStep3) goToStep(4);
-                }}
+                onClick={handleGoToPreview}
               >
                 Preview Import
               </PrimaryButton>
