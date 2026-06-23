@@ -19,12 +19,14 @@ export const ONBOARDING_ACCENT_COLORS = [
 ];
 
 export const ONBOARDING_IMPORT_SOURCES = {
-  aliexpress: "custom",
   loox: "loox",
+  judgeme: "judgeme",
+  amazon: "amazon",
+  flipkart: "flipkart",
   csv: "custom",
 };
 
-export const ONBOARDING_IMPORT_KEYS = ["aliexpress", "loox", "csv"];
+export const ONBOARDING_IMPORT_KEYS = ["loox", "judgeme", "amazon", "flipkart", "csv"];
 
 /** Bump when the onboarding wizard changes so existing installs re-run the flow. */
 export const ONBOARDING_VERSION = 3;

@@ -3,8 +3,10 @@ import { CheckCircle2, Store, FileText } from "lucide-react";
 import { OnboardingHeading } from "./onboarding-shell.jsx";
 
 const IMPORT_OPTIONS = [
-  { id: "aliexpress", label: "AliExpress" },
   { id: "loox", label: "Loox" },
+  { id: "judgeme", label: "Judge.me" },
+  { id: "amazon", label: "Amazon" },
+  { id: "flipkart", label: "Flipkart" },
   { id: "csv", label: "CSV file", icon: "file" },
   { id: "skip", label: "Skip for now" },
 ];
@@ -98,9 +100,9 @@ export function StepConnect({
                   padding: "10px 16px",
                   borderRadius: 8,
                   border: selected
-                    ? "2px solid #2563eb"
+                    ? "2px solid #008060"
                     : "1px solid #c9cccf",
-                  background: selected ? "#f8faff" : "#fff",
+                  background: selected ? "#ecfdf5" : "#fff",
                   color: isSkip ? "#6d7175" : "#202223",
                   fontWeight: isSkip ? 600 : 700,
                   fontSize: 13,

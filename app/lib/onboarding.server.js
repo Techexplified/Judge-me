@@ -117,13 +117,17 @@ export async function saveOnboardingImportChoice(shop, { importKey, skipImport }
 
 export async function saveOnboardingCollectionSettings(
   shop,
-  { onsiteWidgetEnabled, photoVideoReviews },
+  { onsiteWidgetEnabled, photoReviews, videoReviews },
 ) {
   const config = await readConfig(shop);
   const enabled = Boolean(onsiteWidgetEnabled);
+  const photos = Boolean(photoReviews);
+  const videos = Boolean(videoReviews);
   const collection = {
     onsiteWidgetEnabled: enabled,
-    photoVideoReviews: Boolean(photoVideoReviews),
+    photoReviews: photos,
+    videoReviews: videos,
+    photoVideoReviews: photos || videos,
     savedAt: new Date().toISOString(),
   };
 
@@ -136,8 +140,8 @@ export async function saveOnboardingCollectionSettings(
     ...(config.onboarding ?? {}),
     collection,
   };
-  config.showPhotos = collection.photoVideoReviews;
-  config.showVideos = collection.photoVideoReviews;
+  config.showPhotos = photos;
+  config.showVideos = videos;
 
   await writeConfig(shop, config);
   return collection;

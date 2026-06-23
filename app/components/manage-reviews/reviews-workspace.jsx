@@ -29,6 +29,7 @@ import {
   Page,
   PageHeader,
   PrimaryButton,
+  ProLockedButton,
   SecondaryButton,
   SHOPIFY_GREEN,
   Stack,
@@ -804,6 +805,10 @@ function ReviewDetailCard({
       ? review.shop.replace(".myshopify.com", "")
       : null;
   const fetcher = useFetcher();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const settingsHref = mergeShopifyEmbedParams("/app/settings", location.search);
+  const goToUpgrade = () => navigate(settingsHref);
   const [isEditing, setIsEditing] = useState(!review.reply);
   const [replyText, setReplyText] = useState(review.reply || "");
   const [savedReply, setSavedReply] = useState(review.reply || "");
@@ -900,8 +905,8 @@ function ReviewDetailCard({
 
   const hasStoredTranslation = reviewHasTranslation(reviewText);
   const isTranslatedToTarget = reviewText.translatedLang === translation.targetLanguage;
-  const canTranslate = premium && aiAvailable;
-  const canSuggestReply = premium && aiAvailable;
+  const canUseTranslate = premium && aiAvailable;
+  const canUseSuggestReply = premium && aiAvailable;
   const isTranslating =
     fetcher.state === "submitting" &&
     fetcher.formData?.get("_intent") === "translateReview";
@@ -964,7 +969,7 @@ function ReviewDetailCard({
       <p style={detailStyles.reviewBody}>{displayComment}</p>
       <ReviewMediaGallery media={review.media} />
 
-      {(canTranslate || hasStoredTranslation) ? (
+      {(canUseTranslate || !premium || hasStoredTranslation) ? (
         <div
           style={{
             display: "flex",
@@ -974,7 +979,7 @@ function ReviewDetailCard({
             marginBottom: 16,
           }}
         >
-          {canTranslate ? (
+          {canUseTranslate ? (
             <SecondaryButton
               onClick={handleTranslate}
               disabled={isTranslating}
@@ -983,8 +988,13 @@ function ReviewDetailCard({
               <Languages size={14} />
               {isTranslatedToTarget ? "Retranslate" : "Translate"}
             </SecondaryButton>
+          ) : !premium ? (
+            <ProLockedButton onClick={goToUpgrade}>
+              <Languages size={14} />
+              Translate
+            </ProLockedButton>
           ) : null}
-              {hasStoredTranslation ? (
+          {hasStoredTranslation ? (
             <button
               type="button"
               onClick={() => setShowOriginal((v) => !v)}
@@ -1016,7 +1026,7 @@ function ReviewDetailCard({
               rows={4}
             />
             <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-              {canSuggestReply ? (
+              {canUseSuggestReply ? (
                 <SecondaryButton
                   onClick={handleSuggestReply}
                   disabled={isSuggesting || fetcher.state === "submitting"}
@@ -1025,6 +1035,11 @@ function ReviewDetailCard({
                   <Sparkles size={14} />
                   {isSuggesting ? "Suggesting…" : "Suggest reply"}
                 </SecondaryButton>
+              ) : !premium ? (
+                <ProLockedButton onClick={goToUpgrade}>
+                  <Sparkles size={14} />
+                  Suggest reply
+                </ProLockedButton>
               ) : null}
               <PrimaryButton
                 onClick={handleSave}

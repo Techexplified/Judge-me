@@ -8,11 +8,9 @@ import {
   Link2,
   Download,
   FileText,
-  Palette,
   ArrowRight,
-  Video,
   Play,
-  Heart,
+  Video,
 } from "lucide-react";
 import { mergeShopifyEmbedParams } from "../../utils/shopify-embed-nav.js";
 import {
@@ -174,22 +172,12 @@ const FEATURE_CARDS = [
     cta: "Review form",
   },
   {
-    id: "video-slider",
+    id: "widgets",
     tone: "mint",
     tag: "Widgets",
     Icon: Play,
-    title: "Video reviews slider",
-    desc: "Carousel of your best video reviews on the storefront.",
-    tab: "/app/widgets",
-    cta: "Open widgets",
-  },
-  {
-    id: "love-page",
-    tone: "sky",
-    tag: "Widgets",
-    Icon: Heart,
-    title: "Customer love page",
-    desc: "All reviews, ratings, photos, and videos on one page.",
+    title: "Storefront widgets & customization",
+    desc: "Video slider, customer love page, layout, colors, typography, and branding. Advanced customization on Pro.",
     tab: "/app/widgets",
     cta: "Open widgets",
   },
@@ -212,16 +200,6 @@ const FEATURE_CARDS = [
     desc: "Export review data and AI insights. 10/month on Pro.",
     tab: "/app/analytics",
     cta: "Open analytics",
-  },
-  {
-    id: "branding",
-    tone: "mint",
-    tag: "Branding",
-    Icon: Palette,
-    title: "Widget customisation",
-    desc: "Layout, colors, typography, and trust badges. 20 publishes/month on Pro.",
-    tab: "/app/collect-reviews?tab=widget",
-    cta: "Customise widget",
   },
 ];
 

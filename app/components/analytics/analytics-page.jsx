@@ -31,12 +31,26 @@ import {
 import { mergeShopifyEmbedParams } from "../../utils/shopify-embed-nav.js";
 import { PAGE_BG, SHOPIFY_GREEN, SURFACE_BG, SURFACE_BORDER } from "../admin-ui";
 import { CHART_COLORS } from "./analytics-styles.js";
-import { ProSectionBlur } from "./pro-section-blur.jsx";
+import { ProLockedPanel, ProLockedToolbar, ProLockedToolButton } from "./pro-section-blur.jsx";
 import { PremiumTrialBadge } from "../premium-trial-banner";
 
 const GREEN = SHOPIFY_GREEN;
 const GREEN_LIGHT = "#ecfdf5";
 const GREEN_MID = "#5bb98c";
+
+const PRO_PILL_STYLE = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "3px 8px",
+  borderRadius: 999,
+  fontSize: 9,
+  fontWeight: 800,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+  background: "#f1f8ff",
+  color: "#0369a1",
+  border: "1px solid #b3d4f0",
+};
 
 function formatNumber(n) {
   return Number(n).toLocaleString();
@@ -79,6 +93,45 @@ function StarRow({ rating, size = 14 }) {
         />
       ))}
     </span>
+  );
+}
+
+function DateRangeSelect({ rangeKey, onRangeChange }) {
+  return (
+    <div style={{ position: "relative" }}>
+      <CalendarDays
+        size={14}
+        color="#6d7175"
+        style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
+      />
+      <select
+        aria-label="Date range"
+        value={rangeKey}
+        onChange={(e) => onRangeChange(e.target.value)}
+        style={{
+          appearance: "none",
+          padding: "10px 36px 10px 36px",
+          borderRadius: 8,
+          border: `1px solid ${SURFACE_BORDER}`,
+          background: "#fff",
+          fontSize: 13,
+          fontWeight: 700,
+          color: "#202223",
+          cursor: "pointer",
+          fontFamily: "inherit",
+        }}
+      >
+        <option value="7">Last 7 days</option>
+        <option value="30">Last 30 days</option>
+        <option value="90">Last 90 days</option>
+        <option value="all">All time</option>
+      </select>
+      <ChevronDown
+        size={16}
+        color="#6d7175"
+        style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
+      />
+    </div>
   );
 }
 
@@ -587,7 +640,7 @@ export function AnalyticsPageContent({
             Track review performance, trends, and conversion impact across your store.
           </p>
         </div>
-        <ProSectionBlur locked={!hasPremium} label="Export & time filter">
+        {hasPremium ? (
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <button
               type="button"
@@ -633,42 +686,17 @@ export function AnalyticsPageContent({
               <FileText size={16} />
               {exporting === "pdf" ? "Generating…" : "Export PDF"}
             </button>
-            <div style={{ position: "relative" }}>
-              <CalendarDays
-                size={14}
-                color="#6d7175"
-                style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
-              />
-              <select
-                aria-label="Date range"
-                value={rangeKey}
-                onChange={(e) => onRangeChange(e.target.value)}
-                style={{
-                  appearance: "none",
-                  padding: "10px 36px 10px 36px",
-                  borderRadius: 8,
-                  border: `1px solid ${SURFACE_BORDER}`,
-                  background: "#fff",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: "#202223",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                <option value="7">Last 7 days</option>
-                <option value="30">Last 30 days</option>
-                <option value="90">Last 90 days</option>
-                <option value="all">All time</option>
-              </select>
-              <ChevronDown
-                size={16}
-                color="#6d7175"
-                style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
-              />
-            </div>
+            <DateRangeSelect rangeKey={rangeKey} onRangeChange={onRangeChange} />
           </div>
-        </ProSectionBlur>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <ProLockedToolbar locked>
+              <ProLockedToolButton icon={Download} label="Export CSV" />
+              <ProLockedToolButton icon={FileText} label="Export PDF" />
+            </ProLockedToolbar>
+            <DateRangeSelect rangeKey={rangeKey} onRangeChange={onRangeChange} />
+          </div>
+        )}
       </div>
 
       {exportError ? (
@@ -734,14 +762,15 @@ export function AnalyticsPageContent({
         />
       </div>
 
-      <ProSectionBlur locked={!hasPremium} label="Reviews over time">
-        <CardShell
-          title="Reviews over time"
-          subtitle="Monthly review volume across all sources"
-        >
+      <CardShell
+        title="Reviews over time"
+        subtitle="Monthly review volume across all sources"
+        badge={!hasPremium ? <span style={{ ...PRO_PILL_STYLE, fontSize: 10 }}>Pro</span> : null}
+      >
+        <ProLockedPanel locked={!hasPremium} skeleton="area" minHeight={280}>
           <ReviewsOverTimeChart data={monthlyChart} />
-        </CardShell>
-      </ProSectionBlur>
+        </ProLockedPanel>
+      </CardShell>
 
       <div
         style={{
@@ -751,11 +780,11 @@ export function AnalyticsPageContent({
           marginTop: 20,
         }}
       >
-        <ProSectionBlur locked={!hasPremium} label="Rating distribution">
-          <CardShell
-            title="Rating distribution"
-            subtitle="Breakdown of 1–5 star ratings"
-            badge={
+        <CardShell
+          title="Rating distribution"
+          subtitle="Breakdown of 1–5 star ratings"
+          badge={
+            hasPremium ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
                 <span
                   style={{
@@ -769,7 +798,7 @@ export function AnalyticsPageContent({
                 >
                   {formatNumber(totalReviews)} total
                 </span>
-                {exportAccess?.remaining != null && hasPremium ? (
+                {exportAccess?.remaining != null ? (
                   <span
                     style={{
                       fontSize: 11,
@@ -782,16 +811,20 @@ export function AnalyticsPageContent({
                   </span>
                 ) : null}
               </div>
-            }
-          >
+            ) : (
+              <span style={{ ...PRO_PILL_STYLE, fontSize: 10 }}>Pro</span>
+            )
+          }
+        >
+          <ProLockedPanel locked={!hasPremium} skeleton="bars" minHeight={260}>
             <RatingDistribution
               distribution={ratingDistribution}
               totalReviews={totalReviews}
               avgRating={avgRating}
               positivePct={positivePct}
             />
-          </CardShell>
-        </ProSectionBlur>
+          </ProLockedPanel>
+        </CardShell>
 
         <CardShell title="Source breakdown" subtitle="Where reviews came from">
           <SourceBreakdownChart breakdown={sourceBreakdown} totalReviews={totalReviews} />
@@ -799,14 +832,15 @@ export function AnalyticsPageContent({
       </div>
 
       <div style={{ marginTop: 20 }}>
-        <ProSectionBlur locked={!hasPremium} label="Top reviewed products">
-          <CardShell
-            title="Top reviewed products"
-            subtitle="Products ranked by total review count"
-          >
+        <CardShell
+          title="Top reviewed products"
+          subtitle="Products ranked by total review count"
+          badge={!hasPremium ? <span style={{ ...PRO_PILL_STYLE, fontSize: 10 }}>Pro</span> : null}
+        >
+          <ProLockedPanel locked={!hasPremium} skeleton="table" minHeight={220}>
             <TopProductsTable products={topProducts} reviewsHref={reviewsHref} />
-          </CardShell>
-        </ProSectionBlur>
+          </ProLockedPanel>
+        </CardShell>
       </div>
 
       <p style={{ margin: "16px 0 0", fontSize: 12, fontWeight: 600, color: "#6d7175" }}>

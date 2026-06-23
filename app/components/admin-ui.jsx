@@ -467,18 +467,56 @@ export function PrimaryButton({ children, onClick, disabled, type = "button", lo
   );
 }
 
-export function SecondaryButton({ children, onClick, disabled, type = "button" }) {
+export function SecondaryButton({ children, onClick, disabled, type = "button", loading }) {
   return (
     <button
       type={type}
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || loading}
       style={{
         ...ui.btnSecondary,
-        ...(disabled ? ui.btnDisabled : {}),
+        ...((disabled || loading) ? ui.btnDisabled : {}),
       }}
     >
       {children}
+    </button>
+  );
+}
+
+export function ProLockedButton({ children, onClick, title = "Upgrade to Pro to unlock" }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      style={{
+        ...ui.btnSecondary,
+        position: "relative",
+        paddingRight: 44,
+        cursor: "pointer",
+        opacity: 0.88,
+      }}
+    >
+      {children}
+      <span
+        style={{
+          position: "absolute",
+          right: 8,
+          top: "50%",
+          transform: "translateY(-50%)",
+          padding: "2px 7px",
+          borderRadius: 999,
+          fontSize: 10,
+          fontWeight: 800,
+          letterSpacing: "0.03em",
+          textTransform: "uppercase",
+          background: "#f1f8ff",
+          color: "#0369a1",
+          border: "1px solid #b3d4f0",
+        }}
+      >
+        Pro
+      </span>
     </button>
   );
 }export function ResourceRow({ title, badges, icon, actions }) {

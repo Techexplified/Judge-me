@@ -26,6 +26,7 @@ import {
 import {
   ONBOARDING_ACCENT_COLORS,
   ONBOARDING_IMPORT_KEYS,
+  ONBOARDING_IMPORT_SOURCES,
   ONBOARDING_LAYOUT_OPTIONS,
   resolveOnboardingStep,
 } from "../lib/onboarding.shared.js";
@@ -108,9 +109,12 @@ export const loader = async ({ request }) => {
       shopConfig?.onsiteWidget?.enabled ??
       collection?.emailReviewRequests ??
       true,
-    photoVideoReviews:
-      collection?.photoVideoReviews ??
-      (formConfig.showPhotos !== false && formConfig.showVideos !== false),
+    photoReviews:
+      collection?.photoReviews ??
+      (formConfig.showPhotos !== false),
+    videoReviews:
+      collection?.videoReviews ??
+      (planStatus.hasPro && formConfig.showVideos !== false),
     hasPro: planStatus.hasPro,
   };
 };
@@ -185,25 +189,37 @@ export const action = async ({ request }) => {
 
   if (intent === "finish") {
     const onsiteWidgetEnabled = fd.get("onsiteWidgetEnabled") === "true";
-    const photoVideoRequests = fd.get("photoVideoReviews") === "true";
+    const photoReviews = fd.get("photoReviews") !== "false";
+    const videoReviews = fd.get("videoReviews") === "true";
 
     if (!alreadyComplete) {
       await saveOnboardingCollectionSettings(shop, {
         onsiteWidgetEnabled,
-        photoVideoReviews: photoVideoRequests,
+        photoReviews,
+        videoReviews,
       });
       await completeOnboarding(shop);
     }
 
-    const { storeProfile } = await getOnboardingState(shop);
+    const { storeProfile, onboarding } = await getOnboardingState(shop);
+    const importChoice = onboarding?.importChoice;
+    const skippedImport =
+      importChoice === "skip" ||
+      !importChoice ||
+      storeProfile?.importingFromOtherApp === "no";
+    const importSource =
+      storeProfile?.importSource ||
+      (importChoice && ONBOARDING_IMPORT_SOURCES[importChoice]) ||
+      "";
+
     if (
       !alreadyComplete &&
-      storeProfile?.importingFromOtherApp === "yes" &&
-      storeProfile?.importSource &&
-      SOURCE_PRESETS[storeProfile.importSource]
+      !skippedImport &&
+      importSource &&
+      SOURCE_PRESETS[importSource]
     ) {
       throw embedRedirect(
-        `/app/collect-reviews?tab=import&source=${encodeURIComponent(storeProfile.importSource)}`,
+        `/app/collect-reviews?tab=import&source=${encodeURIComponent(importSource)}`,
         request,
       );
     }
@@ -235,7 +251,8 @@ export default function Onboarding() {
     brandLogoUrl: savedLogo,
     importChoice: savedImport,
     onsiteWidgetEnabled: savedOnsiteWidget,
-    photoVideoReviews: savedPhotoVideo,
+    photoReviews: savedPhotoReviews,
+    videoReviews: savedVideoReviews,
     hasPro,
   } = useLoaderData();
   const navigate = useNavigate();
@@ -269,9 +286,8 @@ export default function Onboarding() {
   const [logoError, setLogoError] = useState(null);
   const [importChoice, setImportChoice] = useState(savedImport || "");
   const [onsiteWidgetEnabled, setOnsiteWidgetEnabled] = useState(savedOnsiteWidget);
-  const [photoVideoReviews, setPhotoVideoReviews] = useState(
-    hasPro ? savedPhotoVideo : false,
-  );
+  const [photoReviews, setPhotoReviews] = useState(savedPhotoReviews !== false);
+  const [videoReviews, setVideoReviews] = useState(hasPro ? savedVideoReviews : false);
 
   useEffect(() => {
     if (logoFetcher.data?.brandLogoUrl !== undefined) {
@@ -300,7 +316,8 @@ export default function Onboarding() {
     setBrandLogoUrl(savedLogo || null);
     setImportChoice(savedImport || "");
     setOnsiteWidgetEnabled(savedOnsiteWidget);
-    setPhotoVideoReviews(hasPro ? savedPhotoVideo : false);
+    setPhotoReviews(savedPhotoReviews !== false);
+    setVideoReviews(hasPro ? savedVideoReviews : false);
   }, [
     step,
     savedLayout,
@@ -308,7 +325,8 @@ export default function Onboarding() {
     savedLogo,
     savedImport,
     savedOnsiteWidget,
-    savedPhotoVideo,
+    savedPhotoReviews,
+    savedVideoReviews,
     hasPro,
   ]);
 
@@ -368,7 +386,8 @@ export default function Onboarding() {
       {
         intent: "finish",
         onsiteWidgetEnabled: onsiteWidgetEnabled ? "true" : "false",
-        photoVideoReviews: photoVideoReviews ? "true" : "false",
+        photoReviews: photoReviews ? "true" : "false",
+        videoReviews: videoReviews ? "true" : "false",
       },
       { method: "post" },
     );
@@ -426,10 +445,12 @@ export default function Onboarding() {
       {step === 3 ? (
         <StepCollect
           onsiteWidgetEnabled={onsiteWidgetEnabled}
-          photoVideoReviews={photoVideoReviews}
+          photoReviews={photoReviews}
+          videoReviews={videoReviews}
           onOnsiteWidgetChange={setOnsiteWidgetEnabled}
-          onPhotoVideoChange={(val) => {
-            if (hasPro || !val) setPhotoVideoReviews(val);
+          onPhotoReviewsChange={setPhotoReviews}
+          onVideoReviewsChange={(val) => {
+            if (hasPro || !val) setVideoReviews(val);
           }}
           hasPro={hasPro}
           accentColor={accentColor}

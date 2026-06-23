@@ -79,9 +79,11 @@ function SettingToggle({ label, description, checked, onChange, proBadge, disabl
 
 export function StepCollect({
   onsiteWidgetEnabled,
-  photoVideoReviews,
+  photoReviews,
+  videoReviews,
   onOnsiteWidgetChange,
-  onPhotoVideoChange,
+  onPhotoReviewsChange,
+  onVideoReviewsChange,
   hasPro,
   accentColor = "#008060",
 }) {
@@ -100,10 +102,17 @@ export function StepCollect({
       />
 
       <SettingToggle
-        label="Photo and video reviews"
-        description="Let customers upload images and videos with their review"
-        checked={photoVideoReviews}
-        onChange={onPhotoVideoChange}
+        label="Photo reviews"
+        description="Let customers upload images with their review"
+        checked={photoReviews}
+        onChange={onPhotoReviewsChange}
+      />
+
+      <SettingToggle
+        label="Video reviews"
+        description="Let customers upload video with their review"
+        checked={videoReviews}
+        onChange={onVideoReviewsChange}
         proBadge
         disabled={!hasPro}
       />

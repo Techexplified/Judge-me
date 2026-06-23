@@ -37,12 +37,40 @@ export const FEATURE_LABELS = {
   review_imports: "Review imports",
   ai_dashboard_overview: "AI dashboard overview",
   ai_insights_playbook: "AI insights playbook",
-  export_pdf_csv: "PDF CSV export",
-  ai_review_replies: "AI review replies",
+  export_pdf_csv: "PDF exports",
+  ai_review_replies: "Suggested replies",
   urgent_reply_prioritization: "Urgent reply summary",
-  ai_widget_customization: "Widget publishes",
-  auto_translate: "Auto translate",
+  ai_widget_customization: "Widget customization",
+  auto_translate: "Translations",
 };
+
+/** Usage meters shown on the Free plan settings page (Pro-only rows appear locked). */
+export const FREE_USAGE_DISPLAY_KEYS = [
+  "review_imports",
+  "auto_translate",
+  "ai_review_replies",
+  "export_pdf_csv",
+  "ai_widget_customization",
+];
+
+/** Usage meters shown on the Pro plan settings page. */
+export const PRO_USAGE_DISPLAY_KEYS = [
+  "review_imports",
+  "auto_translate",
+  "ai_review_replies",
+  "export_pdf_csv",
+  "ai_widget_customization",
+  "ai_dashboard_overview",
+  "ai_insights_playbook",
+  "urgent_reply_prioritization",
+];
+
+/** On Free, show these meters as Pro-locked previews (Pro limits, not Free quotas). */
+export const FREE_PRO_LOCKED_USAGE_KEYS = new Set([
+  "ai_review_replies",
+  "export_pdf_csv",
+  "ai_widget_customization",
+]);
 
 /** Metered keys tracked in FeatureUsage table. */
 export const FEATURE_KEYS = [

@@ -6,6 +6,9 @@ import {
   PRO_ONLY_FEATURES,
   FEATURE_LABELS,
   FEATURE_KEYS,
+  FREE_USAGE_DISPLAY_KEYS,
+  PRO_USAGE_DISPLAY_KEYS,
+  FREE_PRO_LOCKED_USAGE_KEYS,
   getFeatureLimit,
 } from "./usage.shared.js";
 
@@ -57,27 +60,25 @@ export async function getAllFeatureUsage(shop, planStatus = null) {
   });
   const byKey = Object.fromEntries(rows.map((r) => [r.featureKey, r.count]));
 
-  const keys = planStatus?.hasPro
-    ? FEATURE_KEYS
-    : FEATURE_KEYS.filter(
-        (key) => FREE_FEATURE_LIMITS[key] != null || !PRO_ONLY_FEATURES.has(key),
-      );
-
-  const trackedKeys = planStatus?.hasPro
-    ? Object.keys(PRO_FEATURE_LIMITS)
-    : Object.keys(FREE_FEATURE_LIMITS);
+  const hasPro = planStatus?.hasPro === true;
+  const displayKeys = hasPro ? PRO_USAGE_DISPLAY_KEYS : FREE_USAGE_DISPLAY_KEYS;
 
   return Object.fromEntries(
-    trackedKeys.map((key) => {
-      const used = byKey[key] ?? 0;
-      const limit = getFeatureLimit(planStatus ?? { hasPro: false }, key);
-      const finiteLimit = Number.isFinite(limit) ? limit : used;
+    displayKeys.map((key) => {
+      const proLocked = !hasPro && FREE_PRO_LOCKED_USAGE_KEYS.has(key);
+      const used = proLocked ? 0 : (byKey[key] ?? 0);
+      let limit = getFeatureLimit(planStatus ?? { hasPro: false }, key);
+      if (proLocked) {
+        const proLimit = PRO_FEATURE_LIMITS[key];
+        limit = proLimit == null ? Infinity : proLimit;
+      }
       return [
         key,
         {
           used,
           limit: Number.isFinite(limit) ? limit : null,
           remaining: Number.isFinite(limit) ? Math.max(0, limit - used) : null,
+          proLocked,
         },
       ];
     }),
