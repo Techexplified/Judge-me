@@ -127,7 +127,7 @@ const HERO_FEATURES = [
   },
   {
     title: "Increase sales",
-    desc: "AI insights, playbooks, and smart replies to convert more shoppers.",
+    desc: "AI suggested replies and tools to convert more shoppers.",
   },
   {
     title: "Unlimited essentials",

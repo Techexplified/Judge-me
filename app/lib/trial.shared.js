@@ -33,7 +33,7 @@ export const PRO_FEATURE_LABELS = [
   "Unlimited reviews & imports",
   "Live graphs & analytics",
   "Photo & video reviews",
-  "AI insights, playbooks & replies",
+  "AI suggested replies",
   "PDF & CSV export",
   `Full translation suite (${PRO_TRANSLATIONS_PER_MONTH} / month)`,
   "10+ store integrations",

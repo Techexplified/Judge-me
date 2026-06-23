@@ -187,7 +187,7 @@ const FEATURE_CARDS = [
     tag: "AI",
     Icon: Sparkles,
     title: "AI replies and insights",
-    desc: "Smart replies, urgent review summary, and playbooks.",
+    desc: "Smart suggested replies and review management tools.",
     tab: "/app/manage-reviews",
     cta: "Manage reviews",
   },

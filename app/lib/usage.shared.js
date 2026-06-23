@@ -5,15 +5,12 @@ import {
   PRO_TRANSLATIONS_PER_MONTH,
 } from "./plan-features.shared.js";
 
-/** Pro monthly quotas (enforced in usage.server.js). */
+/** Pro monthly quotas (null = unlimited). */
 export const PRO_FEATURE_LIMITS = {
   review_imports: null,
-  ai_dashboard_overview: 30,
-  ai_insights_playbook: 10,
   export_pdf_csv: 10,
   ai_review_replies: 200,
-  urgent_reply_prioritization: 50,
-  ai_widget_customization: 20,
+  ai_widget_customization: null,
   auto_translate: PRO_TRANSLATIONS_PER_MONTH,
 };
 
@@ -26,20 +23,14 @@ export const FREE_FEATURE_LIMITS = {
 
 /** Features entirely blocked on Free (Pro required). */
 export const PRO_ONLY_FEATURES = new Set([
-  "ai_dashboard_overview",
-  "ai_insights_playbook",
   "export_pdf_csv",
   "ai_review_replies",
-  "urgent_reply_prioritization",
 ]);
 
 export const FEATURE_LABELS = {
   review_imports: "Review imports",
-  ai_dashboard_overview: "AI dashboard overview",
-  ai_insights_playbook: "AI insights playbook",
   export_pdf_csv: "PDF exports",
   ai_review_replies: "Suggested replies",
-  urgent_reply_prioritization: "Urgent reply summary",
   ai_widget_customization: "Widget customization",
   auto_translate: "Translations",
 };
@@ -60,16 +51,12 @@ export const PRO_USAGE_DISPLAY_KEYS = [
   "ai_review_replies",
   "export_pdf_csv",
   "ai_widget_customization",
-  "ai_dashboard_overview",
-  "ai_insights_playbook",
-  "urgent_reply_prioritization",
 ];
 
 /** On Free, show these meters as Pro-locked previews (Pro limits, not Free quotas). */
 export const FREE_PRO_LOCKED_USAGE_KEYS = new Set([
   "ai_review_replies",
   "export_pdf_csv",
-  "ai_widget_customization",
 ]);
 
 /** Metered keys tracked in FeatureUsage table. */

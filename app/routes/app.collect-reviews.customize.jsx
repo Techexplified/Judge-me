@@ -317,7 +317,11 @@ export const action = async ({ request }) => {
     create: { shop, config: JSON.stringify(merged) },
   });
 
-  await consumeFeatureUsage(shop, "ai_widget_customization", 1);
+  const { getFeatureLimit } = await import("../lib/usage.shared.js");
+  const widgetLimit = getFeatureLimit(planStatus, "ai_widget_customization");
+  if (Number.isFinite(widgetLimit)) {
+    await consumeFeatureUsage(shop, "ai_widget_customization", 1);
+  }
 
   return { ok: true, publishedAt: merged.formConfigPublishedAt };
 };

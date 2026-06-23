@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useState } from "react";
-import { ImageIcon, AlertTriangle } from "lucide-react";
+import { ImageIcon } from "lucide-react";
 import {
   PAGE_BG,
   SHOPIFY_GREEN,
@@ -310,7 +310,7 @@ export function WidgetsPage({
           ) : null}
         </div>
         <p style={{ margin: "8px 0 0", ...type.subtitle }}>
-          Add one or more widgets to your theme — each installs independently on its own page or
+          Add one or more widgets to your theme. Each installs independently on its own page or
           section. You are not limited to a single widget.
         </p>
         {reviewCounts?.total != null ? (
@@ -329,19 +329,18 @@ export function WidgetsPage({
             padding: "14px 16px",
             marginBottom: 18,
             borderRadius: 10,
-            border: "1px solid #fde68a",
-            background: "#fffbeb",
-            color: "#92400e",
+            border: `1px solid ${SURFACE_BORDER}`,
+            background: SURFACE_BG,
+            color: "#202223",
           }}
         >
-          <AlertTriangle size={20} style={{ flexShrink: 0, marginTop: 2 }} />
           <div style={{ flex: 1 }}>
-            <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 600 }}>
-              Complete setup to activate widgets
+            <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: "#202223" }}>
+              Enable JudgeMe Core to access widgets
             </p>
-            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
-              Enable <strong>JudgeMe Core</strong> in Theme Settings → App embeds so review widgets,
-              translation, and analytics work on your storefront.
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "#6d7175", fontWeight: 500 }}>
+              Turn on <strong style={{ color: "#202223" }}>JudgeMe Core</strong> under Theme settings →
+              App embeds so your review widgets work on the storefront.
             </p>
             <button
               type="button"

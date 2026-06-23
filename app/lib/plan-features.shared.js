@@ -71,13 +71,9 @@ export const PRO_PLAN_BOX = {
     {
       title: "AI features",
       items: [
-        "AI insight & detailed overview (PDF)",
-        "Urgent replies, prioritised review summary",
         "PDF & CSV export, 10 per month",
-        "AI review replies, 200 per month",
-        "AI insights & playbooks, 10 per month",
-        "AI dashboard overview, 30 per month",
-        "Widget customisation (advanced), 20 publishes per month",
+        "AI suggested replies, 200 per month",
+        "Unlimited widget customization",
       ],
     },
     {
@@ -111,7 +107,7 @@ export const PRO_PLAN_HIGHLIGHTS = [
   "Unlimited reviews & imports",
   "Live interactive analytics",
   "Photo & video reviews",
-  "AI insights, playbooks & replies",
+  "AI suggested replies",
   "PDF & CSV export",
   `Full translation suite (${PRO_TRANSLATIONS_PER_MONTH} / month)`,
   `${PRO_LINKED_STORES}+ store integrations`,

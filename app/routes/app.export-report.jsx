@@ -79,11 +79,6 @@ export const loader = async ({ request }) => {
 
   let playbook = null;
   if (includePlaybook && scopedReviews.length > 0 && openRouterKey) {
-    const playbookUsage = await requireFeatureUsage(planStatus, "ai_insights_playbook");
-    if (!playbookUsage.ok) {
-      return new Response(playbookUsage.message, { status: 403 });
-    }
-
     const pbCached = storedConfig.aiPlaybookCache;
     if (pbCached?.fingerprint === playbookPrintFingerprint && pbCached?.playbook) {
       playbook = pbCached.playbook;
