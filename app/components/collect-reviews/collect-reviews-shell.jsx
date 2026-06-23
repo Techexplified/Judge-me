@@ -8,7 +8,7 @@ const FONT =
 export const COLLECT_TABS = [
   { id: "widget", label: "Storefront widget", icon: LayoutGrid },
   { id: "review-form", label: "Review form", icon: FileText },
-  { id: "import", label: "Import reviews", icon: Upload },
+  { id: "import", label: "Import Reviews", icon: Upload },
 ];
 
 const type = {
@@ -57,7 +57,7 @@ export function CollectReviewsShell({
         <div>
           <h1 style={{ margin: 0, ...type.pageTitle }}>Collect Reviews</h1>
           <p style={{ margin: "6px 0 0", ...type.subtitle }}>
-            Manage your storefront widget, review form, and imported reviews.
+            Manage your storefront widget, Review form, and imported Reviews.
           </p>
         </div>
         <button

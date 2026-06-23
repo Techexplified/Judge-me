@@ -147,7 +147,7 @@ export function OnboardingPreview({
               color: config.textColor || "#202223",
             }}
           >
-            Write a review
+            {config.formTitle || "Write a Review"}
           </h3>
           <p
             style={{
@@ -198,7 +198,7 @@ export function OnboardingPreview({
             }}
           >
             <Send size={16} />
-            Post review
+            {config.submitButtonText || "Post Review"}
           </button>
 
           <div

@@ -10,7 +10,7 @@ export const ORDER_STATUS_WIDGET_COPY = {
   after_delivery: {
     title: "How was your purchase?",
     subtitle: "Share your experience with this product.",
-    cta: "Write a review",
+    cta: "Write a Review",
     timingLabel: "After delivery, product review",
   },
 };

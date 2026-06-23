@@ -102,7 +102,7 @@ export function OrderStatusPreview({
                 color: SHOPIFY_GREEN,
               }}
             >
-              Your review widget
+              Your Review widget
             </p>
 
             <div

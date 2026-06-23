@@ -35,7 +35,7 @@ export function StepAppearance({
       <div>
         <OnboardingHeading
           title="Make it look like your store"
-          subtitle="Pick a style for your review widget. You can change this anytime in settings."
+          subtitle="Pick a style for your Review widget. You can change this anytime in settings."
         />
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>

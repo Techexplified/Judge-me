@@ -11,13 +11,7 @@ function formatNumber(n) {
 }
 
 function TrendLabel({ value, suffix = "%" }) {
-  if (value == null) {
-    return (
-      <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: "#6d7175" }}>
-        N/A
-      </span>
-    );
-  }
+  if (value == null) return null;
   const positive = value >= 0;
   return (
     <span
@@ -228,7 +222,7 @@ export function TabOnsiteWidget({ metrics, timing, formConfig, onTimingChange })
             color: "#6d7175",
           }}
         >
-          Control when the review widget appears for customers.
+          Control when the Review widget appears for customers.
         </p>
 
         <TimingOption

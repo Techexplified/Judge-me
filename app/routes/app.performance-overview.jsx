@@ -61,38 +61,6 @@ function formatNumber(n) {
   return Number(n).toLocaleString();
 }
 
-function StatusBadge({ label, tone = "success" }) {
-  const colors =
-    tone === "warning"
-      ? { bg: "#fff8e6", fg: "#8a6116", dot: "#b98900" }
-      : { bg: "#ecfdf5", fg: "#047857", dot: SHOPIFY_GREEN };
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "4px 10px",
-        borderRadius: 999,
-        background: colors.bg,
-        color: colors.fg,
-        fontSize: 11,
-        fontWeight: 800,
-      }}
-    >
-      <span
-        style={{
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          background: colors.dot,
-        }}
-      />
-      {label}
-    </span>
-  );
-}
-
 function MetricRow({ icon: Icon, label, value, badge }) {
   return (
     <div
@@ -117,7 +85,7 @@ function MetricRow({ icon: Icon, label, value, badge }) {
   );
 }
 
-function PerformanceCard({ icon: Icon, title, subtitle, status, children, footer }) {
+function PerformanceCard({ icon: Icon, title, subtitle, children, footer }) {
   return (
     <div
       style={{
@@ -153,7 +121,6 @@ function PerformanceCard({ icon: Icon, title, subtitle, status, children, footer
             </div>
           </div>
         </div>
-        {status}
       </div>
 
       <div style={{ marginTop: 24, flex: 1 }}>{children}</div>
@@ -197,9 +164,6 @@ export default function PerformanceOverview() {
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 20 }}>
         <div>
           <h1 style={headingStyle}>Performance Overview</h1>
-          <p style={subheadingStyle}>
-            Updated just now · {data.monthLabel}
-          </p>
         </div>
 
         <div style={{ position: "relative" }}>
@@ -248,7 +212,6 @@ export default function PerformanceOverview() {
           icon={Star}
           title="Reviews"
           subtitle="All time performance"
-          status={<StatusBadge label={data.reviews.active ? "Active" : "Getting started"} />}
           footer={
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 20, paddingTop: 16, borderTop: `1px solid ${SURFACE_BORDER}` }}>
               <Link
@@ -341,12 +304,6 @@ export default function PerformanceOverview() {
           icon={LayoutGrid}
           title="Storefront collection"
           subtitle="Order status review widget"
-          status={
-            <StatusBadge
-              label={data.storefrontCollection.statusLabel}
-              tone={data.storefrontCollection.enabled ? "success" : "warning"}
-            />
-          }
           footer={
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 20, paddingTop: 16, borderTop: `1px solid ${SURFACE_BORDER}` }}>
               <Link
@@ -479,11 +436,4 @@ const headingStyle = {
   fontSize: 30,
   fontWeight: 900,
   color: "#202223",
-};
-
-const subheadingStyle = {
-  margin: "8px 0 0",
-  fontSize: 13,
-  fontWeight: 600,
-  color: "#6d7175",
 };
