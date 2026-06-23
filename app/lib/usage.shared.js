@@ -35,13 +35,13 @@ export const PRO_ONLY_FEATURES = new Set([
 
 export const FEATURE_LABELS = {
   review_imports: "Review imports",
-  ai_dashboard_overview: "AI Dashboard Overview",
-  ai_insights_playbook: "AI Insights (PDF playbook)",
-  export_pdf_csv: "PDF & CSV Export",
-  ai_review_replies: "AI Review Replies",
-  urgent_reply_prioritization: "Urgent Reply Prioritisation",
-  ai_widget_customization: "Widget publish",
-  auto_translate: "Auto-Translate",
+  ai_dashboard_overview: "AI dashboard overview",
+  ai_insights_playbook: "AI insights playbook",
+  export_pdf_csv: "PDF CSV export",
+  ai_review_replies: "AI review replies",
+  urgent_reply_prioritization: "Urgent reply summary",
+  ai_widget_customization: "Widget publishes",
+  auto_translate: "Auto translate",
 };
 
 /** Metered keys tracked in FeatureUsage table. */

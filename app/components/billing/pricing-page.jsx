@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
 import { useLocation } from "react-router";
 import { Shield, RefreshCw, CheckCircle2 } from "lucide-react";
-import { Banner, Card, SecondaryButton, Stack } from "../admin-ui";
+import { Banner, SecondaryButton, Stack } from "../admin-ui";
 import { PricingTrialHero } from "./pricing-trial-hero";
 import { PricingWhyUpgrade } from "./pricing-why-upgrade";
 import { PricingFeatureGrid } from "./pricing-feature-grid";
 import { PricingUpgradeFooter } from "./pricing-upgrade-footer";
-import { FeatureUsageBars } from "./feature-usage-bars";
+import { FeatureUsageGrid } from "./feature-usage-bars";
 
 export function PricingPage({
   planStatus,
@@ -110,12 +110,15 @@ export function PricingPage({
       ) : null}
 
       {planStatus?.featureUsage ? (
-        <Card
-          title={hasPro ? "Pro feature usage" : "Free Plan usage"}
-          description="Included usage refreshes on your next bill."
-        >
-          <FeatureUsageBars featureUsage={planStatus.featureUsage} />
-        </Card>
+        <div>
+          <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 800, color: "#202223" }}>
+            Plan usage
+          </h2>
+          <p style={{ margin: "0 0 16px", fontSize: 13, fontWeight: 500, color: "#6d7175" }}>
+            {hasPro ? "Pro plan" : "Free plan"} · Resets on your next bill.
+          </p>
+          <FeatureUsageGrid featureUsage={planStatus.featureUsage} />
+        </div>
       ) : null}
 
       {hasPro ? (

@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import {
-  Star,
   BarChart3,
   Globe,
   Sparkles,
@@ -10,12 +9,16 @@ import {
   Download,
   FileText,
   Palette,
-  Search,
   ArrowRight,
+  Video,
+  Play,
+  Heart,
 } from "lucide-react";
 import { mergeShopifyEmbedParams } from "../../utils/shopify-embed-nav.js";
 import {
-  PRO_PLAN_BOX,
+  FREE_IMPORTS_PER_MONTH,
+  FREE_LINKED_STORES,
+  PRO_LINKED_STORES,
   PRO_TRANSLATIONS_PER_MONTH,
 } from "../../lib/plan-features.shared.js";
 
@@ -121,67 +124,104 @@ const styles = {
 
 const FEATURE_CARDS = [
   {
+    id: "analytics",
     tone: "sky",
     tag: "Analytics",
     Icon: BarChart3,
-    title: "Live interactive analytics & graphs",
-    desc: "Real time charts for volume, ratings, velocity, and sentiment, not just previews.",
+    title: "Live analytics and graphs",
+    desc: "Charts for volume, ratings, and trends. Preview on Free.",
     tab: "/app/analytics",
-    cta: "View analytics",
+    cta: "Open analytics",
   },
   {
+    id: "translation",
     tone: "mint",
     tag: "Translation",
     Icon: Globe,
-    title: "Full translation suite for global stores",
-    desc: `Auto translate on reply, dashboard, and import. ${PRO_TRANSLATIONS_PER_MONTH} translations per month on Pro.`,
+    title: "Review translation hub",
+    desc: `Auto translate reviews. Pick shopper language. Pro: ${PRO_TRANSLATIONS_PER_MONTH}/month.`,
     tab: "/app/widgets/translation",
     cta: "Translation settings",
   },
   {
-    tone: "sky",
-    tag: "AI",
-    Icon: Sparkles,
-    title: "AI insights, playbooks & smart replies",
-    desc: "AI review replies, urgent prioritization, and actionable playbooks for your team.",
-    tab: "/app/manage-reviews",
-    cta: "Manage reviews",
-  },
-  {
+    id: "stores",
     tone: "mint",
-    tag: "Integration",
+    tag: "Stores",
     Icon: Link2,
-    title: "Store integrations across your network",
-    desc: PRO_PLAN_BOX.sections[0].items[4],
+    title: "Multi store integration",
+    desc: `Sync reviews across stores. ${FREE_LINKED_STORES} on Free, ${PRO_LINKED_STORES} on Pro.`,
     tab: "/app/manage-reviews?tab=integration",
     cta: "Store integration",
   },
   {
+    id: "import",
     tone: "sky",
     tag: "Import",
     Icon: Download,
-    title: "Unlimited CSV imports from other apps",
-    desc: "Import reviews from Judge.me, Loox, Yotpo, and more without monthly caps.",
+    title: "Import reviews",
+    desc: `Judge.me, Loox, Amazon, Flipkart, and more. ${FREE_IMPORTS_PER_MONTH}/month on Free.`,
     tab: "/app/collect-reviews?tab=import",
     cta: "Import reviews",
   },
   {
-    tone: "mint",
-    tag: "Export",
-    Icon: FileText,
-    title: "PDF & CSV export for reporting",
-    desc: "Export review data and AI generated insights for stakeholders and campaigns.",
-    tab: "/app/manage-reviews",
-    cta: "Export options",
+    id: "video",
+    tone: "sky",
+    tag: "Video",
+    Icon: Video,
+    title: "Video based reviews",
+    desc: "Shoppers upload video with their review. Pro feature.",
+    tab: "/app/collect-reviews/customize",
+    cta: "Review form",
   },
   {
+    id: "video-slider",
+    tone: "mint",
+    tag: "Widgets",
+    Icon: Play,
+    title: "Video reviews slider",
+    desc: "Carousel of your best video reviews on the storefront.",
+    tab: "/app/widgets",
+    cta: "Open widgets",
+  },
+  {
+    id: "love-page",
     tone: "sky",
+    tag: "Widgets",
+    Icon: Heart,
+    title: "Customer love page",
+    desc: "All reviews, ratings, photos, and videos on one page.",
+    tab: "/app/widgets",
+    cta: "Open widgets",
+  },
+  {
+    id: "ai",
+    tone: "mint",
+    tag: "AI",
+    Icon: Sparkles,
+    title: "AI replies and insights",
+    desc: "Smart replies, urgent review summary, and playbooks.",
+    tab: "/app/manage-reviews",
+    cta: "Manage reviews",
+  },
+  {
+    id: "export",
+    tone: "sky",
+    tag: "Export",
+    Icon: FileText,
+    title: "PDF and CSV export",
+    desc: "Export review data and AI insights. 10/month on Pro.",
+    tab: "/app/analytics",
+    cta: "Open analytics",
+  },
+  {
+    id: "branding",
+    tone: "mint",
     tag: "Branding",
     Icon: Palette,
-    title: "Advanced widget customisation",
-    desc: "Layout presets, brand colors, typography, and trust badges, 20 publishes per month.",
-    tab: "/app/collect-reviews/customize",
-    cta: "Customizations",
+    title: "Widget customisation",
+    desc: "Layout, colors, typography, and trust badges. 20 publishes/month on Pro.",
+    tab: "/app/collect-reviews?tab=widget",
+    cta: "Customise widget",
   },
 ];
 
@@ -224,7 +264,7 @@ export function PricingFeatureGrid({ search = "" }) {
   return (
     <div style={styles.grid}>
       {FEATURE_CARDS.map((card) => (
-        <FeatureCard key={card.title} card={card} search={search} />
+        <FeatureCard key={card.id} card={card} search={search} />
       ))}
     </div>
   );
