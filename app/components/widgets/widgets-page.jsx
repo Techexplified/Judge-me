@@ -22,45 +22,24 @@ export const WIDGET_CATALOG = [
     title: "Review Showcase",
     description: "Display reviews in a beautiful, customizable layout.",
     previewImage: reviewShowcaseImg,
-    badge: {
-      label: "Active",
-      bg: "#ecfdf5",
-      fg: "#047857",
-      dot: SHOPIFY_GREEN,
-    },
   },
   {
     id: "review-translation-hub",
     title: "Review Translation Hub",
     description: "Auto-translate reviews into any language for shoppers.",
     previewImage: reviewTranslationImg,
-    badge: {
-      label: "New",
-      bg: "#f3e8ff",
-      fg: "#7c3aed",
-    },
   },
   {
     id: "video-reviews-slider",
     title: "Video Reviews Slider",
     description: "Highlight video reviews in an engaging carousel.",
     previewImage: videoSliderImg,
-    badge: {
-      label: "Premium",
-      bg: "#fff7ed",
-      fg: "#c2410c",
-    },
   },
   {
     id: "customers-love-page",
     title: "Customer's Love Page",
     description: "A dedicated page for all reviews, photos, and videos.",
     previewImage: customerLovePageImg,
-    badge: {
-      label: "Premium",
-      bg: "#fff7ed",
-      fg: "#c2410c",
-    },
   },
 ];
 
@@ -105,38 +84,6 @@ const type = {
   },
 };
 
-function WidgetBadge({ badge }) {
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 5,
-        padding: "4px 10px",
-        borderRadius: 999,
-        background: badge.bg,
-        color: badge.fg,
-        fontFamily: FONT,
-        fontSize: 11,
-        fontWeight: 700,
-      }}
-    >
-      {badge.dot ? (
-        <span
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: "50%",
-            background: badge.dot,
-            flexShrink: 0,
-          }}
-        />
-      ) : null}
-      {badge.label}
-    </span>
-  );
-}
-
 function WidgetPreview({ previewImage, title }) {
   if (previewImage) {
     return (
@@ -176,10 +123,9 @@ function WidgetPreview({ previewImage, title }) {
   );
 }
 
-function WidgetCard({ widget, onAddToTheme, installedAt }) {
+function WidgetCard({ widget, onAddToTheme }) {
   const [hover, setHover] = useState(false);
   const ctaLabel = getWidgetCtaLabel(widget.id);
-  const isInstalled = Boolean(installedAt);
 
   return (
     <article
@@ -217,15 +163,6 @@ function WidgetCard({ widget, onAddToTheme, installedAt }) {
           position: "relative",
         }}
       >
-        <div style={{ position: "absolute", top: 10, left: 10, zIndex: 1 }}>
-          <WidgetBadge
-            badge={
-              isInstalled && widget.id !== "review-translation-hub"
-                ? { label: "Added", bg: "#ecfdf5", fg: "#047857", dot: SHOPIFY_GREEN }
-                : widget.badge
-            }
-          />
-        </div>
         <WidgetPreview previewImage={widget.previewImage} title={widget.title} />
       </div>
 
@@ -372,7 +309,6 @@ export function WidgetsPage({
             key={widget.id}
             widget={widget}
             onAddToTheme={onAddToTheme}
-            installedAt={widgetSettings?.installed?.[widget.id]?.clickedAt}
           />
         ))}
       </div>
