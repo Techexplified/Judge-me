@@ -16,13 +16,14 @@ export const SURFACE_BG = "#fafcfb";
 export const SURFACE_BORDER = "#e5ebe8";
 export const SURFACE_MUTED = "#f5f9f7";
 export const R = 8;
+export const APP_FONT = "'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
 
 const ui = {
   page: {
     padding: "20px 24px 32px",
     background: PAGE_BG,
     minHeight: "100vh",
-    fontFamily: "'Inter',system-ui,-apple-system,sans-serif",
+    fontFamily: APP_FONT,
     fontSize: 14,
     color: "#202223",
     boxSizing: "border-box",

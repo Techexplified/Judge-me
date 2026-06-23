@@ -16,7 +16,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { CHART_COLORS, CRITICAL_RED, modalStyles } from "./analytics-styles.js";
+import { CHART_COLORS, CRITICAL_RED, CHART_LEGEND, CHART_TICK, CHART_TOOLTIP, modalStyles } from "./analytics-styles.js";
 
 function formatShortDate(dateStr) {
   if (!dateStr) return "";
@@ -42,10 +42,10 @@ export function VolumeStackedChart({ data }) {
       <ResponsiveContainer width="100%" height={chartHeight}>
         <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e1e3e5" />
-          <XAxis dataKey="date" tickFormatter={formatShortDate} tick={{ fontSize: 11 }} />
-          <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-          <Tooltip labelFormatter={(l) => `Date: ${l}`} />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <XAxis dataKey="date" tickFormatter={formatShortDate} tick={CHART_TICK} />
+          <YAxis allowDecimals={false} tick={CHART_TICK} />
+          <Tooltip labelFormatter={(l) => `Date: ${l}`} contentStyle={CHART_TOOLTIP} />
+          <Legend wrapperStyle={CHART_LEGEND} />
           <Bar dataKey="r5" stackId="a" fill={CHART_COLORS.r5} name="5★" />
           <Bar dataKey="r4" stackId="a" fill={CHART_COLORS.r4} name="4★" />
           <Bar dataKey="r3" stackId="a" fill={CHART_COLORS.r3} name="3★" />
@@ -68,9 +68,9 @@ export function RatingDistributionChart({ data }) {
       <ResponsiveContainer width="100%" height={chartHeight}>
         <BarChart data={data} layout="vertical" margin={{ top: 8, right: 16, left: 8, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e1e3e5" horizontal={false} />
-          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-          <YAxis type="category" dataKey="star" tickFormatter={(v) => `${v}★`} tick={{ fontSize: 11 }} width={36} />
-          <Tooltip formatter={(v) => [v, "Reviews"]} />
+          <XAxis type="number" allowDecimals={false} tick={CHART_TICK} />
+          <YAxis type="category" dataKey="star" tickFormatter={(v) => `${v}★`} tick={CHART_TICK} width={36} />
+          <Tooltip formatter={(v) => [v, "Reviews"]} contentStyle={CHART_TOOLTIP} />
           <Bar dataKey="count" radius={[0, 4, 4, 0]}>
             {data.map((entry) => (
               <Cell key={entry.star} fill={CHART_COLORS[`r${entry.star}`] || CHART_COLORS.r3} />
@@ -93,9 +93,13 @@ export function RatingTrendChart({ data }) {
       <ResponsiveContainer width="100%" height={chartHeight}>
         <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e1e3e5" />
-          <XAxis dataKey="date" tickFormatter={formatShortDate} tick={{ fontSize: 11 }} />
-          <YAxis domain={[1, 5]} tick={{ fontSize: 11 }} />
-          <Tooltip labelFormatter={(l) => `Date: ${l}`} formatter={(v) => [v, "Avg rating"]} />
+          <XAxis dataKey="date" tickFormatter={formatShortDate} tick={CHART_TICK} />
+          <YAxis domain={[1, 5]} tick={CHART_TICK} />
+          <Tooltip
+            labelFormatter={(l) => `Date: ${l}`}
+            formatter={(v) => [v, "Avg rating"]}
+            contentStyle={CHART_TOOLTIP}
+          />
           <Line type="monotone" dataKey="avg" stroke={CHART_COLORS.trend} strokeWidth={2.5} dot={false} />
         </LineChart>
       </ResponsiveContainer>
@@ -114,9 +118,9 @@ export function VelocityAreaChart({ data }) {
       <ResponsiveContainer width="100%" height={chartHeight}>
         <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e1e3e5" />
-          <XAxis dataKey="week" tickFormatter={formatShortDate} tick={{ fontSize: 11 }} />
-          <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-          <Tooltip labelFormatter={(l) => `Week of ${l}`} />
+          <XAxis dataKey="week" tickFormatter={formatShortDate} tick={CHART_TICK} />
+          <YAxis allowDecimals={false} tick={CHART_TICK} />
+          <Tooltip labelFormatter={(l) => `Week of ${l}`} contentStyle={CHART_TOOLTIP} />
           <Area type="monotone" dataKey="total" stroke={CHART_COLORS.trend} fill={CHART_COLORS.area} strokeWidth={2} />
         </AreaChart>
       </ResponsiveContainer>
@@ -162,8 +166,8 @@ export function SentimentDonutChart({ positivePct, neutralPct, negativePct, acti
               />
             ))}
           </Pie>
-          <Tooltip formatter={(v) => [`${v}%`, "Share"]} />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Tooltip formatter={(v) => [`${v}%`, "Share"]} contentStyle={CHART_TOOLTIP} />
+          <Legend wrapperStyle={CHART_LEGEND} />
         </PieChart>
       </ResponsiveContainer>
       </ChartSurface>
@@ -181,10 +185,14 @@ export function SentimentTrendChart({ data }) {
       <ResponsiveContainer width="100%" height={chartHeight}>
         <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e1e3e5" />
-          <XAxis dataKey="week" tickFormatter={formatShortDate} tick={{ fontSize: 11 }} />
-          <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-          <Tooltip labelFormatter={(l) => `Week of ${l}`} formatter={(v) => [`${v}%`, ""]} />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <XAxis dataKey="week" tickFormatter={formatShortDate} tick={CHART_TICK} />
+          <YAxis domain={[0, 100]} tick={CHART_TICK} />
+          <Tooltip
+            labelFormatter={(l) => `Week of ${l}`}
+            formatter={(v) => [`${v}%`, ""]}
+            contentStyle={CHART_TOOLTIP}
+          />
+          <Legend wrapperStyle={CHART_LEGEND} />
           <Area type="monotone" dataKey="positivePct" stackId="1" stroke={CHART_COLORS.positive} fill={CHART_COLORS.positive} name="Positive" />
           <Area type="monotone" dataKey="neutralPct" stackId="1" stroke={CHART_COLORS.neutral} fill={CHART_COLORS.neutral} name="Neutral" />
           <Area type="monotone" dataKey="negativePct" stackId="1" stroke={CHART_COLORS.negative} fill={CHART_COLORS.negative} name="Negative" />
@@ -205,9 +213,9 @@ export function KeywordBarChart({ data }) {
       <ResponsiveContainer width="100%" height={chartHeight}>
         <BarChart data={data} layout="vertical" margin={{ top: 8, right: 16, left: 8, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e1e3e5" horizontal={false} />
-          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-          <YAxis type="category" dataKey="word" tick={{ fontSize: 11 }} width={80} />
-          <Tooltip formatter={(v) => [v, "Mentions"]} />
+          <XAxis type="number" allowDecimals={false} tick={CHART_TICK} />
+          <YAxis type="category" dataKey="word" tick={CHART_TICK} width={80} />
+          <Tooltip formatter={(v) => [v, "Mentions"]} contentStyle={CHART_TOOLTIP} />
           <Bar dataKey="count" fill={CRITICAL_RED} radius={[0, 4, 4, 0]} />
         </BarChart>
       </ResponsiveContainer>

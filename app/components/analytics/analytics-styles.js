@@ -1,3 +1,12 @@
+import { APP_FONT } from "../admin-ui.jsx";
+
+export const ANALYTICS_FONT = APP_FONT;
+
+export const CHART_TICK = { fontSize: 11, fontFamily: ANALYTICS_FONT };
+export const CHART_TICK_SM = { fontSize: 12, fontWeight: 600, fontFamily: ANALYTICS_FONT };
+export const CHART_LEGEND = { fontSize: 12, fontFamily: ANALYTICS_FONT };
+export const CHART_TOOLTIP = { fontFamily: ANALYTICS_FONT, fontSize: 12 };
+
 export const SHOPIFY_GREEN = "#008060";
 export const NEUTRAL_SEGMENT = "#d89b00";
 export const CRITICAL_RED = "#d72c0d";
@@ -43,6 +52,9 @@ export const modalStyles = {
     border: "1px solid #e1e3e5",
     padding: "24px 28px",
     zIndex: 1,
+    fontFamily: ANALYTICS_FONT,
+    fontSize: 14,
+    color: "#202223",
   },
   head: {
     display: "flex",
@@ -110,7 +122,7 @@ export const modalStyles = {
     fontSize: 12,
     fontWeight: 700,
     cursor: "pointer",
-    fontFamily: "inherit",
+    fontFamily: ANALYTICS_FONT,
     textDecoration: "none",
     color: "#202223",
   },
@@ -125,7 +137,7 @@ export const modalStyles = {
     fontSize: 12,
     fontWeight: 800,
     cursor: "pointer",
-    fontFamily: "inherit",
+    fontFamily: ANALYTICS_FONT,
     textDecoration: "none",
     color: "#fff",
   },

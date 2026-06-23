@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Lock, Sparkles } from "lucide-react";
-import { SURFACE_BORDER } from "../admin-ui";
+import { SURFACE_BORDER, APP_FONT } from "../admin-ui";
 import { mergeShopifyEmbedParams } from "../../utils/shopify-embed-nav.js";
 
 const PRO_PILL = {
@@ -56,6 +56,7 @@ function HoverUnlockOverlay({ visible, label = "Unlock Pro" }) {
           color: "#fff",
           fontSize: 13,
           fontWeight: 700,
+          fontFamily: APP_FONT,
           textDecoration: "none",
           boxShadow: "0 4px 14px rgba(0,0,0,0.12)",
           transform: visible ? "translateY(0)" : "translateY(4px)",

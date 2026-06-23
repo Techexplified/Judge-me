@@ -29,8 +29,8 @@ import {
   YAxis,
 } from "recharts";
 import { mergeShopifyEmbedParams } from "../../utils/shopify-embed-nav.js";
-import { PAGE_BG, SHOPIFY_GREEN, SURFACE_BG, SURFACE_BORDER } from "../admin-ui";
-import { CHART_COLORS } from "./analytics-styles.js";
+import { PAGE_BG, SHOPIFY_GREEN, SURFACE_BG, SURFACE_BORDER, APP_FONT } from "../admin-ui";
+import { CHART_COLORS, CHART_LEGEND, CHART_TICK, CHART_TICK_SM, CHART_TOOLTIP } from "./analytics-styles.js";
 import { ProLockedPanel, ProLockedToolbar, ProLockedToolButton } from "./pro-section-blur.jsx";
 import { PremiumTrialBadge } from "../premium-trial-banner";
 
@@ -118,7 +118,7 @@ function DateRangeSelect({ rangeKey, onRangeChange }) {
           fontWeight: 700,
           color: "#202223",
           cursor: "pointer",
-          fontFamily: "inherit",
+          fontFamily: APP_FONT,
         }}
       >
         <option value="7">Last 7 days</option>
@@ -312,7 +312,7 @@ function SourceBreakdownChart({ breakdown, totalReviews }) {
                 <Cell key={entry.key} fill={entry.color} stroke="none" />
               ))}
             </Pie>
-            <Tooltip formatter={(v, _n, p) => [v, p.payload.label]} />
+            <Tooltip formatter={(v, _n, p) => [v, p.payload.label]} contentStyle={CHART_TOOLTIP} />
           </PieChart>
         </ResponsiveContainer>
         <div
@@ -373,11 +373,11 @@ function ReviewsOverTimeChart({ data }) {
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="#e5ebe8" vertical={false} />
-        <XAxis dataKey="label" tick={{ fontSize: 12, fontWeight: 600 }} axisLine={false} tickLine={false} />
-        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-        <Tooltip />
+        <XAxis dataKey="label" tick={CHART_TICK_SM} axisLine={false} tickLine={false} />
+        <YAxis allowDecimals={false} tick={CHART_TICK} axisLine={false} tickLine={false} />
+        <Tooltip contentStyle={CHART_TOOLTIP} />
         <Legend
-          wrapperStyle={{ fontSize: 12, fontWeight: 600 }}
+          wrapperStyle={CHART_LEGEND}
           formatter={(value) => (
             <span style={{ color: "#202223" }}>{value}</span>
           )}
@@ -414,7 +414,7 @@ function TopProductsTable({ products, reviewsHref }) {
 
   return (
     <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, fontFamily: APP_FONT }}>
         <thead>
           <tr>
             {["Product", "Reviews", "Avg. rating", "Response rate", "Trend"].map((col) => (
@@ -629,7 +629,17 @@ export function AnalyticsPageContent({
     };
 
   return (
-    <div style={{ background: PAGE_BG, minHeight: "100vh", padding: "20px 24px 32px", boxSizing: "border-box" }}>
+    <div
+      style={{
+        background: PAGE_BG,
+        minHeight: "100vh",
+        padding: "20px 24px 32px",
+        boxSizing: "border-box",
+        fontFamily: APP_FONT,
+        fontSize: 14,
+        color: "#202223",
+      }}
+    >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap", marginBottom: 24 }}>
         <div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
@@ -658,7 +668,7 @@ export function AnalyticsPageContent({
                 fontWeight: 700,
                 color: "#202223",
                 cursor: exporting ? "wait" : "pointer",
-                fontFamily: "inherit",
+                fontFamily: APP_FONT,
               }}
             >
               <Download size={16} />
@@ -680,7 +690,7 @@ export function AnalyticsPageContent({
                 fontWeight: 700,
                 color: "#202223",
                 cursor: exporting ? "wait" : "pointer",
-                fontFamily: "inherit",
+                fontFamily: APP_FONT,
               }}
             >
               <FileText size={16} />
