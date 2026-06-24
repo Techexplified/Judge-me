@@ -21,7 +21,7 @@ const RATING_TEXT_SECTIONS = [
     id: "orderMetaLine",
     label: "Order details line",
     maxLength: 80,
-    hint: "Supports {{order}}, {{date}}, {{item}} · preview uses sample order data",
+    hint: "Supports {{order}}, {{date}}, {{item}}. Preview uses sample order data",
   },
   {
     id: "verifiedPurchaseLabel",

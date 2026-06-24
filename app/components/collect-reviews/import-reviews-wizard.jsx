@@ -149,7 +149,7 @@ function buildNotReadyMessage(summary) {
       `${productNotFound} could not be matched to a product (check the product handle / ID / SKU column)`,
     );
 
-  const detail = reasons.length ? ` — ${reasons.join(", ")}.` : ".";
+  const detail = reasons.length ? `. ${reasons.join(", ")}.` : ".";
   return `None of your ${total} row${total === 1 ? "" : "s"} are ready to import${detail}`;
 }
 
@@ -312,7 +312,7 @@ export function ImportReviewsWizard({
         reasons.push(`${notFound} row${notFound === 1 ? "" : "s"} with no matching product`);
       if (invalid > 0)
         reasons.push(`${invalid} row${invalid === 1 ? "" : "s"} missing required fields`);
-      const detail = reasons.length ? ` — ${reasons.join(", ")}.` : ".";
+      const detail = reasons.length ? `. ${reasons.join(", ")}.` : ".";
       return {
         tone: "warning",
         text: `No new reviews were imported${detail}`,

@@ -57,7 +57,7 @@ export function CollectReviewsShell({
         <div>
           <h1 style={{ margin: 0, ...type.pageTitle }}>Collect Reviews</h1>
           <p style={{ margin: "6px 0 0", ...type.subtitle }}>
-            Manage your storefront widget, Review form, and imported Reviews.
+            Manage review collection, storefront display, and imported customer reviews from one place.
           </p>
         </div>
         <button

@@ -565,7 +565,7 @@ const STATUS_BADGE = {
 };
 
 function formatDate(d) {
-  if (!d) return "—";
+  if (!d) return "N/A";
   try {
     return new Date(d).toLocaleDateString("en-US", {
       month: "short",
@@ -573,7 +573,7 @@ function formatDate(d) {
       year: "numeric",
     });
   } catch {
-    return "—";
+    return "N/A";
   }
 }
 

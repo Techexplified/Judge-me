@@ -398,7 +398,7 @@ export function ReviewFlowPreview({ config, shopDomain, reviewContext, activeSte
       <FlowStepper steps={steps} activeStep={step} onStepChange={onStepChange} />
 
       <p style={{ textAlign: "center", marginTop: 12, fontSize: 11, color: "#94A3B8", fontFamily: UI_FONT }}>
-        Using: {config.radiusPreset} ({config.borderRadius}px) · {config.primaryColor}
+        Using: {config.radiusPreset} ({config.borderRadius}px), {config.primaryColor}
       </p>
     </div>
   );

@@ -15,7 +15,7 @@ function TimingToggle({ timing, onChange }) {
   return (
     <div
       role="group"
-      aria-label="Widget timing"
+      aria-label="Review display timing"
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -105,8 +105,7 @@ export function OrderStatusPreview({
               lineHeight: 1.5,
             }}
           >
-            {copy.timingLabel}. Order status and tracking come from Shopify — your app adds the
-            review prompt below.
+            {copy.previewDescription}
           </p>
         </div>
         {onTimingChange ? (
@@ -166,7 +165,7 @@ export function OrderStatusPreview({
                 lineHeight: 1.45,
               }}
             >
-              Order confirmed · estimated delivery · tracking
+              Order confirmed, estimated delivery, tracking
             </p>
           </div>
 
