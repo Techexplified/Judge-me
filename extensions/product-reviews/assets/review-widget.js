@@ -294,6 +294,22 @@
     return `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="4" width="14" height="16" rx="3" stroke="${esc(cfg.primaryColor)}" stroke-width="1.8"/><path d="M9 8h6" stroke="${esc(cfg.primaryColor)}" stroke-width="1.8" stroke-linecap="round"/></svg>`;
   }
 
+  function storeAvatarHtml(cfg) {
+    return `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-5v-5H10v5H5a1 1 0 0 1-1-1v-8.5Z" stroke="${esc(cfg.primaryColor)}" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
+  }
+
+  const STORE_REVIEW_FLOW = {
+    productId: "store-review",
+    productName: "Store Review",
+    ratingTitle: "How was your experience?",
+    ratingSubtitle: "Tell us about shopping with our store.",
+    formTitle: "Leave a store review",
+    formSubtitle: "Share your experience shopping with us.",
+    reviewPlaceholder:
+      "What did you enjoy about our store? How was shipping, support, or packaging?",
+    submitButtonText: "Post store review",
+  };
+
   function createReviewFlow({
     cfg,
     textContext,
@@ -303,8 +319,8 @@
     onSubmit,
     onComplete,
   }) {
-    const steps = getVisibleFlowSteps(cfg);
     let stepIndex = 0;
+    let reviewMode = "product";
     let rating = 0;
     let author = "";
     let comment = "";
@@ -312,10 +328,19 @@
     let videoFiles = [];
     let complete = false;
 
+    function getFlowSteps() {
+      const flowSteps = ["rating"];
+      if (cfg.showWrittenReviews !== false) flowSteps.push("written");
+      if (reviewMode !== "store") {
+        if (cfg.showPhotos !== false) flowSteps.push("photo");
+        if (cfg.showVideos !== false) flowSteps.push("video");
+      }
+      flowSteps.push("submit");
+      return flowSteps;
+    }
+
     const ratingTitleDisplay = resolveRatingPageTitleDisplay(cfg, textContext);
     const ratingTitle = ratingTitleDisplay.text;
-    const orderMetaLine = resolveFormText(cfg.orderMetaLine, textContext);
-    const showOrderMeta = hasOrderMeta(textContext) && orderMetaLine;
     const trustText = cfg.privacyFooterText || cfg.trustBadgeText;
     const badgeStyle = textStyleCss(resolveTextStyle(cfg, "verifiedPurchaseLabel"));
     const orderMetaStyle = textStyleCss(resolveTextStyle(cfg, "orderMetaLine"));
@@ -335,6 +360,7 @@
 
     function currentStep() {
       if (complete) return "privacy";
+      const steps = getFlowSteps();
       return steps[stepIndex] || "rating";
     }
 
@@ -397,21 +423,39 @@
       els.content.innerHTML = "";
 
       if (step === "rating") {
+        const isStore = reviewMode === "store";
+        const orderMetaLine = resolveFormText(cfg.orderMetaLine, textContext);
+        const showOrderMeta = !isStore && hasOrderMeta(textContext) && orderMetaLine;
+        const displayTitle = isStore ? STORE_REVIEW_FLOW.ratingTitle : ratingTitle;
+        const displayName = isStore
+          ? textContext.store || "Our store"
+          : textContext.item || "Product";
+        const avatarHtml = isStore ? storeAvatarHtml(cfg) : productAvatarHtml(cfg, productImage);
         const imageSize = Math.min(96, Math.max(72, cfg.starSize * 2.75));
         const innerRadius = Math.max(10, cfg.borderRadius - 2);
         const wrap = document.createElement("div");
         wrap.innerHTML = `
           <div style="border:1px solid #E8EEF3;border-radius:${cfg.borderRadius}px;background:${cfg.cardBackgroundColor || "#fff"};padding:28px 24px 24px;text-align:center">
             <div style="width:${imageSize}px;height:${imageSize}px;border-radius:${innerRadius}px;background:#F0F7F4;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;overflow:hidden">
-              ${productAvatarHtml(cfg, productImage)}
+              ${avatarHtml}
             </div>
-            <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:999px;background:#ECFDF5;margin-bottom:12px;${badgeStyle}">
+            ${
+              isStore
+                ? ""
+                : `<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:999px;background:#ECFDF5;margin-bottom:12px;${badgeStyle}">
               ✓ ${esc(cfg.verifiedPurchaseLabel)}
-            </span>
-            <div style="font-weight:700;font-size:18px;color:${cfg.textColor || "#202223"};margin-bottom:4px;letter-spacing:-0.01em">${esc(textContext.item || "Product")}</div>
-            ${showOrderMeta ? `<div style="margin-bottom:20px;${orderMetaStyle}">${esc(orderMetaLine)}</div>` : `<div style="margin-bottom:20px"></div>`}
+            </span>`
+            }
+            <div style="font-weight:700;font-size:18px;color:${cfg.textColor || "#202223"};margin-bottom:4px;letter-spacing:-0.01em">${esc(displayName)}</div>
+            ${
+              isStore
+                ? `<p style="margin:0 0 20px;font-size:13px;color:#6d7175;line-height:1.5">${esc(STORE_REVIEW_FLOW.ratingSubtitle)}</p>`
+                : showOrderMeta
+                  ? `<div style="margin-bottom:20px;${orderMetaStyle}">${esc(orderMetaLine)}</div>`
+                  : `<div style="margin-bottom:20px"></div>`
+            }
             <div style="height:1px;background:#E8EEF3;margin:0 0 20px"></div>
-            <p style="text-align:center;margin:0 0 ${gap + 4}px;letter-spacing:-0.01em;${ratingTitleStyle}">${esc(ratingTitle)}</p>
+            <p style="text-align:center;margin:0 0 ${gap + 4}px;letter-spacing:-0.01em;${ratingTitleStyle}">${esc(displayTitle)}</p>
           </div>
           <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:18px;padding-top:16px;border-top:1px solid #E8EEF3;font-size:12px;color:#6d7175">
             🔒 ${esc(trustText)}
@@ -440,14 +484,20 @@
       }
 
       if (step === "written") {
+        const isStore = reviewMode === "store";
+        const formTitle = isStore ? STORE_REVIEW_FLOW.formTitle : cfg.formTitle;
+        const formSubtitle = isStore ? STORE_REVIEW_FLOW.formSubtitle : cfg.formSubtitle;
+        const reviewPlaceholder = isStore
+          ? STORE_REVIEW_FLOW.reviewPlaceholder
+          : cfg.reviewFieldPlaceholder;
         els.content.innerHTML = `
           <div style="display:flex;flex-direction:column;gap:${gap}px">
-            <h3 style="margin:0;font-size:${pl.titleSize}px;font-weight:800;color:${cfg.textColor}">${esc(cfg.formTitle)}</h3>
-            ${pl.hideSubtitle ? "" : `<p style="margin:0;color:#6d7175;font-size:14px;line-height:1.5">${esc(cfg.formSubtitle)}</p>`}
+            <h3 style="margin:0;font-size:${pl.titleSize}px;font-weight:800;color:${cfg.textColor}">${esc(formTitle)}</h3>
+            ${pl.hideSubtitle ? "" : `<p style="margin:0;color:#6d7175;font-size:14px;line-height:1.5">${esc(formSubtitle)}</p>`}
             <label style="font-weight:700">${esc(cfg.nameFieldLabel)} <span style="color:#dc2626">*</span></label>
             <input id="jd-flow-author" class="jd-input" placeholder="e.g. Sarah M." autocomplete="name" value="${esc(author)}" />
             <label style="font-weight:700">${esc(cfg.reviewFieldLabel)} <span style="color:#dc2626">*</span></label>
-            <textarea id="jd-flow-comment" class="jd-input" style="min-height:100px;resize:vertical" maxlength="500" placeholder="${esc(cfg.reviewFieldPlaceholder)}">${esc(comment)}</textarea>
+            <textarea id="jd-flow-comment" class="jd-input" style="min-height:100px;resize:vertical" maxlength="500" placeholder="${esc(reviewPlaceholder)}">${esc(comment)}</textarea>
           </div>`;
         const authorEl = els.content.querySelector("#jd-flow-author");
         const commentEl = els.content.querySelector("#jd-flow-comment");
@@ -525,9 +575,11 @@
       }
 
       if (step === "submit") {
+        const submitTitle =
+          reviewMode === "store" ? STORE_REVIEW_FLOW.formTitle : cfg.formTitle;
         els.content.innerHTML = `
           <div style="text-align:center;padding:${gap}px 0">
-            <h3 style="margin:0 0 16px;font-size:18px;font-weight:800;color:${cfg.textColor}">${esc(cfg.formTitle)}</h3>
+            <h3 style="margin:0 0 16px;font-size:18px;font-weight:800;color:${cfg.textColor}">${esc(submitTitle)}</h3>
             <p style="margin:0 0 20px;font-size:14px;color:#6d7175;line-height:1.5">Ready to share your review? Tap below to publish.</p>
           </div>`;
         return;
@@ -559,12 +611,14 @@
         return;
       }
 
-      els.progress.textContent = `Step ${stepIndex + 1} of ${steps.length}`;
+      els.progress.textContent = `Step ${stepIndex + 1} of ${getFlowSteps().length}`;
       els.back.style.display = stepIndex > 0 ? "inline-flex" : "none";
       els.skip.style.display = step === "video" ? "inline-flex" : "none";
 
       if (step === "submit") {
-        els.next.innerHTML = `✓ ${esc(cfg.submitButtonText)}`;
+        els.next.innerHTML = `✓ ${esc(
+          reviewMode === "store" ? STORE_REVIEW_FLOW.submitButtonText : cfg.submitButtonText,
+        )}`;
       } else {
         els.next.textContent = "Continue";
       }
@@ -604,6 +658,7 @@
       }
 
       if (step === "submit" && cfg.showWrittenReviews !== false) {
+        const steps = getFlowSteps();
         if (steps.includes("written")) persistWrittenFields();
         if (!author || !comment) {
           els.msg.style.color = "#dc2626";
@@ -645,6 +700,7 @@
           author: author || "Anonymous",
           comment: comment || "—",
           mediaFiles: [...photoFiles, ...videoFiles],
+          reviewMode,
         });
         complete = true;
         els.next.disabled = false;
@@ -673,8 +729,9 @@
       syncNav();
     }
 
-    function open() {
+    function open(options = {}) {
       if (!els.overlay) return;
+      reviewMode = options.mode === "store" ? "store" : "product";
       stepIndex = 0;
       rating = 0;
       author = "";
@@ -749,7 +806,7 @@
           `${API}/api/public/reviews?productId=${encodeURIComponent(productId)}&shop=${encodeURIComponent(shop)}&t=${Date.now()}`,
         ),
         fetch(
-          `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=store&limit=50`,
+          `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=store&limit=50&t=${Date.now()}`,
         ),
       ]);
 
@@ -887,7 +944,7 @@
           transition: opacity 0.15s ease;
         }
         .jd-write-btn:hover { opacity: 0.92; }
-        .jd-reply-box { margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: ${inputRadius}px; font-size: 14px; color: #475569; }
+        .jd-reply-box { margin-top: 12px; padding: 12px 14px; background: #f8fafc; border-left: 3px solid ${cfg.primaryColor}; border-radius: ${inputRadius}px; font-size: 13px; color: #475569; line-height: 1.55; text-align: left; }
         .jd-tabs { display: flex; gap: 8px; margin-bottom: ${gap}px; flex-wrap: wrap; }
         .jd-tab {
           padding: 8px 14px; border-radius: 999px; border: 1px solid #e2e8f0; background: #fff;
@@ -908,15 +965,16 @@
 
       const renderShowcaseCard = (r) => {
         const img = (r.media || []).find((m) => m.type === "image");
-        const imgHtml = img
+        const imgBlock = img
           ? `<img class="jd-showcase-img" src="${esc(img.url)}" alt="" loading="lazy" />`
-          : `<div class="jd-showcase-img"></div>`;
+          : "";
         return `
           <article class="jd-showcase-card">
-            ${imgHtml}
+            ${imgBlock}
             <div class="jd-showcase-body">
               <div style="font-weight:700;font-size:14px">${esc(r.author)}</div>
               <div class="jd-stars">${starsHtml(r.rating, cfg)}</div>
+              ${r.title ? `<div style="font-weight:600;font-size:13px;margin-top:4px">${esc(r.title)}</div>` : ""}
               <div class="jd-comment" style="font-size:13px;margin-top:6px">${esc(r.comment)}</div>
               ${renderMerchantReply(r, cfg)}
               <div class="jd-verified" style="margin-top:8px">✓ Verified</div>
@@ -965,14 +1023,18 @@
         productImage,
         gap,
         pl,
-        onSubmit: async ({ rating: reviewRating, author, comment, mediaFiles }) => {
+        onSubmit: async ({ rating: reviewRating, author, comment, mediaFiles, reviewMode: mode }) => {
+          const isStore = mode === "store";
+          const submitProductId = isStore ? STORE_REVIEW_FLOW.productId : productId;
+          const submitProductName = isStore ? STORE_REVIEW_FLOW.productName : productName;
+          const submitProductImage = isStore ? undefined : productImage || undefined;
           let res;
           if (mediaFiles.length > 0) {
             const fd = new FormData();
             fd.set("shop", shop);
-            fd.set("productId", productId);
-            fd.set("productName", productName);
-            if (productImage) fd.set("productImage", productImage);
+            fd.set("productId", submitProductId);
+            fd.set("productName", submitProductName);
+            if (submitProductImage) fd.set("productImage", submitProductImage);
             fd.set("rating", String(reviewRating));
             fd.set("author", author);
             fd.set("comment", comment);
@@ -984,9 +1046,9 @@
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 shop,
-                productId,
-                productName,
-                productImage: productImage || undefined,
+                productId: submitProductId,
+                productName: submitProductName,
+                productImage: submitProductImage,
                 rating: reviewRating,
                 author,
                 comment,
@@ -1004,7 +1066,10 @@
       flow.mount(root.querySelector("#jd-flow-mount"));
 
       const openBtn = root.querySelector("#jd-open-form");
-      if (openBtn) openBtn.onclick = () => flow.open();
+      if (openBtn) {
+        openBtn.onclick = () =>
+          flow.open({ mode: activeTab === "store" ? "store" : "product" });
+      }
 
       const listEl = root.querySelector("#jd-reviews-list");
       root.querySelectorAll(".jd-tab").forEach((tab) => {
