@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useEmbedNavigate } from "../../hooks/use-embed-navigate.js";
-import { SURFACE_BG, SURFACE_BORDER } from "../admin-ui";
+import { SHOPIFY_GREEN, SURFACE_BG, SURFACE_BORDER } from "../admin-ui";
 
 const FONT =
   "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
@@ -48,9 +48,9 @@ export function TabReviewForm() {
           style={{
             padding: "8px 16px",
             borderRadius: 8,
-            border: `1px solid ${SURFACE_BORDER}`,
-            background: "#fff",
-            color: "#202223",
+            border: "none",
+            background: SHOPIFY_GREEN,
+            color: "#fff",
             fontFamily: FONT,
             fontSize: 14,
             fontWeight: 600,

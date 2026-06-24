@@ -6,7 +6,7 @@ const FONT =
   "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
 export const COLLECT_TABS = [
-  { id: "widget", label: "Storefront widget", icon: LayoutGrid },
+  { id: "widget", label: "Storefront Widget", icon: LayoutGrid },
   { id: "review-form", label: "Review form", icon: FileText },
   { id: "import", label: "Import Reviews", icon: Upload },
 ];
@@ -14,10 +14,9 @@ export const COLLECT_TABS = [
 const type = {
   pageTitle: {
     fontFamily: FONT,
-    fontSize: 24,
-    fontWeight: 600,
+    fontSize: 30,
+    fontWeight: 900,
     color: "#202223",
-    letterSpacing: "-0.01em",
   },
   subtitle: {
     fontFamily: FONT,
@@ -60,25 +59,27 @@ export function CollectReviewsShell({
             Manage review collection, storefront display, and imported customer reviews from one place.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={saveDisabled || saveLoading}
-          style={{
-            padding: "10px 20px",
-            borderRadius: 8,
-            border: "none",
-            background: saveDisabled ? "#b5bcc2" : SHOPIFY_GREEN,
-            color: "#fff",
-            fontFamily: FONT,
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: saveDisabled ? "not-allowed" : "pointer",
-            flexShrink: 0,
-          }}
-        >
-          {saveLoading ? "Saving..." : "Save"}
-        </button>
+        {activeTab === "widget" ? (
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saveDisabled || saveLoading}
+            style={{
+              padding: "10px 20px",
+              borderRadius: 8,
+              border: "none",
+              background: saveDisabled ? "#b5bcc2" : SHOPIFY_GREEN,
+              color: "#fff",
+              fontFamily: FONT,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: saveDisabled ? "not-allowed" : "pointer",
+              flexShrink: 0,
+            }}
+          >
+            {saveLoading ? "Saving..." : "Save"}
+          </button>
+        ) : null}
       </div>
 
       <div

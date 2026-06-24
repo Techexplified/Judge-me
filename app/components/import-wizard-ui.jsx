@@ -559,7 +559,7 @@ function StarRating({ rating }) {
 const STATUS_BADGE = {
   ready: { label: "Ready", tone: "green" },
   low_rating: { label: "Low Rating", tone: "warning" },
-  duplicate: { label: "Duplicate?", tone: "blue" },
+  duplicate: { label: "Duplicate", tone: "blue" },
   product_not_found: { label: "Not in Store", tone: "warning" },
   invalid: { label: "Invalid", tone: "red" },
 };

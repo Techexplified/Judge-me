@@ -93,7 +93,7 @@ export function OrderStatusPreview({
               color: "#202223",
             }}
           >
-            Live preview
+            Live Preview
           </h3>
           <p
             style={{

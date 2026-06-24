@@ -42,41 +42,68 @@ function StatCard({ icon: Icon, label, sublabel, value, trend, progressPct }) {
     <div
       style={{
         flex: 1,
-        minWidth: 200,
+        minWidth: 220,
         background: SURFACE_BG,
         border: `1px solid ${SURFACE_BORDER}`,
         borderRadius: 12,
         padding: "18px 20px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
       }}
     >
       <div
         style={{
-          width: 36,
-          height: 36,
-          borderRadius: "50%",
-          background: "#ecfdf5",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: 12,
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 16,
         }}
       >
-        <Icon size={18} color={SHOPIFY_GREEN} />
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 0 }}>
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              background: "#ecfdf5",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <Icon size={18} color={SHOPIFY_GREEN} />
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: "0 0 2px", fontFamily: FONT, fontSize: 13, fontWeight: 500, color: "#6d7175" }}>
+              {label}
+            </p>
+            <p style={{ margin: 0, fontFamily: FONT, fontSize: 12, fontWeight: 500, color: "#8c9196" }}>
+              {sublabel}
+            </p>
+          </div>
+        </div>
+        <p
+          style={{
+            margin: 0,
+            fontFamily: FONT,
+            fontSize: 36,
+            fontWeight: 800,
+            color: "#202223",
+            lineHeight: 1,
+            letterSpacing: "-0.02em",
+            flexShrink: 0,
+            textAlign: "right",
+          }}
+        >
+          {value}
+        </p>
       </div>
-      <p style={{ margin: "0 0 2px", fontFamily: FONT, fontSize: 13, fontWeight: 500, color: "#6d7175" }}>
-        {label}
-      </p>
-      <p style={{ margin: "0 0 10px", fontFamily: FONT, fontSize: 12, fontWeight: 500, color: "#8c9196" }}>
-        {sublabel}
-      </p>
-      <p style={{ margin: "0 0 8px", fontFamily: FONT, fontSize: 28, fontWeight: 700, color: "#202223" }}>
-        {value}
-      </p>
-      <TrendLabel value={trend} suffix={label === "Conversion Rate" ? "%" : "%"} />
+      <TrendLabel value={trend} suffix={label === "Conversion rate" ? "%" : "%"} />
       {progressPct != null ? (
         <div
           style={{
-            marginTop: 12,
             height: 4,
             borderRadius: 2,
             background: "#e1e3e5",
