@@ -88,8 +88,8 @@ function StatCard({ icon: Icon, label, sublabel, value, trend, progressPct }) {
           style={{
             margin: 0,
             fontFamily: FONT,
-            fontSize: 36,
-            fontWeight: 800,
+            fontSize: 30,
+            fontWeight: 700,
             color: "#202223",
             lineHeight: 1,
             letterSpacing: "-0.02em",
