@@ -281,39 +281,6 @@ export function OrderStatusPreview({
           </div>
         </div>
       </div>
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          marginTop: 12,
-          padding: "10px 0",
-          fontFamily: FONT,
-          fontSize: 12,
-          fontWeight: 500,
-          color: "#6d7175",
-        }}
-      >
-        <span
-          style={{
-            width: 16,
-            height: 16,
-            borderRadius: "50%",
-            border: `1px solid ${SURFACE_BORDER}`,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 10,
-            fontWeight: 700,
-            flexShrink: 0,
-          }}
-        >
-          i
-        </span>
-        Switch timing above to preview each mode, then click Save. Tracking and delivery come from
-        the real order, not JudgeMe.
-      </div>
     </div>
   );
 }

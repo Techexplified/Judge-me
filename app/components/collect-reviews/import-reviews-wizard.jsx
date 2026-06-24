@@ -157,7 +157,6 @@ export function ImportReviewsWizard({
   hasPremium,
   planStatus,
   trialStatus,
-  productIndexCount,
   defaultAutoTranslateImport,
   translationTargetLabel,
 }) {
@@ -351,27 +350,6 @@ export function ImportReviewsWizard({
       </div>
 
       <ImportStepper currentStep={step} />
-
-      {!hasPremium ? (
-        <div style={{ marginBottom: 16 }}>
-          <Banner tone="info">
-            Free plan includes {planStatus?.featureUsage?.review_imports?.limit ?? 50} CSV imports
-            per month
-            {planStatus?.featureUsage?.review_imports
-              ? ` (${planStatus.featureUsage.review_imports.remaining} remaining).`
-              : "."}{" "}
-            Auto translate during import requires Pro.
-          </Banner>
-        </div>
-      ) : null}
-
-      {productIndexCount === 0 ? (
-        <div style={{ marginBottom: 16 }}>
-          <Banner tone="info">
-            No products indexed yet. Product matching requires at least one product in your store.
-          </Banner>
-        </div>
-      ) : null}
 
       {actionError ? (
         <div style={{ marginBottom: 16 }}>

@@ -171,32 +171,6 @@ export function shouldRevalidate(args) {
   return reviewsManagementShouldRevalidate(args);
 }
 
-function SentimentBadge({ label, tone }) {
-  const styles = {
-    positive: { bg: "#ecfdf5", fg: "#047857", dot: SHOPIFY_GREEN },
-    negative: { bg: "#f1f2f3", fg: "#202223", dot: "#202223" },
-    mixed: { bg: "#f1f2f3", fg: "#616161", dot: "#616161" },
-  };
-  const c = styles[tone] || styles.mixed;
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "4px 10px",
-        borderRadius: 999,
-        background: c.bg,
-        color: c.fg,
-        ...type.badge,
-      }}
-    >
-      <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.dot }} />
-      {label}
-    </span>
-  );
-}
-
 function StoreReviewsTab({ storeReviewLink, reviewCount = 0, onViewReviews, onReplyToReviews }) {
   const shopify = useAppBridge();
   const [copied, setCopied] = useState(false);
@@ -380,6 +354,33 @@ const actionBtnStyle = {
   ...type.button,
   fontSize: 12,
 };
+
+const PRODUCT_TABLE_COLUMNS = [
+  { key: "product", label: "Product", width: "40%", align: "left" },
+  { key: "rating", label: "Rating", width: "12%", align: "left" },
+  { key: "reviews", label: "Reviews", width: "10%", align: "left" },
+  { key: "lastReview", label: "Last review", width: "18%", align: "left" },
+  { key: "actions", label: "Actions", width: "20%", align: "right" },
+];
+
+function tableHeadCellStyle(align) {
+  return {
+    textAlign: align,
+    padding: "12px 16px",
+    verticalAlign: "middle",
+    textTransform: "uppercase",
+    whiteSpace: "nowrap",
+    ...type.label,
+  };
+}
+
+function tableBodyCellStyle(align) {
+  return {
+    textAlign: align,
+    padding: "14px 16px",
+    verticalAlign: "middle",
+  };
+}
 
 export default function ManageReviews() {
   const {
@@ -687,31 +688,37 @@ export default function ManageReviews() {
                 </div>
               ) : (
                 <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760, fontFamily: FONT }}>
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      tableLayout: "fixed",
+                      minWidth: 680,
+                      fontFamily: FONT,
+                    }}
+                  >
+                    <colgroup>
+                      {PRODUCT_TABLE_COLUMNS.map((col) => (
+                        <col key={col.key} style={{ width: col.width }} />
+                      ))}
+                    </colgroup>
                     <thead>
                       <tr style={{ background: "#f6f6f7" }}>
-                        {["PRODUCT", "RATING", "REVIEWS", "SENTIMENT", "LAST REVIEW", "ACTIONS"].map(
-                          (col) => (
-                            <th
-                              key={col}
-                              style={{
-                                textAlign: "left",
-                                padding: "12px 16px",
-                                textTransform: "uppercase",
-                                ...type.label,
-                              }}
-                            >
-                              {col}
-                            </th>
-                          ),
-                        )}
+                        {PRODUCT_TABLE_COLUMNS.map((col) => (
+                          <th key={col.key} style={tableHeadCellStyle(col.align)}>
+                            {col.label}
+                          </th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
                       {filteredProducts.map((product) => (
-                        <tr key={`${product.productId}-${product.handle}`} style={{ borderTop: `1px solid ${SURFACE_BORDER}` }}>
-                          <td style={{ padding: "14px 16px", minWidth: 240 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <tr
+                          key={`${product.productId}-${product.handle}`}
+                          style={{ borderTop: `1px solid ${SURFACE_BORDER}` }}
+                        >
+                          <td style={tableBodyCellStyle("left")}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
                               {product.productImage ? (
                                 <img
                                   src={product.productImage}
@@ -748,9 +755,9 @@ export default function ManageReviews() {
                                     ...type.body,
                                     fontWeight: 600,
                                     lineHeight: 1.3,
-                                    whiteSpace: "nowrap",
                                     overflow: "hidden",
                                     textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
                                   }}
                                 >
                                   {product.productName}
@@ -759,9 +766,9 @@ export default function ManageReviews() {
                                   style={{
                                     ...type.caption,
                                     marginTop: 2,
-                                    whiteSpace: "nowrap",
                                     overflow: "hidden",
                                     textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
                                   }}
                                 >
                                   {product.handle}
@@ -769,21 +776,35 @@ export default function ManageReviews() {
                               </div>
                             </div>
                           </td>
-                          <td style={{ padding: "14px 16px" }}>
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, ...type.body, fontWeight: 600 }}>
+                          <td style={tableBodyCellStyle("left")}>
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                ...type.body,
+                                fontWeight: 600,
+                              }}
+                            >
                               <Star size={14} fill={SHOPIFY_GREEN} color={SHOPIFY_GREEN} />
                               {product.avgRating}
                             </span>
                           </td>
-                          <td style={{ padding: "14px 16px", ...type.body, fontWeight: 600 }}>{product.reviewCount}</td>
-                          <td style={{ padding: "14px 16px" }}>
-                            <SentimentBadge label={product.sentiment} tone={product.sentimentTone} />
+                          <td style={{ ...tableBodyCellStyle("left"), ...type.body, fontWeight: 600 }}>
+                            {product.reviewCount}
                           </td>
-                          <td style={{ padding: "14px 16px", ...type.body, fontWeight: 500 }}>
+                          <td style={{ ...tableBodyCellStyle("left"), ...type.body, fontWeight: 500 }}>
                             {product.lastReview}
                           </td>
-                          <td style={{ padding: "14px 16px" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <td style={tableBodyCellStyle("right")}>
+                            <div
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "flex-end",
+                                gap: 8,
+                              }}
+                            >
                               <button
                                 type="button"
                                 onClick={() => openProductModal(product, false)}
