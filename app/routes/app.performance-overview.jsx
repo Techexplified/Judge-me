@@ -361,7 +361,7 @@ export default function PerformanceOverview() {
                   textDecoration: "none",
                 }}
               >
-                Manage widget
+                Manage Widget
                 <ArrowUpRight size={16} />
               </Link>
               <Link

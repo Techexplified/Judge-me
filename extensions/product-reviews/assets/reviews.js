@@ -42,6 +42,14 @@
                   </div>
                   <p style="margin-top:4px">${r.comment}</p>
                   ${
+                    r.reply && String(r.reply).trim()
+                      ? `<div style="margin-top:10px;padding:12px;background:#f8fafc;border-radius:8px;font-size:14px;color:#475569">
+                          <strong style="display:block;font-size:12px;margin-bottom:4px;color:#334155">Response from the store</strong>
+                          ${r.reply}
+                        </div>`
+                      : ""
+                  }
+                  ${
                     Array.isArray(r.media) && r.media.length
                       ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
                           ${r.media

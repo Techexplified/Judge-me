@@ -227,6 +227,18 @@
     return d.innerHTML;
   }
 
+  function renderMerchantReply(review, cfg) {
+    const reply = review?.reply && String(review.reply).trim();
+    if (!reply) return "";
+    return `
+      <div class="jd-reply-box">
+        <div style="font-weight:700;font-size:12px;margin-bottom:6px;color:${cfg.primaryColor}">
+          Response from the store
+        </div>
+        <div>${esc(reply)}</div>
+      </div>`;
+  }
+
   function formatOrderDate(raw) {
     if (!raw) return "";
     const d = new Date(raw);
@@ -734,7 +746,7 @@
       const [settingsRes, reviewsRes, storeMetaRes] = await Promise.all([
         fetch(`${API}/api/public/settings?shop=${encodeURIComponent(shop)}&t=${Date.now()}`),
         fetch(
-          `${API}/api/public/reviews?productId=${encodeURIComponent(productId)}&shop=${encodeURIComponent(shop)}`,
+          `${API}/api/public/reviews?productId=${encodeURIComponent(productId)}&shop=${encodeURIComponent(shop)}&t=${Date.now()}`,
         ),
         fetch(
           `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=store&limit=50`,
@@ -906,6 +918,7 @@
               <div style="font-weight:700;font-size:14px">${esc(r.author)}</div>
               <div class="jd-stars">${starsHtml(r.rating, cfg)}</div>
               <div class="jd-comment" style="font-size:13px;margin-top:6px">${esc(r.comment)}</div>
+              ${renderMerchantReply(r, cfg)}
               <div class="jd-verified" style="margin-top:8px">✓ Verified</div>
             </div>
           </article>`;

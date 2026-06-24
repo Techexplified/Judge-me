@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { ArrowUpRight, MapPin, Package, Send, Star, TrendingUp } from "lucide-react";
+import { ArrowUpRight, Send, Star, TrendingUp } from "lucide-react";
 import { SHOPIFY_GREEN, SURFACE_BG, SURFACE_BORDER } from "../admin-ui";
 import { OrderStatusPreview } from "./order-status-preview.jsx";
 
@@ -97,72 +97,6 @@ function StatCard({ icon: Icon, label, sublabel, value, trend, progressPct }) {
   );
 }
 
-function TimingOption({ selected, title, description, icon: Icon, onSelect }) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 16,
-        width: "100%",
-        textAlign: "left",
-        padding: "18px 20px",
-        borderRadius: 10,
-        border: selected ? `2px solid ${SHOPIFY_GREEN}` : `1px solid ${SURFACE_BORDER}`,
-        background: selected ? "#ecfdf5" : "#fff",
-        cursor: "pointer",
-        marginBottom: 12,
-      }}
-    >
-      <span
-        style={{
-          width: 20,
-          height: 20,
-          borderRadius: "50%",
-          border: selected ? `6px solid ${SHOPIFY_GREEN}` : "2px solid #c9cccf",
-          background: "#fff",
-          flexShrink: 0,
-          boxSizing: "border-box",
-        }}
-      />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: "0 0 4px", fontFamily: FONT, fontSize: 14, fontWeight: 700, color: "#202223" }}>
-          {title}
-        </p>
-        <p
-          style={{
-            margin: 0,
-            fontFamily: FONT,
-            fontSize: 13,
-            fontWeight: 500,
-            color: selected ? SHOPIFY_GREEN : "#6d7175",
-            lineHeight: 1.45,
-          }}
-        >
-          {description}
-        </p>
-      </div>
-      <div
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: 8,
-          border: `1px solid ${SURFACE_BORDER}`,
-          background: "#f6f8f7",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-        }}
-      >
-        <Icon size={20} color="#6d7175" strokeWidth={1.75} />
-      </div>
-    </button>
-  );
-}
-
 export function TabOnsiteWidget({ metrics, timing, formConfig, onTimingChange }) {
   const buttonColor = formConfig?.buttonColor || formConfig?.primaryColor || SHOPIFY_GREEN;
   const accentColor = formConfig?.accentColor || buttonColor;
@@ -201,47 +135,12 @@ export function TabOnsiteWidget({ metrics, timing, formConfig, onTimingChange })
         />
       </div>
 
-      <div style={{ marginBottom: 28 }}>
-        <h3
-          style={{
-            margin: "0 0 4px",
-            fontFamily: FONT,
-            fontSize: 15,
-            fontWeight: 600,
-            color: "#202223",
-          }}
-        >
-          Widget timing
-        </h3>
-        <p
-          style={{
-            margin: "0 0 16px",
-            fontFamily: FONT,
-            fontSize: 13,
-            fontWeight: 500,
-            color: "#6d7175",
-          }}
-        >
-          Control when the Review widget appears for customers.
-        </p>
-
-        <TimingOption
-          selected={timing === "after_fulfillment"}
-          title="Show after fulfillment"
-          description="When the order ships, ask customers about their store experience."
-          icon={Package}
-          onSelect={() => onTimingChange("after_fulfillment")}
-        />
-        <TimingOption
-          selected={timing === "after_delivery"}
-          title="Show after delivery"
-          description="When the order is delivered, ask customers to review the product."
-          icon={MapPin}
-          onSelect={() => onTimingChange("after_delivery")}
-        />
-      </div>
-
-      <OrderStatusPreview timing={timing} buttonColor={buttonColor} accentColor={accentColor} />
+      <OrderStatusPreview
+        timing={timing}
+        buttonColor={buttonColor}
+        accentColor={accentColor}
+        onTimingChange={onTimingChange}
+      />
     </div>
   );
 }
