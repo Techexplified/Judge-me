@@ -10,7 +10,6 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import {
   ExternalLink,
   Link2,
-  MoreHorizontal,
   Search,
   Send,
   Star,
@@ -798,21 +797,6 @@ export default function ManageReviews() {
                                 style={actionBtnStyle}
                               >
                                 Reply
-                              </button>
-                              <button
-                                type="button"
-                                aria-label="More actions"
-                                style={{
-                                  padding: 6,
-                                  borderRadius: 8,
-                                  border: `1px solid ${SURFACE_BORDER}`,
-                                  background: "#fff",
-                                  cursor: "pointer",
-                                  display: "flex",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <MoreHorizontal size={16} color="#6d7175" />
                               </button>
                             </div>
                           </td>
