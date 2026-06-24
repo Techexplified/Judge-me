@@ -16,6 +16,7 @@ import {
   SURFACE_BORDER,
   SURFACE_MUTED,
   R,
+  APP_FONT,
   Badge,
   Banner,
 } from "./admin-ui";
@@ -105,7 +106,7 @@ export function ImportBreadcrumb({ onReviewsClick }) {
           color: SHOPIFY_GREEN,
           fontWeight: 700,
           cursor: "pointer",
-          fontFamily: "inherit",
+          fontFamily: APP_FONT,
           fontSize: 13,
         }}
       >
@@ -126,6 +127,7 @@ export function ImportStepper({ currentStep }) {
         justifyContent: "space-between",
         marginBottom: 28,
         gap: 4,
+        fontFamily: APP_FONT,
       }}
     >
       {STEPS.map((step, idx) => {
@@ -209,7 +211,7 @@ export function SourceCard({ source, selected, onSelect }) {
         background: selected ? "#ecfdf3" : SURFACE_BG,
         cursor: "pointer",
         textAlign: "left",
-        fontFamily: "inherit",
+        fontFamily: APP_FONT,
         position: "relative",
         width: "100%",
         boxSizing: "border-box",
@@ -463,7 +465,7 @@ export function ColumnMappingRow({ csvColumn, value, options, autoMatched, onCha
             border: "1px solid #c9cccf",
             fontSize: 13,
             fontWeight: 600,
-            fontFamily: "inherit",
+            fontFamily: APP_FONT,
             background: "#fff",
           }}
         >
@@ -855,7 +857,7 @@ export function ExportInstructions({
               fontWeight: 700,
               fontSize: 13,
               cursor: "pointer",
-              fontFamily: "inherit",
+              fontFamily: APP_FONT,
             }}
           >
             <Upload size={14} />
@@ -906,7 +908,7 @@ export function TemplateDownloadBar({ sourceName, onDownload, downloaded }) {
           fontWeight: 700,
           fontSize: 13,
           cursor: "pointer",
-          fontFamily: "inherit",
+          fontFamily: APP_FONT,
           whiteSpace: "nowrap",
         }}
       >

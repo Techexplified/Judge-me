@@ -22,6 +22,7 @@ import {
   PrimaryButton,
   SecondaryButton,
   Banner,
+  APP_FONT,
 } from "../admin-ui";
 import { PremiumTrialBadge } from "../premium-trial-banner";
 import {
@@ -336,7 +337,7 @@ export function ImportReviewsWizard({
   const targetOptions = TARGET_FIELDS;
 
   return (
-    <>
+    <div style={{ fontFamily: APP_FONT, fontSize: 14, color: "#202223" }}>
       <div
         style={{
           display: "flex",
@@ -615,6 +616,6 @@ export function ImportReviewsWizard({
           </Card>
         ) : null}
       </Stack>
-    </>
+    </div>
   );
 }

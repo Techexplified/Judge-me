@@ -1,4 +1,5 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
+import { APP_FONT } from "./components/admin-ui";
 
 export default function App() {
   return (
@@ -14,7 +15,7 @@ export default function App() {
         <Meta />
         <Links />
       </head>
-      <body>
+      <body style={{ margin: 0, fontFamily: APP_FONT }}>
         <Outlet />
         <ScrollRestoration />
         <Scripts />

@@ -40,6 +40,7 @@ const ui = {
     fontSize: 30,
     fontWeight: 900,
     color: "#202223",
+    fontFamily: APP_FONT,
   },
   subtitle: {
     margin: "8px 0 0",
@@ -47,11 +48,13 @@ const ui = {
     fontWeight: 600,
     color: "#6d7175",
     lineHeight: 1.5,
+    fontFamily: APP_FONT,
   },
   stack: {
     display: "flex",
     flexDirection: "column",
     gap: 16,
+    fontFamily: APP_FONT,
   },
   card: {
     background: SURFACE_BG,
@@ -59,12 +62,14 @@ const ui = {
     border: `1px solid ${SURFACE_BORDER}`,
     padding: 16,
     boxSizing: "border-box",
+    fontFamily: APP_FONT,
   },
   cardTitle: {
     margin: "0 0 8px",
     fontSize: 15,
     fontWeight: 800,
     color: "#202223",
+    fontFamily: APP_FONT,
   },
   cardDesc: {
     margin: "0 0 16px",
@@ -72,6 +77,7 @@ const ui = {
     fontWeight: 600,
     color: "#6d7175",
     lineHeight: 1.5,
+    fontFamily: APP_FONT,
   },
   badge: {
     display: "inline-flex",
@@ -83,6 +89,7 @@ const ui = {
     fontWeight: 800,
     border: "1px solid",
     whiteSpace: "nowrap",
+    fontFamily: APP_FONT,
   },
   banner: {
     borderRadius: R,
@@ -94,6 +101,7 @@ const ui = {
     fontWeight: 600,
     lineHeight: 1.5,
     border: "1px solid",
+    fontFamily: APP_FONT,
   },
   label: {
     display: "block",
@@ -110,7 +118,7 @@ const ui = {
     fontSize: 13,
     fontWeight: 600,
     color: "#202223",
-    fontFamily: "inherit",
+    fontFamily: APP_FONT,
     boxSizing: "border-box",
     outline: "none",
     background: "#fff",
@@ -123,7 +131,7 @@ const ui = {
     fontSize: 13,
     fontWeight: 600,
     color: "#202223",
-    fontFamily: "inherit",
+    fontFamily: APP_FONT,
     boxSizing: "border-box",
     background: "#fff",
     cursor: "pointer",
@@ -150,7 +158,7 @@ const ui = {
     fontWeight: 800,
     fontSize: 13,
     cursor: "pointer",
-    fontFamily: "inherit",
+    fontFamily: APP_FONT,
     whiteSpace: "nowrap",
   },
   btnSecondary: {
@@ -166,7 +174,7 @@ const ui = {
     fontWeight: 700,
     fontSize: 13,
     cursor: "pointer",
-    fontFamily: "inherit",
+    fontFamily: APP_FONT,
     whiteSpace: "nowrap",
   },
   btnDisabled: {

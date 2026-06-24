@@ -1,9 +1,6 @@
 /* eslint-disable react/prop-types */
 import { FileText, LayoutGrid, Upload } from "lucide-react";
-import { PAGE_BG, SHOPIFY_GREEN, SURFACE_BORDER } from "../admin-ui";
-
-const FONT =
-  "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+import { PAGE_BG, SHOPIFY_GREEN, SURFACE_BORDER, APP_FONT } from "../admin-ui";
 
 export const COLLECT_TABS = [
   { id: "widget", label: "Storefront Widget", icon: LayoutGrid },
@@ -13,20 +10,20 @@ export const COLLECT_TABS = [
 
 const type = {
   pageTitle: {
-    fontFamily: FONT,
+    fontFamily: APP_FONT,
     fontSize: 30,
     fontWeight: 900,
     color: "#202223",
   },
   subtitle: {
-    fontFamily: FONT,
+    fontFamily: APP_FONT,
     fontSize: 13,
     fontWeight: 500,
     color: "#6d7175",
     lineHeight: 1.5,
   },
   tab: (active) => ({
-    fontFamily: FONT,
+    fontFamily: APP_FONT,
     fontSize: 14,
     fontWeight: active ? 600 : 500,
     color: active ? "#202223" : "#6d7175",
@@ -42,7 +39,7 @@ export function CollectReviewsShell({
   children,
 }) {
   return (
-    <div style={{ padding: "20px 24px 32px", background: PAGE_BG, minHeight: "100vh", fontFamily: FONT }}>
+    <div style={{ padding: "20px 24px 32px", background: PAGE_BG, minHeight: "100vh", fontFamily: APP_FONT }}>
       <div
         style={{
           display: "flex",
@@ -70,7 +67,7 @@ export function CollectReviewsShell({
               border: "none",
               background: saveDisabled ? "#b5bcc2" : SHOPIFY_GREEN,
               color: "#fff",
-              fontFamily: FONT,
+              fontFamily: APP_FONT,
               fontSize: 14,
               fontWeight: 600,
               cursor: saveDisabled ? "not-allowed" : "pointer",
