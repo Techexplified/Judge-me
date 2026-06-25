@@ -184,7 +184,7 @@ function RatingStepPreview({
 }
 
 export function ReviewFlowPreview({ config, shopDomain, reviewContext, activeStep, onStepChange }) {
-  const [previewRating, setPreviewRating] = useState(0);
+  const [previewRating, setPreviewRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
   const ff = fontStack(config.typography);
   const pl = presetLayout(config);
