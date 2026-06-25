@@ -27,6 +27,7 @@ import {
 } from "../utils/performance-metrics.server.js";
 import { AppRatingBanner, SHOPIFY_GREEN, SHOPIFY_GREEN_DARK } from "../components/performance/app-rating-banner.jsx";
 import { PAGE_BG, SURFACE_BG, SURFACE_BORDER } from "../components/admin-ui";
+import { QuickSearchButton } from "../components/quick-search/quick-search-button.jsx";
 
 export const loader = async ({ request }) => {
   const { session, admin } = await authenticate.admin(request);
@@ -199,7 +200,9 @@ export default function PerformanceOverview() {
           <h1 style={headingStyle}>Performance Overview</h1>
         </div>
 
-        <div style={{ position: "relative" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <QuickSearchButton />
+          <div style={{ position: "relative" }}>
           <select
             value={rangeKey === "all" ? "all" : rangeKey}
             onChange={(e) => setRange(e.target.value)}
@@ -226,6 +229,7 @@ export default function PerformanceOverview() {
             color="#6d7175"
             style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
           />
+          </div>
         </div>
       </div>
 

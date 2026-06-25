@@ -11,6 +11,7 @@ import {
 } from "../lib/app-shell.shared.js";
 import { embedRedirect } from "../utils/shopify-embed-nav.server.js";
 import { PAGE_BG, SURFACE_BG, SURFACE_BORDER } from "../components/admin-ui";
+import { QuickSearchProvider } from "../components/quick-search/quick-search-provider.jsx";
 
 export const loader = async ({ request }) => {
   const url = new URL(request.url);
@@ -93,8 +94,8 @@ export default function App() {
   const isAnalytics = pathname.startsWith("/app/analytics");
   const isSettings = pathname.startsWith("/app/settings") || pathname.startsWith("/app/settings");
 
-  return (
-    <AppProvider embedded apiKey={apiKey}>
+  const appContent = (
+    <>
       {!hideNav ? (
         <s-app-nav>
           <s-link href="/app/performance-overview" selected={isPerformanceOverview ? "" : undefined}>Performance Overview</s-link>
@@ -107,6 +108,12 @@ export default function App() {
       ) : null}
 
       <Outlet />
+    </>
+  );
+
+  return (
+    <AppProvider embedded apiKey={apiKey}>
+      {hideNav ? appContent : <QuickSearchProvider>{appContent}</QuickSearchProvider>}
     </AppProvider>
   );
 }
