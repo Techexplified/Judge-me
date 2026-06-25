@@ -238,6 +238,26 @@ export function normalizeHex(input) {
   return null;
 }
 
+/**
+ * Muted inactive star color derived from the active star color (filled/emoji modes).
+ * @param {string} starColor
+ */
+export function deriveInactiveStarColor(starColor) {
+  const hex = normalizeHex(starColor);
+  if (!hex) return defaultFormConfig.inactiveStarColor;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const mix = 0.4;
+  const lr = 232;
+  const lg = 232;
+  const lb = 232;
+  const nr = Math.round(r * mix + lr * (1 - mix));
+  const ng = Math.round(g * mix + lg * (1 - mix));
+  const nb = Math.round(b * mix + lb * (1 - mix));
+  return `#${[nr, ng, nb].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+}
+
 export function migrateLayoutPreset(preset) {
   if (LAYOUT_PRESETS.includes(preset)) return preset;
   return LEGACY_PRESET_MAP[preset] || "modern";
@@ -366,6 +386,13 @@ export function mergeFormConfig(saved) {
   for (const key of hexFields) {
     const n = normalizeHex(base[key]);
     if (n) base[key] = n;
+  }
+
+  if (
+    base.inactiveStarColor === defaultFormConfig.inactiveStarColor &&
+    base.starColor !== defaultFormConfig.starColor
+  ) {
+    base.inactiveStarColor = deriveInactiveStarColor(base.starColor);
   }
 
   for (const sectionId of RATING_TEXT_STYLE_SECTION_IDS) {
@@ -519,6 +546,24 @@ export function isStarActive(index, rating) {
   return index <= rating;
 }
 
+/** Lucide-compatible 5-point star path (24×24 viewBox). */
+export const STAR_PATH =
+  "M12 2l3.09 6.26L20 9.27l-5 4.87 1.18 6.86L12 18.77l-1.18 6.86L5 9.27l4.91-1.01L12 2z";
+
+/**
+ * Inline SVG star — reliable custom colors for filled, outline, and emoji styles.
+ * @param {ReturnType<typeof resolveStarDisplay>} star
+ * @param {number} size
+ */
+export function buildStarSvgMarkup(star, size) {
+  const fill = star.svgFill ?? star.color ?? "currentColor";
+  const stroke = star.svgStroke ?? "none";
+  const strokeWidth = star.svgStrokeWidth ?? 0;
+  const opacity = star.opacity ?? 1;
+  const filter = star.svgFilter ? `filter:${star.svgFilter};` : "";
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true" style="display:block;opacity:${opacity};${filter}"><path d="${STAR_PATH}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linejoin="round"/></svg>`;
+}
+
 /**
  * Single source of truth for star glyph + colors across editor preview and storefront.
  * @param {number} index 1-5
@@ -542,13 +587,16 @@ export function resolveStarDisplay(index, rating, config) {
   }
 
   if (style === "emoji") {
-    // Use ★ (not ⭐) so CSS color applies; emoji mode is slightly larger.
+    const fill = active ? config.starColor : config.inactiveStarColor;
     return {
       glyph: "★",
-      color: active ? config.starColor : config.inactiveStarColor,
+      color: fill,
       opacity: 1,
-      svgFill: null,
-      fontSizeScale: 1.12,
+      svgFill: fill,
+      svgStroke: "none",
+      svgStrokeWidth: 0,
+      fontSizeScale: 1.2,
+      svgFilter: "drop-shadow(0 1px 2px rgba(0,0,0,0.12))",
     };
   }
 
@@ -582,9 +630,7 @@ export function buildStarsHtml(rating, config) {
   for (let i = 1; i <= 5; i++) {
     const star = resolveStarDisplay(i, rating, config);
     const size = Math.round(config.starSize * (star.fontSizeScale || 1));
-    parts.push(
-      `<span style="color:${star.color};opacity:${star.opacity};font-size:${size}px;line-height:1">${star.glyph}</span>`,
-    );
+    parts.push(buildStarSvgMarkup(star, size));
   }
   return parts.join("");
 }

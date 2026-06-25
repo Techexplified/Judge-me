@@ -168,6 +168,24 @@
     return steps;
   }
 
+  function deriveInactiveStarColor(starColor) {
+    const hex = normalizeHex(starColor);
+    if (!hex) return DEFAULT_CFG.inactiveStarColor;
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const mix = 0.4;
+    const lr = 232;
+    const lg = 232;
+    const lb = 232;
+    const nr = Math.round(r * mix + lr * (1 - mix));
+    const ng = Math.round(g * mix + lg * (1 - mix));
+    const nb = Math.round(b * mix + lb * (1 - mix));
+    return `#${[nr, ng, nb].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+  }
+
+  const STAR_STYLES = ["filled", "outline", "emoji"];
+
   function mergeConfig(saved) {
     const c = { ...DEFAULT_CFG, ...(saved || {}) };
     if (c.layoutPreset === "compact") c.layoutPreset = "modern";
@@ -175,6 +193,7 @@
     if (!["minimal", "modern", "luxury", "shopifyNative"].includes(c.layoutPreset)) {
       c.layoutPreset = "modern";
     }
+    if (!STAR_STYLES.includes(c.starStyle)) c.starStyle = "outline";
     c.starSize = Math.min(40, Math.max(14, Number(c.starSize) || 20));
     c.fontSize = Math.min(20, Math.max(12, Number(c.fontSize) || 14));
     c.borderRadius = Number(c.borderRadius) || 12;
@@ -184,6 +203,16 @@
     }
     if (c.ratingPageTitleFallback === "How would you rate this item?") {
       c.ratingPageTitleFallback = DEFAULT_CFG.ratingPageTitleFallback;
+    }
+    const starHex = normalizeHex(c.starColor);
+    if (starHex) c.starColor = starHex;
+    const inactiveHex = normalizeHex(c.inactiveStarColor);
+    if (inactiveHex) c.inactiveStarColor = inactiveHex;
+    if (
+      c.inactiveStarColor === DEFAULT_CFG.inactiveStarColor &&
+      c.starColor !== DEFAULT_CFG.starColor
+    ) {
+      c.inactiveStarColor = deriveInactiveStarColor(c.starColor);
     }
     return c;
   }
@@ -204,6 +233,18 @@
     return { titleSize: 24, gapScale: 1, hideSubtitle: false };
   }
 
+  const STAR_PATH =
+    "M12 2l3.09 6.26L20 9.27l-5 4.87 1.18 6.86L12 18.77l-1.18 6.86L5 9.27l4.91-1.01L12 2z";
+
+  function buildStarSvgMarkup(star, size) {
+    const fill = star.svgFill ?? star.color ?? "currentColor";
+    const stroke = star.svgStroke ?? "none";
+    const strokeWidth = star.svgStrokeWidth ?? 0;
+    const opacity = star.opacity ?? 1;
+    const filter = star.svgFilter ? `filter:${star.svgFilter};` : "";
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true" style="display:block;opacity:${opacity};${filter}"><path d="${STAR_PATH}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linejoin="round"/></svg>`;
+  }
+
   function resolveStarDisplay(index, rating, cfg) {
     const active = index <= rating;
     const style = cfg.starStyle;
@@ -213,23 +254,35 @@
         glyph: active ? "★" : "☆",
         color: cfg.starColor,
         opacity: active ? 1 : 0.85,
+        svgFill: active ? cfg.starColor : "none",
+        svgStroke: cfg.starColor,
+        svgStrokeWidth: 2,
         fontSizeScale: 1,
       };
     }
 
     if (style === "emoji") {
+      const fill = active ? cfg.starColor : cfg.inactiveStarColor;
       return {
         glyph: "★",
-        color: active ? cfg.starColor : cfg.inactiveStarColor,
+        color: fill,
         opacity: 1,
-        fontSizeScale: 1.12,
+        svgFill: fill,
+        svgStroke: "none",
+        svgStrokeWidth: 0,
+        fontSizeScale: 1.2,
+        svgFilter: "drop-shadow(0 1px 2px rgba(0,0,0,0.12))",
       };
     }
 
+    const fill = active ? cfg.starColor : cfg.inactiveStarColor;
     return {
       glyph: "★",
-      color: active ? cfg.starColor : cfg.inactiveStarColor,
+      color: fill,
       opacity: 1,
+      svgFill: fill,
+      svgStroke: fill,
+      svgStrokeWidth: 1,
       fontSizeScale: 1,
     };
   }
@@ -243,7 +296,7 @@
     for (let i = 1; i <= 5; i++) {
       const star = resolveStarDisplay(i, rating, cfg);
       const size = Math.round(cfg.starSize * (star.fontSizeScale || 1));
-      html += `<span style="color:${star.color};opacity:${star.opacity};font-size:${size}px;line-height:1">${star.glyph}</span>`;
+      html += buildStarSvgMarkup(star, size);
     }
     return html;
   }
@@ -349,6 +402,7 @@
     let stepIndex = 0;
     let reviewMode = "product";
     let rating = 0;
+    let hoverRating = 0;
     let author = "";
     let comment = "";
     let photoFiles = [];
@@ -393,26 +447,33 @@
 
     function renderStars(container, value, interactive) {
       container.innerHTML = "";
+      const displayValue = interactive ? hoverRating || value : value;
       for (let i = 1; i <= 5; i++) {
-        const star = resolveStarDisplay(i, value, cfg);
+        const star = resolveStarDisplay(i, displayValue, cfg);
         const size = Math.round(cfg.starSize * (star.fontSizeScale || 1));
         const btn = document.createElement("button");
         btn.type = "button";
         btn.style.cssText =
-          "border:none;background:transparent;padding:4px;cursor:pointer;font-size:" +
-          size +
-          "px;line-height:1;color:" +
-          star.color +
-          ";opacity:" +
-          star.opacity;
-        btn.textContent = star.glyph;
+          "border:none;background:transparent;padding:4px;cursor:pointer;line-height:0";
+        btn.innerHTML = buildStarSvgMarkup(star, size);
         if (interactive) {
+          btn.onmouseenter = () => {
+            hoverRating = i;
+            renderStars(container, rating, true);
+          };
           btn.onclick = () => {
             rating = i;
+            hoverRating = 0;
             renderStars(container, rating, true);
           };
         }
         container.appendChild(btn);
+      }
+      if (interactive) {
+        container.onmouseleave = () => {
+          hoverRating = 0;
+          renderStars(container, rating, true);
+        };
       }
     }
 

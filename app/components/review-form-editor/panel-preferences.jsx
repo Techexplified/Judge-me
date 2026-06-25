@@ -12,6 +12,7 @@ import {
   StarStyleIcon,
   ToggleRow,
 } from "../review-form/customizer-ui.jsx";
+import { deriveInactiveStarColor } from "../../lib/review-form-config.shared.js";
 import { EDITOR_TOKENS, UI_FONT } from "./editor-tokens.js";
 
 const SHADOW_LABELS = { low: "None", medium: "Soft", high: "Strong" };
@@ -99,8 +100,12 @@ export function PanelPreferences({ config, updateConfig, patchConfig, onBack, on
         <ColorRow
           label="Star color"
           value={config.starColor}
-          onColor={(v) => updateConfig("starColor", v)}
-          onHex={(v) => updateConfig("starColor", v)}
+          onColor={(v) =>
+            patchConfig({ starColor: v, inactiveStarColor: deriveInactiveStarColor(v) })
+          }
+          onHex={(v) =>
+            patchConfig({ starColor: v, inactiveStarColor: deriveInactiveStarColor(v) })
+          }
         />
         <GeomSlider
           label="Star size"

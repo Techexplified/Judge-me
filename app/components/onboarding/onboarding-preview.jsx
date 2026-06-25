@@ -2,45 +2,11 @@
 import { useRef } from "react";
 import { Star, Send, X } from "lucide-react";
 import { SHOPIFY_GREEN } from "../admin-ui";
-import {
-  fontStack,
-  presetLayout,
-  shadowCss,
-  resolveStarDisplay,
-} from "../../lib/review-form-config.shared.js";
+import { fontStack, presetLayout, shadowCss } from "../../lib/review-form-config.shared.js";
+import { PreviewStar } from "../review-form/preview-star.jsx";
 
 const LOGO_ACCEPT = "image/png,image/jpeg,image/jpg,image/svg+xml,image/webp";
 const LOGO_MAX_BYTES = 2 * 1024 * 1024;
-
-function PreviewStar({ index, rating, config }) {
-  const star = resolveStarDisplay(index, rating, config);
-
-  if (config.starStyle === "emoji" || star.svgFill == null) {
-    const size = Math.round(config.starSize * (star.fontSizeScale || 1));
-    return (
-      <span
-        style={{
-          fontSize: size,
-          lineHeight: 1,
-          color: star.color,
-          opacity: star.opacity,
-        }}
-      >
-        {star.glyph}
-      </span>
-    );
-  }
-
-  return (
-    <Star
-      size={config.starSize}
-      fill={star.svgFill}
-      stroke={star.svgStroke}
-      strokeWidth={star.svgStrokeWidth}
-      style={{ opacity: star.opacity }}
-    />
-  );
-}
 
 export function OnboardingPreview({
   config,

@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types, jsx-a11y/label-has-associated-control */
 import { useState } from "react";
-import { CheckCircle2, ImagePlus, Send, Shield, Star, Video } from "lucide-react";
+import { CheckCircle2, ImagePlus, Send, Shield, Video } from "lucide-react";
 import {
   fontStack,
   presetLayout,
@@ -8,9 +8,9 @@ import {
   resolveRatingPageTitleDisplay,
   resolveTextStyle,
   shadowCss,
-  resolveStarDisplay,
   textStyleToCss,
 } from "../../lib/review-form-config.shared.js";
+import { PreviewStar } from "../review-form/preview-star.jsx";
 import { EDITOR_TOKENS, UI_FONT } from "./editor-tokens.js";
 import { FlowStepper, getVisibleFlowSteps } from "./flow-stepper.jsx";
 
@@ -22,36 +22,6 @@ const DEFAULT_PREVIEW_CONTEXT = {
 };
 
 const DIVIDER = "#E8EEF3";
-
-function PreviewStar({ index, displayRating, config }) {
-  const star = resolveStarDisplay(index, displayRating, config);
-
-  if (config.starStyle === "emoji" || star.svgFill == null) {
-    const size = Math.round(config.starSize * (star.fontSizeScale || 1));
-    return (
-      <span
-        style={{
-          fontSize: size,
-          lineHeight: 1,
-          color: star.color,
-          opacity: star.opacity,
-        }}
-      >
-        {star.glyph}
-      </span>
-    );
-  }
-
-  return (
-    <Star
-      size={config.starSize}
-      fill={star.svgFill}
-      stroke={star.svgStroke}
-      strokeWidth={star.svgStrokeWidth}
-      style={{ opacity: star.opacity }}
-    />
-  );
-}
 
 function RatingStepPreview({
   config,
@@ -173,7 +143,7 @@ function RatingStepPreview({
                     lineHeight: 0,
                   }}
                 >
-                  <PreviewStar index={i} displayRating={displayRating} config={config} />
+                  <PreviewStar index={i} rating={displayRating} config={config} />
                 </button>
               ))}
             </div>
