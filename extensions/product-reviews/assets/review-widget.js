@@ -204,18 +204,46 @@
     return { titleSize: 24, gapScale: 1, hideSubtitle: false };
   }
 
-  function starChar(index, rating, cfg) {
+  function resolveStarDisplay(index, rating, cfg) {
     const active = index <= rating;
-    if (cfg.starStyle === "emoji") return active ? "⭐" : "☆";
-    return active ? "★" : "☆";
+    const style = cfg.starStyle;
+
+    if (style === "outline") {
+      return {
+        glyph: active ? "★" : "☆",
+        color: cfg.starColor,
+        opacity: active ? 1 : 0.85,
+        fontSizeScale: 1,
+      };
+    }
+
+    if (style === "emoji") {
+      return {
+        glyph: "★",
+        color: active ? cfg.starColor : cfg.inactiveStarColor,
+        opacity: 1,
+        fontSizeScale: 1.12,
+      };
+    }
+
+    return {
+      glyph: "★",
+      color: active ? cfg.starColor : cfg.inactiveStarColor,
+      opacity: 1,
+      fontSizeScale: 1,
+    };
+  }
+
+  function starChar(index, rating, cfg) {
+    return resolveStarDisplay(index, rating, cfg).glyph;
   }
 
   function starsHtml(rating, cfg) {
     let html = "";
     for (let i = 1; i <= 5; i++) {
-      const active = i <= rating;
-      const opacity = active ? 1 : cfg.starStyle === "outline" ? 0.85 : 0.45;
-      html += `<span style="color:${cfg.starColor};opacity:${opacity};font-size:${cfg.starSize}px">${starChar(i, rating, cfg)}</span>`;
+      const star = resolveStarDisplay(i, rating, cfg);
+      const size = Math.round(cfg.starSize * (star.fontSizeScale || 1));
+      html += `<span style="color:${star.color};opacity:${star.opacity};font-size:${size}px;line-height:1">${star.glyph}</span>`;
     }
     return html;
   }
@@ -366,17 +394,18 @@
     function renderStars(container, value, interactive) {
       container.innerHTML = "";
       for (let i = 1; i <= 5; i++) {
-        const active = i <= value;
+        const star = resolveStarDisplay(i, value, cfg);
+        const size = Math.round(cfg.starSize * (star.fontSizeScale || 1));
         const btn = document.createElement("button");
         btn.type = "button";
         btn.style.cssText =
           "border:none;background:transparent;padding:4px;cursor:pointer;font-size:" +
-          cfg.starSize +
+          size +
           "px;line-height:1;color:" +
-          (active ? cfg.starColor : cfg.starColor) +
+          star.color +
           ";opacity:" +
-          (active ? "1" : cfg.starStyle === "outline" ? "0.85" : "0.45");
-        btn.textContent = starChar(i, value, cfg);
+          star.opacity;
+        btn.textContent = star.glyph;
         if (interactive) {
           btn.onclick = () => {
             rating = i;

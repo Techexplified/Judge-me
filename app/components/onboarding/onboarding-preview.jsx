@@ -6,36 +6,38 @@ import {
   fontStack,
   presetLayout,
   shadowCss,
-  isStarActive,
+  resolveStarDisplay,
 } from "../../lib/review-form-config.shared.js";
 
 const LOGO_ACCEPT = "image/png,image/jpeg,image/jpg,image/svg+xml,image/webp";
 const LOGO_MAX_BYTES = 2 * 1024 * 1024;
 
 function PreviewStar({ index, rating, config }) {
-  const active = isStarActive(index, rating, config);
-  if (config.starStyle === "emoji") {
+  const star = resolveStarDisplay(index, rating, config);
+
+  if (config.starStyle === "emoji" || star.svgFill == null) {
+    const size = Math.round(config.starSize * (star.fontSizeScale || 1));
     return (
       <span
         style={{
-          fontSize: config.starSize,
+          fontSize: size,
           lineHeight: 1,
-          color: active ? config.starColor : config.inactiveStarColor,
+          color: star.color,
+          opacity: star.opacity,
         }}
       >
-        {active ? "⭐" : "☆"}
+        {star.glyph}
       </span>
     );
   }
 
-  const opacity = active ? 1 : config.starStyle === "outline" ? 0.85 : 0.45;
   return (
     <Star
       size={config.starSize}
-      fill={active && config.starStyle === "filled" ? config.starColor : "none"}
-      stroke={config.starColor}
-      strokeWidth={2}
-      style={{ opacity }}
+      fill={star.svgFill}
+      stroke={star.svgStroke}
+      strokeWidth={star.svgStrokeWidth}
+      style={{ opacity: star.opacity }}
     />
   );
 }

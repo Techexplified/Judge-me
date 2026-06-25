@@ -520,19 +520,57 @@ export function isStarActive(index, rating) {
 }
 
 /**
+ * Single source of truth for star glyph + colors across editor preview and storefront.
+ * @param {number} index 1-5
+ * @param {number} rating
+ * @param {ReturnType<typeof mergeFormConfig>} config
+ */
+export function resolveStarDisplay(index, rating, config) {
+  const active = isStarActive(index, rating);
+  const style = config.starStyle;
+
+  if (style === "outline") {
+    return {
+      glyph: active ? "★" : "☆",
+      color: config.starColor,
+      opacity: active ? 1 : 0.85,
+      svgFill: active ? config.starColor : "none",
+      svgStroke: config.starColor,
+      svgStrokeWidth: 2,
+      fontSizeScale: 1,
+    };
+  }
+
+  if (style === "emoji") {
+    // Use ★ (not ⭐) so CSS color applies; emoji mode is slightly larger.
+    return {
+      glyph: "★",
+      color: active ? config.starColor : config.inactiveStarColor,
+      opacity: 1,
+      svgFill: null,
+      fontSizeScale: 1.12,
+    };
+  }
+
+  // filled — inactive stars are solid fills, not hollow outlines
+  return {
+    glyph: "★",
+    color: active ? config.starColor : config.inactiveStarColor,
+    opacity: 1,
+    svgFill: active ? config.starColor : config.inactiveStarColor,
+    svgStroke: active ? config.starColor : config.inactiveStarColor,
+    svgStrokeWidth: 1,
+    fontSizeScale: 1,
+  };
+}
+
+/**
  * @param {number} index 1-5
  * @param {number} rating
  * @param {ReturnType<typeof mergeFormConfig>} config
  */
 export function starCharacter(index, rating, config) {
-  const active = isStarActive(index, rating, config);
-  if (config.starStyle === "emoji") {
-    return active ? "⭐" : "☆";
-  }
-  if (config.starStyle === "outline") {
-    return active ? "★" : "☆";
-  }
-  return active ? "★" : "☆";
+  return resolveStarDisplay(index, rating, config).glyph;
 }
 
 /**
@@ -542,11 +580,10 @@ export function starCharacter(index, rating, config) {
 export function buildStarsHtml(rating, config) {
   const parts = [];
   for (let i = 1; i <= 5; i++) {
-    const active = isStarActive(i, rating, config);
-    const color = config.starColor;
-    const opacity = active ? 1 : config.starStyle === "outline" ? 0.85 : 0.45;
+    const star = resolveStarDisplay(i, rating, config);
+    const size = Math.round(config.starSize * (star.fontSizeScale || 1));
     parts.push(
-      `<span style="color:${color};opacity:${opacity};font-size:var(--jd-star-size,20px);line-height:1">${starCharacter(i, rating, config)}</span>`,
+      `<span style="color:${star.color};opacity:${star.opacity};font-size:${size}px;line-height:1">${star.glyph}</span>`,
     );
   }
   return parts.join("");

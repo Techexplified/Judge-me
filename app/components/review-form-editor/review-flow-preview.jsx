@@ -8,8 +8,7 @@ import {
   resolveRatingPageTitleDisplay,
   resolveTextStyle,
   shadowCss,
-  starCharacter,
-  isStarActive,
+  resolveStarDisplay,
   textStyleToCss,
 } from "../../lib/review-form-config.shared.js";
 import { EDITOR_TOKENS, UI_FONT } from "./editor-tokens.js";
@@ -25,29 +24,31 @@ const DEFAULT_PREVIEW_CONTEXT = {
 const DIVIDER = "#E8EEF3";
 
 function PreviewStar({ index, displayRating, config }) {
-  const active = isStarActive(index, displayRating, config);
-  if (config.starStyle === "emoji") {
+  const star = resolveStarDisplay(index, displayRating, config);
+
+  if (config.starStyle === "emoji" || star.svgFill == null) {
+    const size = Math.round(config.starSize * (star.fontSizeScale || 1));
     return (
       <span
         style={{
-          fontSize: config.starSize,
+          fontSize: size,
           lineHeight: 1,
-          color: active ? config.starColor : config.inactiveStarColor,
+          color: star.color,
+          opacity: star.opacity,
         }}
       >
-        {starCharacter(index, displayRating, config)}
+        {star.glyph}
       </span>
     );
   }
 
-  const opacity = active ? 1 : config.starStyle === "outline" ? 0.85 : 0.45;
   return (
     <Star
       size={config.starSize}
-      fill={active && config.starStyle === "filled" ? config.starColor : "none"}
-      stroke={config.starColor}
-      strokeWidth={2}
-      style={{ opacity }}
+      fill={star.svgFill}
+      stroke={star.svgStroke}
+      strokeWidth={star.svgStrokeWidth}
+      style={{ opacity: star.opacity }}
     />
   );
 }
