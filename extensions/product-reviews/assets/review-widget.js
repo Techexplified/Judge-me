@@ -234,15 +234,18 @@
   }
 
   const STAR_PATH =
-    "M12 2l3.09 6.26L20 9.27l-5 4.87 1.18 6.86L12 18.77l-1.18 6.86L5 9.27l4.91-1.01L12 2z";
+    "M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z";
+  const STAR_PATH_ROUNDED =
+    "M11.48 3.5a.6.6 0 0 1 1.04 0l2.34 4.74a.6.6 0 0 0 .45.33l5.23.76a.6.6 0 0 1 .33 1.02l-3.78 3.69a.6.6 0 0 0-.17.53l.89 5.21a.6.6 0 0 1-.87.63l-4.68-2.46a.6.6 0 0 0-.56 0l-4.68 2.46a.6.6 0 0 1-.87-.63l.89-5.21a.6.6 0 0 0-.17-.53L3.36 10.35a.6.6 0 0 1 .33-1.02l5.23-.76a.6.6 0 0 0 .45-.33z";
 
   function buildStarSvgMarkup(star, size) {
+    const path = star.path || STAR_PATH;
     const fill = star.svgFill ?? star.color ?? "currentColor";
     const stroke = star.svgStroke ?? "none";
     const strokeWidth = star.svgStrokeWidth ?? 0;
     const opacity = star.opacity ?? 1;
     const filter = star.svgFilter ? `filter:${star.svgFilter};` : "";
-    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true" style="display:block;opacity:${opacity};${filter}"><path d="${STAR_PATH}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linejoin="round"/></svg>`;
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true" style="display:block;opacity:${opacity};${filter}"><path d="${path}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
   }
 
   function resolveStarDisplay(index, rating, cfg) {
@@ -251,9 +254,10 @@
 
     if (style === "outline") {
       return {
+        path: STAR_PATH,
         glyph: active ? "★" : "☆",
         color: cfg.starColor,
-        opacity: active ? 1 : 0.85,
+        opacity: 1,
         svgFill: active ? cfg.starColor : "none",
         svgStroke: cfg.starColor,
         svgStrokeWidth: 2,
@@ -264,25 +268,27 @@
     if (style === "emoji") {
       const fill = active ? cfg.starColor : cfg.inactiveStarColor;
       return {
+        path: STAR_PATH_ROUNDED,
         glyph: "★",
         color: fill,
         opacity: 1,
         svgFill: fill,
         svgStroke: "none",
         svgStrokeWidth: 0,
-        fontSizeScale: 1.2,
-        svgFilter: "drop-shadow(0 1px 2px rgba(0,0,0,0.12))",
+        fontSizeScale: 1.18,
+        svgFilter: "drop-shadow(0 1.5px 1px rgba(0,0,0,0.28))",
       };
     }
 
     const fill = active ? cfg.starColor : cfg.inactiveStarColor;
     return {
+      path: STAR_PATH,
       glyph: "★",
       color: fill,
       opacity: 1,
       svgFill: fill,
-      svgStroke: fill,
-      svgStrokeWidth: 1,
+      svgStroke: "none",
+      svgStrokeWidth: 0,
       fontSizeScale: 1,
     };
   }

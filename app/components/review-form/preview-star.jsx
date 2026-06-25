@@ -8,6 +8,7 @@ import {
 export function PreviewStar({ index, rating, config }) {
   const star = resolveStarDisplay(index, rating, config);
   const size = Math.round(config.starSize * (star.fontSizeScale || 1));
+  const path = star.path || STAR_PATH;
   const fill = star.svgFill ?? star.color;
   const stroke = star.svgStroke ?? "none";
   const strokeWidth = star.svgStrokeWidth ?? 0;
@@ -25,11 +26,12 @@ export function PreviewStar({ index, rating, config }) {
       }}
     >
       <path
-        d={STAR_PATH}
+        d={path}
         fill={fill}
         stroke={stroke}
         strokeWidth={strokeWidth}
         strokeLinejoin="round"
+        strokeLinecap="round"
       />
     </svg>
   );
