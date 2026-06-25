@@ -59,7 +59,7 @@ const type = {
   sectionTitle: {
     fontFamily: FONT,
     fontSize: 14,
-    fontWeight: 600,
+    fontWeight: 750,
     color: "#202223",
   },
   body: {
@@ -358,9 +358,9 @@ const actionBtnStyle = {
 const PRODUCT_TABLE_COLUMNS = [
   { key: "product", label: "Product", width: "40%", align: "left" },
   { key: "rating", label: "Rating", width: "12%", align: "left" },
-  { key: "reviews", label: "Reviews", width: "10%", align: "left" },
-  { key: "lastReview", label: "Last review", width: "18%", align: "left" },
-  { key: "actions", label: "Actions", width: "20%", align: "right" },
+  { key: "reviews", label: "Reviews", width: "10%", align: "center" },
+  { key: "lastReview", label: "Last review", width: "10%", align: "left" },
+  { key: "actions", label: "Actions", width: "10%", align: "center" },
 ];
 
 function tableHeadCellStyle(align) {
@@ -550,7 +550,7 @@ export default function ManageReviews() {
 
   return (
     <div style={{ ...pageStyle, background: PAGE_BG, fontFamily: FONT }}>
-      <h1 style={{ margin: "0 0 12px", ...type.pageTitle }}>Manage reviews</h1>
+      <h1 style={{ margin: "0 0 12px", ...type.pageTitle }}>Manage Reviews</h1>
 
       {importBanner ? (
         <div style={{ marginBottom: 16 }}>
@@ -566,9 +566,9 @@ export default function ManageReviews() {
 
       <div style={{ display: "flex", gap: 24, borderBottom: `1px solid ${SURFACE_BORDER}`, marginBottom: 20 }}>
         {[
-          { id: "product", label: "Product reviews" },
-          { id: "store", label: "Store reviews" },
-          { id: "integration", label: "Store integration" },
+          { id: "product", label: "Product Reviews" },
+          { id: "store", label: "Store Reviews" },
+          { id: "integration", label: "Store Integration" },
         ].map((tab) => {
           const active = activeTab === tab.id;
           return (
@@ -790,7 +790,7 @@ export default function ManageReviews() {
                               {product.avgRating}
                             </span>
                           </td>
-                          <td style={{ ...tableBodyCellStyle("left"), ...type.body, fontWeight: 600 }}>
+                          <td style={{ ...tableBodyCellStyle("center"), ...type.body, fontWeight: 600 }}>
                             {product.reviewCount}
                           </td>
                           <td style={{ ...tableBodyCellStyle("left"), ...type.body, fontWeight: 500 }}>
