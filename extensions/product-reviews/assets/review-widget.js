@@ -214,9 +214,8 @@
     let html = "";
     for (let i = 1; i <= 5; i++) {
       const active = i <= rating;
-      const color = active ? cfg.starColor : cfg.inactiveStarColor;
-      const opacity = cfg.starStyle === "outline" && !active ? 0.45 : 1;
-      html += `<span style="color:${color};opacity:${opacity};font-size:${cfg.starSize}px">${starChar(i, rating, cfg)}</span>`;
+      const opacity = active ? 1 : cfg.starStyle === "outline" ? 0.85 : 0.45;
+      html += `<span style="color:${cfg.starColor};opacity:${opacity};font-size:${cfg.starSize}px">${starChar(i, rating, cfg)}</span>`;
     }
     return html;
   }

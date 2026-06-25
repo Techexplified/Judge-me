@@ -543,8 +543,8 @@ export function buildStarsHtml(rating, config) {
   const parts = [];
   for (let i = 1; i <= 5; i++) {
     const active = isStarActive(i, rating, config);
-    const color = active ? config.starColor : config.inactiveStarColor;
-    const opacity = config.starStyle === "outline" && !active ? 0.5 : 1;
+    const color = config.starColor;
+    const opacity = active ? 1 : config.starStyle === "outline" ? 0.85 : 0.45;
     parts.push(
       `<span style="color:${color};opacity:${opacity};font-size:var(--jd-star-size,20px);line-height:1">${starCharacter(i, rating, config)}</span>`,
     );

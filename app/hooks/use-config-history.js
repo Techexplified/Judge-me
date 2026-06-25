@@ -9,81 +9,85 @@ const MAX_HISTORY = 50;
 export function useConfigHistory(initial) {
   const [config, setConfigState] = useState(initial);
   const configRef = useRef(initial);
-  const pastRef = useRef([initial]);
-  const futureRef = useRef([]);
+  const historyRef = useRef([initial]);
+  const indexRef = useRef(0);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
   const syncFlags = useCallback(() => {
-    setCanUndo(pastRef.current.length > 1);
-    setCanRedo(futureRef.current.length > 0);
+    setCanUndo(indexRef.current > 0);
+    setCanRedo(indexRef.current < historyRef.current.length - 1);
   }, []);
 
-  const commitConfig = useCallback(
-    (next, { recordHistory = true } = {}) => {
+  const applyConfig = useCallback(
+    (next) => {
       configRef.current = next;
       setConfigState(next);
+    },
+    [],
+  );
 
-      if (!recordHistory) return;
+  const pushHistory = useCallback(
+    (next) => {
+      const current = historyRef.current[indexRef.current];
+      if (JSON.stringify(current) === JSON.stringify(next)) return;
 
-      const past = pastRef.current;
-      const last = past[past.length - 1];
-      if (JSON.stringify(last) === JSON.stringify(next)) return;
+      const truncated = historyRef.current.slice(0, indexRef.current + 1);
+      truncated.push(next);
+      if (truncated.length > MAX_HISTORY) {
+        historyRef.current = truncated.slice(truncated.length - MAX_HISTORY);
+        indexRef.current = historyRef.current.length - 1;
+      } else {
+        historyRef.current = truncated;
+        indexRef.current = truncated.length - 1;
+      }
 
-      pastRef.current = [...past.slice(-(MAX_HISTORY - 1)), next];
-      futureRef.current = [];
+      applyConfig(next);
       syncFlags();
     },
-    [syncFlags],
+    [applyConfig, syncFlags],
   );
 
   const updateConfig = useCallback(
     (key, value) => {
-      commitConfig({ ...configRef.current, [key]: value });
+      pushHistory({ ...configRef.current, [key]: value });
     },
-    [commitConfig],
+    [pushHistory],
   );
 
   const patchConfig = useCallback(
     (partial) => {
-      commitConfig({ ...configRef.current, ...partial });
+      pushHistory({ ...configRef.current, ...partial });
     },
-    [commitConfig],
+    [pushHistory],
   );
 
   const replaceConfig = useCallback(
     (next) => {
-      commitConfig(next);
+      pushHistory(next);
     },
-    [commitConfig],
+    [pushHistory],
   );
 
   const undo = useCallback(() => {
-    const past = pastRef.current;
-    if (past.length <= 1) return;
-    const current = past[past.length - 1];
-    futureRef.current = [current, ...futureRef.current];
-    pastRef.current = past.slice(0, -1);
-    const prev = pastRef.current[pastRef.current.length - 1];
-    commitConfig(prev, { recordHistory: false });
+    if (indexRef.current <= 0) return;
+    indexRef.current -= 1;
+    applyConfig(historyRef.current[indexRef.current]);
     syncFlags();
-  }, [commitConfig, syncFlags]);
+  }, [applyConfig, syncFlags]);
 
   const redo = useCallback(() => {
-    const future = futureRef.current;
-    if (!future.length) return;
-    const [next, ...rest] = future;
-    futureRef.current = rest;
-    pastRef.current = [...pastRef.current, next];
-    commitConfig(next, { recordHistory: false });
+    if (indexRef.current >= historyRef.current.length - 1) return;
+    indexRef.current += 1;
+    applyConfig(historyRef.current[indexRef.current]);
     syncFlags();
-  }, [commitConfig, syncFlags]);
+  }, [applyConfig, syncFlags]);
 
   const resetHistory = useCallback(
     (next) => {
       configRef.current = next;
-      pastRef.current = [next];
-      futureRef.current = [];
+      historyRef.current = [next];
+      indexRef.current = 0;
       setConfigState(next);
       syncFlags();
     },

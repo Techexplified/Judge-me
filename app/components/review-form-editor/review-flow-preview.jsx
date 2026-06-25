@@ -28,24 +28,26 @@ function PreviewStar({ index, displayRating, config }) {
   const active = isStarActive(index, displayRating, config);
   if (config.starStyle === "emoji") {
     return (
-      <span style={{ fontSize: config.starSize, lineHeight: 1 }}>
+      <span
+        style={{
+          fontSize: config.starSize,
+          lineHeight: 1,
+          color: active ? config.starColor : config.inactiveStarColor,
+        }}
+      >
         {starCharacter(index, displayRating, config)}
       </span>
     );
   }
-  const stroke =
-    config.starStyle === "outline"
-      ? config.starColor
-      : active
-        ? config.starColor
-        : config.inactiveStarColor;
+
+  const opacity = active ? 1 : config.starStyle === "outline" ? 0.85 : 0.45;
   return (
     <Star
       size={config.starSize}
-      fill={active ? config.starColor : "none"}
-      stroke={stroke}
+      fill={active && config.starStyle === "filled" ? config.starColor : "none"}
+      stroke={config.starColor}
       strokeWidth={2}
-      style={{ opacity: active ? 1 : 0.85 }}
+      style={{ opacity }}
     />
   );
 }

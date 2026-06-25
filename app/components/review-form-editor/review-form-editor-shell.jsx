@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCircle2, Eye, Monitor, Redo2, Smartphone, Undo2 } from "lucide-react";
 import { useEmbedNavigate } from "../../hooks/use-embed-navigate.js";
 import { EditorRootMenu } from "./editor-root-menu.jsx";
@@ -37,6 +37,25 @@ export function ReviewFormEditorShell({
   const [activePanel, setActivePanel] = useState(null);
   const [viewport, setViewport] = useState("desktop");
   const [previewStep, setPreviewStep] = useState("rating");
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndo) onUndo();
+      } else if (key === "z" && e.shiftKey) {
+        e.preventDefault();
+        if (canRedo) onRedo();
+      } else if (key === "y") {
+        e.preventDefault();
+        if (canRedo) onRedo();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [canUndo, canRedo, onUndo, onRedo]);
 
   return (
     <div
@@ -122,10 +141,22 @@ export function ReviewFormEditorShell({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <button type="button" onClick={onUndo} disabled={!canUndo} style={iconBtnStyle}>
+          <button
+            type="button"
+            onClick={onUndo}
+            disabled={!canUndo}
+            aria-label="Undo"
+            style={iconBtnStyle(!canUndo)}
+          >
             <Undo2 size={16} />
           </button>
-          <button type="button" onClick={onRedo} disabled={!canRedo} style={iconBtnStyle}>
+          <button
+            type="button"
+            onClick={onRedo}
+            disabled={!canRedo}
+            aria-label="Redo"
+            style={iconBtnStyle(!canRedo)}
+          >
             <Redo2 size={16} />
           </button>
           <button type="button" onClick={onPreview} style={secondaryBtnStyle}>
@@ -228,7 +259,7 @@ export function ReviewFormEditorShell({
   );
 }
 
-const iconBtnStyle = {
+const iconBtnStyle = (disabled = false) => ({
   width: 36,
   height: 36,
   borderRadius: 8,
@@ -237,9 +268,10 @@ const iconBtnStyle = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  cursor: "pointer",
-  color: EDITOR_TOKENS.textMuted,
-};
+  cursor: disabled ? "not-allowed" : "pointer",
+  color: disabled ? "#C9CCCF" : EDITOR_TOKENS.textMuted,
+  opacity: disabled ? 0.55 : 1,
+});
 
 const secondaryBtnStyle = {
   display: "inline-flex",

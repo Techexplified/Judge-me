@@ -14,23 +14,28 @@ const LOGO_MAX_BYTES = 2 * 1024 * 1024;
 
 function PreviewStar({ index, rating, config }) {
   const active = isStarActive(index, rating, config);
-  if (config.starStyle === "outline") {
+  if (config.starStyle === "emoji") {
     return (
-      <Star
-        size={config.starSize}
-        fill={active ? config.starColor : "none"}
-        stroke={active ? config.starColor : config.inactiveStarColor}
-        strokeWidth={2}
-      />
+      <span
+        style={{
+          fontSize: config.starSize,
+          lineHeight: 1,
+          color: active ? config.starColor : config.inactiveStarColor,
+        }}
+      >
+        {active ? "⭐" : "☆"}
+      </span>
     );
   }
+
+  const opacity = active ? 1 : config.starStyle === "outline" ? 0.85 : 0.45;
   return (
     <Star
       size={config.starSize}
-      fill={active ? config.starColor : "none"}
-      stroke={active ? config.starColor : config.inactiveStarColor}
-      strokeWidth={active ? 0 : 2}
-      style={{ opacity: active ? 1 : 0.4 }}
+      fill={active && config.starStyle === "filled" ? config.starColor : "none"}
+      stroke={config.starColor}
+      strokeWidth={2}
+      style={{ opacity }}
     />
   );
 }
