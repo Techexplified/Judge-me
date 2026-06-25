@@ -580,14 +580,14 @@ export function resolveStarDisplay(index, rating, config) {
   const style = config.starStyle;
 
   if (style === "outline") {
-    // Always a hollow outline; active stars fill in with the chosen color.
+    // Always hollow; rating is shown via stroke color (full vs muted), never filled.
     return {
       path: STAR_PATH,
       glyph: active ? "★" : "☆",
       color: config.starColor,
       opacity: 1,
-      svgFill: active ? config.starColor : "none",
-      svgStroke: config.starColor,
+      svgFill: "none",
+      svgStroke: active ? config.starColor : config.inactiveStarColor,
       svgStrokeWidth: 2,
       fontSizeScale: 1,
     };

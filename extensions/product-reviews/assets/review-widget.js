@@ -258,8 +258,8 @@
         glyph: active ? "★" : "☆",
         color: cfg.starColor,
         opacity: 1,
-        svgFill: active ? cfg.starColor : "none",
-        svgStroke: cfg.starColor,
+        svgFill: "none",
+        svgStroke: active ? cfg.starColor : cfg.inactiveStarColor,
         svgStrokeWidth: 2,
         fontSizeScale: 1,
       };
