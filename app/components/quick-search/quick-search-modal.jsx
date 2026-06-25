@@ -40,10 +40,6 @@ export function QuickSearchModal({ onClose, onOpenGuide }) {
     inputRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    setActiveIndex(0);
-  }, [query]);
-
   const goTo = (item) => {
     if (!item) return;
     embedNavigate(item.path);
@@ -86,7 +82,10 @@ export function QuickSearchModal({ onClose, onOpenGuide }) {
             <input
               ref={inputRef}
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setActiveIndex(0);
+              }}
               onKeyDown={onKeyDown}
               placeholder="Search for features, settings, and more..."
               style={{

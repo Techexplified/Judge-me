@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Search, X } from "lucide-react";
 import { useQuickSearch } from "./quick-search-provider.jsx";
 import { QS_FONT, QS_GREEN } from "./quick-search-styles.js";
@@ -8,14 +8,10 @@ const TOOLTIP_KEY = "judgeme-quick-search-tooltip";
 
 export function QuickSearchButton() {
   const { openSearch } = useQuickSearch();
-  const [showTooltip, setShowTooltip] = useState(false);
-
-  useEffect(() => {
-    if (typeof localStorage === "undefined") return;
-    if (localStorage.getItem(TOOLTIP_KEY) !== "1") {
-      setShowTooltip(true);
-    }
-  }, []);
+  const [showTooltip, setShowTooltip] = useState(() => {
+    if (typeof localStorage === "undefined") return false;
+    return localStorage.getItem(TOOLTIP_KEY) !== "1";
+  });
 
   const dismissTooltip = () => {
     setShowTooltip(false);
