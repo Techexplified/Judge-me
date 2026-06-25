@@ -35,7 +35,6 @@
     trustBadgeEnabled: true,
     trustBadgeText: "Protected by SSL. We never share your info.",
     ratingPageTitle: "How would you rate this product?",
-    ratingPageTitleFallback: "How would you rate this product?",
     starLabelHigh: "Love it!",
     starLabelLow: "Dislike it",
     formTitle: "Write a Review",
@@ -66,10 +65,6 @@
     verifiedPurchaseLabelFontSize: null,
     verifiedPurchaseLabelTypography: null,
     verifiedPurchaseLabelFontWeight: null,
-    ratingPageTitleFallbackColor: null,
-    ratingPageTitleFallbackFontSize: null,
-    ratingPageTitleFallbackTypography: null,
-    ratingPageTitleFallbackFontWeight: null,
     starLabelHighColor: null,
     starLabelHighFontSize: null,
     starLabelHighTypography: null,
@@ -84,7 +79,6 @@
     ratingPageTitle: { fontSize: 16, fontWeight: 600, colorFrom: "textColor" },
     orderMetaLine: { fontSize: 13, fontWeight: 500, color: "#6d7175" },
     verifiedPurchaseLabel: { fontSize: 11, fontWeight: 700, colorFrom: "primaryColor" },
-    ratingPageTitleFallback: { fontSize: 16, fontWeight: 600, colorFrom: "textColor" },
     starLabelHigh: { fontSize: 11, fontWeight: 500, color: "#6d7175" },
     starLabelLow: { fontSize: 11, fontWeight: 500, color: "#6d7175" },
   };
@@ -128,15 +122,10 @@
 
   function resolveRatingPageTitleDisplay(cfg, context) {
     const item = (context.item || "").trim();
-    if (item) {
-      return {
-        text: resolveFormText(cfg.ratingPageTitle, context) || DEFAULT_CFG.ratingPageTitle,
-        styleSection: "ratingPageTitle",
-      };
-    }
+    const ctx = item ? context : { ...context, item: "this product" };
     return {
-      text: cfg.ratingPageTitleFallback || DEFAULT_CFG.ratingPageTitleFallback,
-      styleSection: "ratingPageTitleFallback",
+      text: resolveFormText(cfg.ratingPageTitle, ctx) || DEFAULT_CFG.ratingPageTitle,
+      styleSection: "ratingPageTitle",
     };
   }
 
@@ -155,8 +144,8 @@
 
   function resolveRatingPageTitle(cfg, context) {
     const item = (context.item || "").trim();
-    if (item) return resolveFormText(cfg.ratingPageTitle, context);
-    return cfg.ratingPageTitleFallback || DEFAULT_CFG.ratingPageTitleFallback;
+    const ctx = item ? context : { ...context, item: "this product" };
+    return resolveFormText(cfg.ratingPageTitle, ctx) || DEFAULT_CFG.ratingPageTitle;
   }
 
   function getVisibleFlowSteps(cfg) {
@@ -200,9 +189,6 @@
     c.spacing = Math.min(32, Math.max(8, Number(c.spacing) || 16));
     if (c.ratingPageTitle === "How would you rate {{item}} ?") {
       c.ratingPageTitle = DEFAULT_CFG.ratingPageTitle;
-    }
-    if (c.ratingPageTitleFallback === "How would you rate this item?") {
-      c.ratingPageTitleFallback = DEFAULT_CFG.ratingPageTitleFallback;
     }
     const starHex = normalizeHex(c.starColor);
     if (starHex) c.starColor = starHex;

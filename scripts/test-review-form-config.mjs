@@ -66,7 +66,10 @@ const customCfg = mergeFormConfig({ ratingPageTitle: "Rate {{item}} please" });
 const customTitle = resolveRatingPageTitle(customCfg, { item: "Botanical Serum" });
 assert(customTitle.includes("Botanical Serum"), "resolveRatingPageTitle still supports {{item}} token");
 const fallbackTitle = resolveRatingPageTitle(cfg, { item: "" });
-assert(fallbackTitle === cfg.ratingPageTitleFallback, "resolveRatingPageTitle uses fallback");
+assert(
+  fallbackTitle === "How would you rate this product?",
+  "resolveRatingPageTitle substitutes this product when no item",
+);
 
 assert(cfg.cardBackgroundColor === "#FFFFFF", "cardBackgroundColor default");
 

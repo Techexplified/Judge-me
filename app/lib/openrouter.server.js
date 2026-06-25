@@ -277,7 +277,6 @@ export async function generateReviewFormCopy({ apiKey, storeName = "your store" 
 Return ONLY valid JSON (no markdown) with exactly these string keys:
 {
   "ratingPageTitle": "How would you rate this product?",
-  "ratingPageTitleFallback": "How would you rate this product?",
   "starLabelHigh": "Love it!",
   "starLabelLow": "Dislike it",
   "formTitle": "Write a Review",

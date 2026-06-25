@@ -29,12 +29,6 @@ const RATING_TEXT_SECTIONS = [
     maxLength: 40,
   },
   {
-    id: "ratingPageTitleFallback",
-    label: "Fallback title",
-    maxLength: 80,
-    hint: "Used when no product information is available",
-  },
-  {
     id: "starLabelHigh",
     label: "5-star rating text",
     maxLength: 40,

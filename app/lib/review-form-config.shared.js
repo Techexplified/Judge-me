@@ -46,7 +46,6 @@ export const RATING_TEXT_STYLE_SECTIONS = {
   ratingPageTitle: { fontSize: 16, fontWeight: 600, colorFrom: "textColor" },
   orderMetaLine: { fontSize: 13, fontWeight: 500, color: "#6d7175" },
   verifiedPurchaseLabel: { fontSize: 11, fontWeight: 700, colorFrom: "primaryColor" },
-  ratingPageTitleFallback: { fontSize: 16, fontWeight: 600, colorFrom: "textColor" },
   starLabelHigh: { fontSize: 11, fontWeight: 500, color: "#6d7175" },
   starLabelLow: { fontSize: 11, fontWeight: 500, color: "#6d7175" },
 };
@@ -63,7 +62,6 @@ export const FONT_WEIGHT_OPTIONS = [
 
 export const FORM_TEXT_KEYS = [
   "ratingPageTitle",
-  "ratingPageTitleFallback",
   "starLabelHigh",
   "starLabelLow",
   "formTitle",
@@ -104,7 +102,6 @@ export const defaultFormConfig = {
   borderRadius: 12,
   radiusPreset: "default",
   ratingPageTitle: "How would you rate this product?",
-  ratingPageTitleFallback: "How would you rate this product?",
   starLabelHigh: "Love it!",
   starLabelLow: "Dislike it",
   formTitle: "Write a Review",
@@ -135,10 +132,6 @@ export const defaultFormConfig = {
   verifiedPurchaseLabelFontSize: null,
   verifiedPurchaseLabelTypography: null,
   verifiedPurchaseLabelFontWeight: null,
-  ratingPageTitleFallbackColor: null,
-  ratingPageTitleFallbackFontSize: null,
-  ratingPageTitleFallbackTypography: null,
-  ratingPageTitleFallbackFontWeight: null,
   starLabelHighColor: null,
   starLabelHighFontSize: null,
   starLabelHighTypography: null,
@@ -317,24 +310,18 @@ export function resolveFormText(template, context = {}) {
  */
 export function resolveRatingPageTitle(config, context = {}) {
   const item = context.item?.trim() || "";
-  const title = item
-    ? resolveFormText(config.ratingPageTitle, context)
-    : config.ratingPageTitleFallback || defaultFormConfig.ratingPageTitleFallback;
-  return title || defaultFormConfig.ratingPageTitleFallback;
+  const ctx = item ? context : { ...context, item: "this product" };
+  const title = resolveFormText(config.ratingPageTitle, ctx);
+  return title || defaultFormConfig.ratingPageTitle;
 }
 
 /** @returns {{ text: string, styleSection: keyof typeof RATING_TEXT_STYLE_SECTIONS }} */
 export function resolveRatingPageTitleDisplay(config, context = {}) {
   const item = context.item?.trim() || "";
-  if (item) {
-    return {
-      text: resolveFormText(config.ratingPageTitle, context) || defaultFormConfig.ratingPageTitle,
-      styleSection: "ratingPageTitle",
-    };
-  }
+  const ctx = item ? context : { ...context, item: "this product" };
   return {
-    text: config.ratingPageTitleFallback || defaultFormConfig.ratingPageTitleFallback,
-    styleSection: "ratingPageTitleFallback",
+    text: resolveFormText(config.ratingPageTitle, ctx) || defaultFormConfig.ratingPageTitle,
+    styleSection: "ratingPageTitle",
   };
 }
 
@@ -358,9 +345,6 @@ export function mergeFormConfig(saved) {
 
   if (base.ratingPageTitle === "How would you rate {{item}} ?") {
     base.ratingPageTitle = defaultFormConfig.ratingPageTitle;
-  }
-  if (base.ratingPageTitleFallback === "How would you rate this item?") {
-    base.ratingPageTitleFallback = defaultFormConfig.ratingPageTitleFallback;
   }
 
   base.starSize = Math.min(40, Math.max(14, Number(base.starSize) || 20));
