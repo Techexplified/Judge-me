@@ -880,16 +880,17 @@
       els.next = host.querySelector("#jd-flow-next");
       els.skip = host.querySelector("#jd-flow-skip");
       els.msg = host.querySelector("#jd-flow-msg");
+      const closeBtn = host.querySelector("#jd-close-form");
 
       document.body.appendChild(els.overlay);
 
-      host.querySelector("#jd-close-form").onclick = close;
+      if (closeBtn) closeBtn.onclick = close;
       els.overlay.onclick = (e) => {
         if (e.target === els.overlay) close();
       };
-      els.back.onclick = handleBack;
-      els.next.onclick = handleNext;
-      els.skip.onclick = handleSkip;
+      if (els.back) els.back.onclick = handleBack;
+      if (els.next) els.next.onclick = handleNext;
+      if (els.skip) els.skip.onclick = handleSkip;
     }
 
     return { mount, open, close };
