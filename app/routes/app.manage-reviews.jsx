@@ -45,8 +45,8 @@ const FONT =
 const type = {
   pageTitle: {
     fontFamily: FONT,
-    fontSize: 24,
-    fontWeight: 600,
+    fontSize: 30,
+    fontWeight: 900,
     color: "#202223",
     letterSpacing: "-0.01em",
   },
@@ -207,7 +207,7 @@ function StoreReviewsTab({ storeReviewLink, reviewCount = 0, onViewReviews, onRe
   };
 
   return (
-    <div style={{ padding: "48px 24px", textAlign: "center" }}>
+    <div style={{ padding: "48px 24px", textAlign: "center", display: "flex", flexDirection: "column", minHeight: 400 }}>
       <div style={{ marginBottom: 24 }}>
         <StoreIllustration />
       </div>
@@ -267,7 +267,7 @@ function StoreReviewsTab({ storeReviewLink, reviewCount = 0, onViewReviews, onRe
         </button>
       </div>
       {hasReviews ? (
-        <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginTop: "auto" }}>
           <button
             type="button"
             onClick={onViewReviews}
@@ -313,21 +313,64 @@ function StoreReviewsTab({ storeReviewLink, reviewCount = 0, onViewReviews, onRe
 
 function StoreIllustration() {
   return (
-    <svg width="180" height="120" viewBox="0 0 180 120" fill="none" aria-hidden="true">
-      <path d="M20 95 H160" stroke="#202223" strokeWidth="1.5" />
-      <rect x="55" y="45" width="70" height="50" rx="2" stroke="#202223" strokeWidth="1.5" fill="#fff" />
-      <path d="M50 45 L65 30 H115 L130 45" stroke={SHOPIFY_GREEN} strokeWidth="2" fill="#ecfdf5" />
-      <rect x="68" y="18" width="44" height="16" rx="2" fill={SHOPIFY_GREEN} />
-      {[72, 80, 88, 96, 104].map((x) => (
+    <svg width="300" height="160" viewBox="0 0 300 160" fill="none" aria-hidden="true">
+      {/* Base line with dashed section under the tree */}
+      <path d="M 40 140 H 52 M 60 140 H 72 M 80 140 H 260" stroke="#202223" strokeWidth="1.5" strokeLinecap="round" />
+
+      {/* Left Tree */}
+      <path d="M 60 105 V 140" stroke="#202223" strokeWidth="1.5" />
+      <ellipse cx="60" cy="85" rx="12" ry="20" fill="#fff" stroke="#202223" strokeWidth="1.5" />
+
+      {/* Main Building Background */}
+      <rect x="95" y="70" width="110" height="70" fill="#fff" stroke="#202223" strokeWidth="1.5" />
+
+      {/* Door */}
+      <rect x="110" y="105" width="20" height="35" fill="#fff" stroke="#202223" strokeWidth="1.5" />
+      <circle cx="114" cy="122.5" r="1" fill="#202223" />
+
+      {/* Window */}
+      <rect x="145" y="95" width="45" height="30" fill="#fff" stroke="#202223" strokeWidth="1.5" />
+
+      {/* Right Bush */}
+      <path
+        d="M 215 140 A 6 6 0 0 1 223 132 A 8 8 0 0 1 237 132 A 6 6 0 0 1 245 140 Z"
+        fill="#fff"
+        stroke="#202223"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+
+      {/* Awning Flaps */}
+      <g stroke="#202223" strokeWidth="1.5" strokeLinejoin="round">
+        <path d="M 90 60 h 20 v 18 a 10 10 0 0 1 -20 0 z" fill="#004c3f" />
+        <path d="M 110 60 h 20 v 18 a 10 10 0 0 1 -20 0 z" fill="#ffffff" />
+        <path d="M 130 60 h 20 v 18 a 10 10 0 0 1 -20 0 z" fill="#003d32" />
+        <path d="M 150 60 h 20 v 18 a 10 10 0 0 1 -20 0 z" fill="#006e52" />
+        <path d="M 170 60 h 20 v 18 a 10 10 0 0 1 -20 0 z" fill="#1a9e77" />
+        <path d="M 190 60 h 20 v 18 a 10 10 0 0 1 -20 0 z" fill="#006e52" />
+      </g>
+
+      {/* Sign Supports */}
+      <path d="M 120 45 V 60 M 180 45 V 60" stroke="#202223" strokeWidth="1.5" />
+
+      {/* Sign Board */}
+      <rect x="105" y="28" width="90" height="22" rx="1" fill="#004c3f" stroke="#202223" strokeWidth="1.5" />
+
+      {/* Sign Stars */}
+      {[115, 132.5, 150, 167.5, 185].map((x) => (
         <path
           key={x}
-          d={`M${x} 28 l2 2 -2 2 -2 -2 z`}
+          transform={`translate(${x}, 39)`}
+          d="M0 -4 L1.2 -1.2 L4.2 -1.2 L1.8 0.6 L2.6 3.6 L0 1.8 L-2.6 3.6 L-1.8 0.6 L-4.2 -1.2 L-1.2 -1.2 Z"
           fill="#fff"
         />
       ))}
-      <circle cx="35" cy="78" r="10" stroke="#202223" strokeWidth="1.2" fill="none" />
-      <path d="M35 68 v20 M30 78 h10" stroke="#202223" strokeWidth="1.2" />
-      <circle cx="145" cy="82" r="6" stroke="#202223" strokeWidth="1.2" fill="none" />
+
+      {/* Sparkles / Ambient Decor */}
+      <path d="M 68 35 h 4 M 70 33 v 4" stroke="#004c3f" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="38" cy="78" r="1.5" fill="#003d32" />
+      <path d="M 230 45 L 232 48 L 230 51 L 228 48 Z" fill="#004c3f" />
+      <circle cx="250" cy="82" r="1.5" fill="#1a9e77" />
     </svg>
   );
 }
@@ -357,9 +400,9 @@ const actionBtnStyle = {
 
 const PRODUCT_TABLE_COLUMNS = [
   { key: "product", label: "Product", width: "40%", align: "left" },
-  { key: "rating", label: "Rating", width: "12%", align: "left" },
+  { key: "rating", label: "Rating", width: "12%", align: "center" },
   { key: "reviews", label: "Reviews", width: "10%", align: "center" },
-  { key: "lastReview", label: "Last review", width: "10%", align: "left" },
+  { key: "lastReview", label: "Last review", width: "10%", align: "center" },
   { key: "actions", label: "Actions", width: "10%", align: "center" },
 ];
 
@@ -776,7 +819,7 @@ export default function ManageReviews() {
                               </div>
                             </div>
                           </td>
-                          <td style={tableBodyCellStyle("left")}>
+                          <td style={tableBodyCellStyle("center")}>
                             <span
                               style={{
                                 display: "inline-flex",
@@ -793,7 +836,7 @@ export default function ManageReviews() {
                           <td style={{ ...tableBodyCellStyle("center"), ...type.body, fontWeight: 600 }}>
                             {product.reviewCount}
                           </td>
-                          <td style={{ ...tableBodyCellStyle("left"), ...type.body, fontWeight: 500 }}>
+                          <td style={{ ...tableBodyCellStyle("center"), ...type.body, fontWeight: 500 }}>
                             {product.lastReview}
                           </td>
                           <td style={tableBodyCellStyle("right")}>

@@ -8,10 +8,10 @@ import {
   SURFACE_BORDER,
 } from "../admin-ui";
 import { getWidgetCtaLabel } from "../../lib/theme-editor-nav.shared.js";
-import reviewShowcaseImg from "./reviewshowcase.png";
+import reviewShowcaseImg from "./reviewshowcase-2.png";
 import reviewTranslationImg from "./reviewtranslation.png";
 import videoSliderImg from "./video-slider.png";
-import customerLovePageImg from "./customerlove-page.png";
+import customerLovePageImg from "./customerlove-page-1.png";
 
 const FONT =
   "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
@@ -46,8 +46,8 @@ export const WIDGET_CATALOG = [
 const type = {
   pageTitle: {
     fontFamily: FONT,
-    fontSize: 24,
-    fontWeight: 600,
+    fontSize: 30,
+    fontWeight: 900,
     color: "#202223",
     letterSpacing: "-0.01em",
   },
@@ -93,7 +93,7 @@ function WidgetPreview({ previewImage, title }) {
         style={{
           width: "100%",
           height: "100%",
-          objectFit: "contain",
+          objectFit: "cover",
           objectPosition: "center",
           display: "block",
         }}
@@ -151,16 +151,12 @@ function WidgetCard({ widget, onAddToTheme }) {
         className="widget-preview"
         style={{
           width: "100%",
-          height: hover ? "clamp(220px, 28vw, 260px)" : "clamp(160px, 20vw, 196px)",
+          aspectRatio: "16/9",
           background: SURFACE_BG,
           borderBottom: `1px solid ${SURFACE_BORDER}`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: hover ? "4px 6px" : "8px 10px",
-          boxSizing: "border-box",
-          transition: "height 0.22s ease, padding 0.22s ease",
+          overflow: "hidden",
           position: "relative",
+          transition: "transform 0.2s ease",
         }}
       >
         <WidgetPreview previewImage={widget.previewImage} title={widget.title} />
@@ -241,8 +237,7 @@ export function WidgetsPage({
           <span style={type.countBadge}>{WIDGET_CATALOG.length} available</span>
         </div>
         <p style={{ margin: "8px 0 0", ...type.subtitle }}>
-          Add one or more widgets to your theme. Each installs independently on its own page or
-          section. You are not limited to a single widget.
+          Choose from multiple review widgets and place them anywhere in your theme
         </p>
         {reviewCounts?.total != null ? (
           <p style={{ margin: "6px 0 0", ...type.subtitle }}>
