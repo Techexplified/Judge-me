@@ -445,28 +445,36 @@
         const size = Math.round(cfg.starSize * (star.fontSizeScale || 1));
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.style.cssText =
-          "border:none;background:transparent;padding:4px;cursor:pointer;line-height:0";
+        btn.className = "jd-star-btn";
+        btn.dataset.star = String(i);
+        btn.setAttribute("aria-label", `Rate ${i} out of 5 stars`);
         btn.innerHTML = buildStarSvgMarkup(star, size);
-        if (interactive) {
-          btn.onmouseenter = () => {
-            hoverRating = i;
-            renderStars(container, rating, true);
-          };
-          btn.onclick = () => {
-            rating = i;
-            hoverRating = 0;
-            renderStars(container, rating, true);
-          };
-        }
         container.appendChild(btn);
       }
-      if (interactive) {
-        container.onmouseleave = () => {
-          hoverRating = 0;
-          renderStars(container, rating, true);
-        };
-      }
+    }
+
+    function bindStarInteractions(starBlock, starRow, ratingsEnabled) {
+      if (!ratingsEnabled || !starBlock || starBlock.__jdStarBound) return;
+      starBlock.__jdStarBound = true;
+      starBlock.addEventListener("click", (e) => {
+        const btn = e.target.closest(".jd-star-btn");
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        rating = Number(btn.dataset.star) || 0;
+        hoverRating = 0;
+        renderStars(starRow, rating, true);
+      });
+      starBlock.addEventListener("mouseover", (e) => {
+        const btn = e.target.closest(".jd-star-btn");
+        if (!btn) return;
+        hoverRating = Number(btn.dataset.star) || 0;
+        renderStars(starRow, rating, true);
+      });
+      starBlock.addEventListener("mouseleave", () => {
+        hoverRating = 0;
+        renderStars(starRow, rating, true);
+      });
     }
 
     function bindUploadZone(zone, input, previews, files, accept) {
@@ -514,9 +522,13 @@
         const avatarHtml = isStore ? storeAvatarHtml(cfg) : productAvatarHtml(cfg, productImage);
         const imageSize = Math.min(96, Math.max(72, cfg.starSize * 2.75));
         const innerRadius = Math.max(10, cfg.borderRadius - 2);
+        const ratingsEnabled = cfg.showRatings !== false;
         const wrap = document.createElement("div");
-        wrap.innerHTML = `
-          <div style="border:1px solid #E8EEF3;border-radius:${cfg.borderRadius}px;background:${cfg.cardBackgroundColor || "#fff"};padding:28px 24px 24px;text-align:center">
+
+        const innerCard = document.createElement("div");
+        innerCard.className = "jd-rating-card";
+        innerCard.style.cssText = `border:1px solid #E8EEF3;border-radius:${cfg.borderRadius}px;background:${cfg.cardBackgroundColor || "#fff"};padding:28px 24px 24px;text-align:center`;
+        innerCard.innerHTML = `
             <div style="width:${imageSize}px;height:${imageSize}px;border-radius:${innerRadius}px;background:#F0F7F4;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;overflow:hidden">
               ${avatarHtml}
             </div>
@@ -537,29 +549,40 @@
             }
             <div style="height:1px;background:#E8EEF3;margin:0 0 20px"></div>
             <p style="text-align:center;margin:0 0 ${gap + 4}px;letter-spacing:-0.01em;${ratingTitleStyle}">${esc(displayTitle)}</p>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:18px;padding-top:16px;border-top:1px solid #E8EEF3;font-size:12px;color:#6d7175">
-            🔒 ${esc(trustText)}
-          </div>
-          <p style="text-align:center;margin:14px 0 0;font-size:11px;color:#94a3b8">Powered by JudgeMe Reviews</p>
         `;
+
         const starBlock = document.createElement("div");
-        starBlock.style.cssText = "display:inline-flex;flex-direction:column;align-items:stretch;gap:8px;margin-bottom:4px";
+        starBlock.className = "jd-star-rating";
         const starRow = document.createElement("div");
-        starRow.style.cssText = "display:flex;gap:10px;justify-content:center";
-        renderStars(starRow, rating, cfg.showRatings !== false);
+        starRow.className = "jd-star-row";
+        renderStars(starRow, rating, ratingsEnabled);
         starBlock.appendChild(starRow);
 
         const labels = document.createElement("div");
+        labels.className = "jd-star-labels";
         labels.style.cssText =
           "display:flex;justify-content:space-between;padding:0 4px;min-width:" +
           (cfg.starSize * 5 + 40) +
           "px;margin:0 auto";
         labels.innerHTML = `<span style="${starLowStyle}">${esc(cfg.starLabelLow)}</span><span style="${starHighStyle}">${esc(cfg.starLabelHigh)}</span>`;
         starBlock.appendChild(labels);
+        bindStarInteractions(starBlock, starRow, ratingsEnabled);
+        innerCard.appendChild(starBlock);
+        wrap.appendChild(innerCard);
 
-        const innerCard = wrap.querySelector("div[style*='border:1px solid #E8EEF3']");
-        if (innerCard) innerCard.appendChild(starBlock);
+        const trustFooter = document.createElement("div");
+        trustFooter.className = "jd-rating-trust";
+        trustFooter.style.cssText =
+          "display:flex;align-items:center;justify-content:center;gap:6px;margin-top:18px;padding-top:16px;border-top:1px solid #E8EEF3;font-size:12px;color:#6d7175";
+        trustFooter.textContent = `🔒 ${trustText}`;
+        wrap.appendChild(trustFooter);
+
+        const poweredBy = document.createElement("p");
+        poweredBy.className = "jd-rating-powered";
+        poweredBy.style.cssText = "text-align:center;margin:14px 0 0;font-size:11px;color:#94a3b8";
+        poweredBy.textContent = "Powered by JudgeMe Reviews";
+        wrap.appendChild(poweredBy);
+
         els.content.appendChild(wrap);
         return;
       }
@@ -832,7 +855,10 @@
     }
 
     function mount(container) {
-      container.innerHTML = `
+      document.getElementById("jd-modal")?.remove();
+
+      const host = document.createElement("div");
+      host.innerHTML = `
         <div class="jd-modal-overlay" id="jd-modal" style="display:none">
           <div class="jd-flow-panel" id="jd-flow-panel">
             <button type="button" class="jd-close-modal" id="jd-close-form" aria-label="Close">×</button>
@@ -847,15 +873,17 @@
           </div>
         </div>`;
 
-      els.overlay = container.querySelector("#jd-modal");
-      els.content = container.querySelector("#jd-step-content");
-      els.progress = container.querySelector("#jd-flow-progress");
-      els.back = container.querySelector("#jd-flow-back");
-      els.next = container.querySelector("#jd-flow-next");
-      els.skip = container.querySelector("#jd-flow-skip");
-      els.msg = container.querySelector("#jd-flow-msg");
+      els.overlay = host.querySelector("#jd-modal");
+      els.content = host.querySelector("#jd-step-content");
+      els.progress = host.querySelector("#jd-flow-progress");
+      els.back = host.querySelector("#jd-flow-back");
+      els.next = host.querySelector("#jd-flow-next");
+      els.skip = host.querySelector("#jd-flow-skip");
+      els.msg = host.querySelector("#jd-flow-msg");
 
-      container.querySelector("#jd-close-form").onclick = close;
+      document.body.appendChild(els.overlay);
+
+      host.querySelector("#jd-close-form").onclick = close;
       els.overlay.onclick = (e) => {
         if (e.target === els.overlay) close();
       };
@@ -978,7 +1006,19 @@
         }
         .jd-close-modal:hover { color: #64748b; transform: none; animation: none; }
         .jd-flow-progress { font-size: 12px; font-weight: 600; color: #6d7175; margin-bottom: 16px; }
-        .jd-step-content { min-height: 120px; }
+        .jd-step-content { min-height: 120px; position: relative; }
+        .jd-star-rating {
+          display: inline-flex; flex-direction: column; align-items: stretch; gap: 8px;
+          margin-bottom: 4px; position: relative; z-index: 2; pointer-events: auto;
+        }
+        .jd-star-row { display: flex; gap: 10px; justify-content: center; }
+        .jd-star-btn {
+          border: none; background: transparent; padding: 4px; cursor: pointer;
+          line-height: 0; position: relative; z-index: 2; pointer-events: auto;
+          touch-action: manipulation;
+        }
+        .jd-star-btn svg { pointer-events: none; display: block; }
+        .jd-rating-trust, .jd-rating-powered { position: relative; z-index: 1; }
         .jd-flow-nav { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 20px; }
         .jd-flow-back, .jd-flow-skip, .jd-flow-next {
           padding: 12px 18px; border-radius: ${inputRadius}px; font-weight: 700; font-size: 14px;
@@ -1126,7 +1166,7 @@
                 <p class="jd-subtitle">${esc(cfg.formSubtitle || `Reviews for ${productName || "this product"}.`)}</p>
                 <div class="jd-tabs">
                   <button type="button" class="jd-tab active" data-tab="product">Product reviews (${productCount})</button>
-                  <button type="button" class="jd-tab" data-tab="store">Store reviews (${storeCount})</button>
+                  <button type="button" class="jd-tab" data-tab="store">Store Reviews (${storeCount})</button>
                 </div>
                 <button type="button" class="jd-write-btn" id="jd-open-form">Write a Product Review</button>
                 <div id="jd-reviews-list">${productHtml}</div>
