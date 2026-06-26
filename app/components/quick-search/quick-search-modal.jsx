@@ -18,11 +18,7 @@ import {
   searchPanelStyle,
   sectionLabelStyle,
 } from "./quick-search-styles.js";
-
-function isMacPlatform() {
-  if (typeof navigator === "undefined") return false;
-  return /mac|iphone|ipad|ipod/i.test(navigator.platform || navigator.userAgent || "");
-}
+import { getQuickSearchShortcutLabel } from "./quick-search-shortcut.js";
 
 export function QuickSearchModal({ onClose, onOpenGuide }) {
   const embedNavigate = useEmbedNavigate();
@@ -59,7 +55,7 @@ export function QuickSearchModal({ onClose, onOpenGuide }) {
     }
   };
 
-  const shortcutHint = isMacPlatform() ? "\u2318 K" : "Ctrl K";
+  const shortcutHint = getQuickSearchShortcutLabel();
 
   return (
     <div style={overlayStyle} role="presentation">

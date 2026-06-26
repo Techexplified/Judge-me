@@ -1,7 +1,9 @@
 /* eslint-disable react/prop-types */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { QuickSearchButton } from "./quick-search-button.jsx";
 import { QuickSearchModal } from "./quick-search-modal.jsx";
 import { GettingStartedGuideModal } from "./getting-started-guide-modal.jsx";
+import { isQuickSearchShortcut, isTypingTarget } from "./quick-search-shortcut.js";
 
 const QuickSearchContext = createContext(null);
 
@@ -24,8 +26,7 @@ export function QuickSearchProvider({ children }) {
 
   useEffect(() => {
     function onKeyDown(event) {
-      const isCmdK = (event.metaKey || event.ctrlKey) && (event.key === "k" || event.key === "K");
-      if (isCmdK) {
+      if (isQuickSearchShortcut(event) && !isTypingTarget(event.target)) {
         event.preventDefault();
         setSearchOpen((prev) => !prev);
         return;
@@ -58,6 +59,7 @@ export function QuickSearchProvider({ children }) {
   return (
     <QuickSearchContext.Provider value={value}>
       {children}
+      <QuickSearchButton />
       {isSearchOpen ? (
         <QuickSearchModal onClose={closeSearch} onOpenGuide={openGuide} />
       ) : null}
