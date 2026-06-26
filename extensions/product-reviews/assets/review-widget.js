@@ -1039,16 +1039,53 @@
           border: 1px solid #edf2f7; border-radius: ${inputRadius}px; overflow: hidden; background: ${cardBg};
         }
         .jd-showcase-img { width: 100%; height: 140px; object-fit: cover; display: block; background: #f1f5f9; }
+        .jd-showcase-img-btn {
+          display: block; width: 100%; padding: 0; border: none; background: none;
+          cursor: zoom-in; position: relative;
+        }
+        .jd-showcase-img-btn:hover .jd-showcase-img { opacity: 0.94; }
+        .jd-showcase-zoom {
+          position: absolute; bottom: 10px; right: 10px;
+          width: 30px; height: 30px; border-radius: 8px;
+          background: rgba(255,255,255,0.94); color: #334155;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+          pointer-events: none;
+        }
+        .jd-media-thumb-btn {
+          padding: 0; border: none; background: none; cursor: zoom-in;
+          border-radius: 8px; overflow: hidden;
+        }
+        .jd-media-thumb-btn img { width: 72px; height: 72px; object-fit: cover; display: block; }
+        .jd-media-thumb-btn:hover img { opacity: 0.92; }
         .jd-showcase-body { padding: 12px; }
         .jd-verified { font-size: 11px; color: ${cfg.primaryColor}; font-weight: 700; }
       `;
       document.head.appendChild(style);
 
       const renderShowcaseCard = (r) => {
-        const img = (r.media || []).find((m) => m.type === "image");
-        const imgBlock = img
-          ? `<img class="jd-showcase-img" src="${esc(img.url)}" alt="" loading="lazy" />`
-          : "";
+        const images = (r.media || []).filter((m) => m.type === "image");
+        let imgBlock = "";
+        let extraMedia = "";
+        if (images.length > 0) {
+          const main = images[0];
+          imgBlock = `
+            <button type="button" class="jd-showcase-img-btn" data-jd-preview="${esc(main.url)}" data-jd-preview-alt="Review photo by ${esc(r.author)}" aria-label="View review photo">
+              <img class="jd-showcase-img" src="${esc(main.url)}" alt="Review photo" loading="lazy" />
+              <span class="jd-showcase-zoom" aria-hidden="true">⤢</span>
+            </button>`;
+          if (images.length > 1) {
+            extraMedia = `<div class="jd-media-grid">${images
+              .slice(1)
+              .map(
+                (m) =>
+                  `<button type="button" class="jd-media-thumb-btn" data-jd-preview="${esc(m.url)}" data-jd-preview-alt="Review photo by ${esc(r.author)}" aria-label="View review photo">
+                    <img src="${esc(m.url)}" alt="Review photo" loading="lazy" />
+                  </button>`,
+              )
+              .join("")}</div>`;
+          }
+        }
         return `
           <article class="jd-showcase-card">
             ${imgBlock}
@@ -1057,6 +1094,7 @@
               <div class="jd-stars">${starsHtml(r.rating, cfg)}</div>
               ${r.title ? `<div style="font-weight:600;font-size:13px;margin-top:4px">${esc(r.title)}</div>` : ""}
               <div class="jd-comment" style="font-size:13px;margin-top:6px">${esc(r.comment)}</div>
+              ${extraMedia}
               ${renderMerchantReply(r, cfg)}
               <div class="jd-verified" style="margin-top:8px">✓ Verified</div>
             </div>
@@ -1179,6 +1217,9 @@
         flow.open();
         stripAutoOpenParam();
       }
+
+      window.JudgeMeMediaLightbox?.injectStyles?.();
+      window.JudgeMeMediaLightbox?.bind?.(root);
     } catch (e) {
       console.error("[JudgeMe Reviews]", e);
       root.innerHTML = '<p style="color:#e53e3e">Could not load reviews.</p>';

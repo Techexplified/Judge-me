@@ -63,7 +63,7 @@
       const collage = reviews
         .flatMap((r) => (r.media || []).filter((m) => m.type === "image").slice(0, 1))
         .slice(0, 5)
-        .map((m) => `<img src="${esc(m.url)}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:8px" loading="lazy" />`)
+        .map((m) => `<button type="button" data-jd-preview="${esc(m.url)}" data-jd-preview-alt="Customer review photo" aria-label="View review photo" style="padding:0;border:none;background:none;cursor:zoom-in;border-radius:8px;overflow:hidden"><img src="${esc(m.url)}" alt="Review photo" style="width:64px;height:64px;object-fit:cover;border-radius:8px;display:block" loading="lazy" /></button>`)
         .join("");
 
       const pill = (id, label, count) => `
@@ -84,7 +84,10 @@
                 <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,0.9);border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center">▶</span>
               </div>`
             : img
-              ? `<img src="${esc(img.url)}" alt="" style="width:100%;margin-top:12px;border-radius:10px;max-height:200px;object-fit:cover" loading="lazy" />`
+              ? `<button type="button" data-jd-preview="${esc(img.url)}" data-jd-preview-alt="Review photo by ${esc(r.author)}" aria-label="View review photo" style="display:block;width:100%;padding:0;border:none;background:none;cursor:zoom-in;margin-top:12px;border-radius:10px;overflow:hidden;position:relative">
+                  <img src="${esc(img.url)}" alt="Review photo" style="width:100%;max-height:200px;object-fit:cover;display:block" loading="lazy" />
+                  <span aria-hidden="true" style="position:absolute;bottom:10px;right:10px;width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.92);display:flex;align-items:center;justify-content:center;font-size:14px;color:#334155;box-shadow:0 2px 8px rgba(0,0,0,0.12)">⤢</span>
+                </button>`
               : "";
           return `
             <article style="background:#fff;border:1px solid #f1f5f9;border-radius:12px;padding:16px">
@@ -129,6 +132,9 @@
           render().catch(console.error);
         });
       });
+
+      window.JudgeMeMediaLightbox?.injectStyles?.();
+      window.JudgeMeMediaLightbox?.bind?.(root);
     }
 
     try {
