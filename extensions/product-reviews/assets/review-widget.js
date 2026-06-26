@@ -458,21 +458,27 @@
       }
     }
 
+    function syncUploadZoneSize(zone, count) {
+      if (!zone) return;
+      zone.classList.toggle("jd-upload-compact", count > 0);
+    }
+
     function bindUploadZone(zone, input, previews, files, accept) {
       if (!zone || !input) return;
       zone.onclick = () => input.click();
       zone.ondragover = (e) => e.preventDefault();
       zone.ondrop = (e) => {
         e.preventDefault();
-        addMediaFiles(e.dataTransfer.files, files, previews, accept);
+        addMediaFiles(e.dataTransfer.files, files, previews, accept, zone);
       };
       input.onchange = () => {
-        addMediaFiles(input.files, files, previews, accept);
+        addMediaFiles(input.files, files, previews, accept, zone);
         input.value = "";
       };
+      syncUploadZoneSize(zone, files.length);
     }
 
-    function addMediaFiles(fileList, files, previews, accept) {
+    function addMediaFiles(fileList, files, previews, accept, zone) {
       Array.from(fileList || []).forEach((file) => {
         const ok = accept.some((prefix) =>
           prefix.endsWith("/*") ? file.type.startsWith(prefix.replace("/*", "/")) : file.type === prefix,
@@ -486,6 +492,7 @@
         el.style.cssText = "width:72px;height:72px;object-fit:cover;border-radius:8px";
         if (previews) previews.appendChild(el);
       });
+      syncUploadZoneSize(zone, files.length);
     }
 
     function renderStep() {
@@ -605,9 +612,8 @@
           <div style="text-align:center">
             <h3 style="margin:0 0 8px;font-size:18px;font-weight:800;color:${cfg.textColor}">${esc(cfg.photoPageTitle)}</h3>
             <div class="jd-upload" id="jd-photo-zone" style="margin-top:${gap}px">
-              <div style="font-size:28px;margin-bottom:8px">🖼️</div>
-              <div style="font-weight:700">${esc(cfg.photoUploadTitle)}</div>
-              <div style="font-size:12px;color:#6d7175;margin-top:6px">${esc(cfg.photoUploadHint)}</div>
+              <div class="jd-upload-title" style="font-weight:700">${esc(cfg.photoUploadTitle)}</div>
+              <div class="jd-upload-hint" style="font-size:12px;color:#6d7175;margin-top:6px">${esc(cfg.photoUploadHint)}</div>
             </div>
             <input type="file" id="jd-photo-input" multiple style="display:none" accept="image/png,image/jpeg,image/jpg,image/webp" />
             <div id="jd-photo-previews" class="jd-media-grid"></div>
@@ -1020,6 +1026,9 @@
         .jd-media-grid img, .jd-media-grid video { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; }
         .jd-input { width: 100%; padding: 12px 14px; border: 1px solid #e2e8f0; border-radius: ${inputRadius}px; box-sizing: border-box; font-family: inherit; font-size: inherit; }
         .jd-upload { border: 2px dashed #e2e8f0; border-radius: ${inputRadius}px; padding: 24px; text-align: center; cursor: pointer; background: #f8fafc; }
+        .jd-upload.jd-upload-compact { padding: 10px 14px; }
+        .jd-upload.jd-upload-compact .jd-upload-title { font-size: 14px; }
+        .jd-upload.jd-upload-compact .jd-upload-hint { font-size: 11px; margin-top: 4px; }
         .jd-write-btn {
           padding: 12px 24px;
           border-radius: ${inputRadius}px;
