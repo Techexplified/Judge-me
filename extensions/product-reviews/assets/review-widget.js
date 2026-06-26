@@ -394,7 +394,6 @@
     let stepIndex = 0;
     let reviewMode = "product";
     let rating = 0;
-    let hoverRating = 0;
     let author = "";
     let comment = "";
     let photoFiles = [];
@@ -439,42 +438,24 @@
 
     function renderStars(container, value, interactive) {
       container.innerHTML = "";
-      const displayValue = interactive ? hoverRating || value : value;
       for (let i = 1; i <= 5; i++) {
-        const star = resolveStarDisplay(i, displayValue, cfg);
+        const star = resolveStarDisplay(i, value, cfg);
         const size = Math.round(cfg.starSize * (star.fontSizeScale || 1));
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "jd-star-btn";
-        btn.dataset.star = String(i);
         btn.setAttribute("aria-label", `Rate ${i} out of 5 stars`);
         btn.innerHTML = buildStarSvgMarkup(star, size);
+        if (interactive) {
+          const starValue = i;
+          btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            rating = starValue;
+            renderStars(container, rating, true);
+          });
+        }
         container.appendChild(btn);
       }
-    }
-
-    function bindStarInteractions(starBlock, starRow, ratingsEnabled) {
-      if (!ratingsEnabled || !starBlock || starBlock.__jdStarBound) return;
-      starBlock.__jdStarBound = true;
-      starBlock.addEventListener("click", (e) => {
-        const btn = e.target.closest(".jd-star-btn");
-        if (!btn) return;
-        e.preventDefault();
-        e.stopPropagation();
-        rating = Number(btn.dataset.star) || 0;
-        hoverRating = 0;
-        renderStars(starRow, rating, true);
-      });
-      starBlock.addEventListener("mouseover", (e) => {
-        const btn = e.target.closest(".jd-star-btn");
-        if (!btn) return;
-        hoverRating = Number(btn.dataset.star) || 0;
-        renderStars(starRow, rating, true);
-      });
-      starBlock.addEventListener("mouseleave", () => {
-        hoverRating = 0;
-        renderStars(starRow, rating, true);
-      });
     }
 
     function bindUploadZone(zone, input, previews, files, accept) {
@@ -566,7 +547,6 @@
           "px;margin:0 auto";
         labels.innerHTML = `<span style="${starLowStyle}">${esc(cfg.starLabelLow)}</span><span style="${starHighStyle}">${esc(cfg.starLabelHigh)}</span>`;
         starBlock.appendChild(labels);
-        bindStarInteractions(starBlock, starRow, ratingsEnabled);
         innerCard.appendChild(starBlock);
         wrap.appendChild(innerCard);
 
@@ -855,10 +835,7 @@
     }
 
     function mount(container) {
-      document.getElementById("jd-modal")?.remove();
-
-      const host = document.createElement("div");
-      host.innerHTML = `
+      container.innerHTML = `
         <div class="jd-modal-overlay" id="jd-modal" style="display:none">
           <div class="jd-flow-panel" id="jd-flow-panel">
             <button type="button" class="jd-close-modal" id="jd-close-form" aria-label="Close">×</button>
@@ -873,17 +850,15 @@
           </div>
         </div>`;
 
-      els.overlay = host.querySelector("#jd-modal");
-      els.content = host.querySelector("#jd-step-content");
-      els.progress = host.querySelector("#jd-flow-progress");
-      els.back = host.querySelector("#jd-flow-back");
-      els.next = host.querySelector("#jd-flow-next");
-      els.skip = host.querySelector("#jd-flow-skip");
-      els.msg = host.querySelector("#jd-flow-msg");
-      const closeBtn = host.querySelector("#jd-close-form");
+      els.overlay = container.querySelector("#jd-modal");
+      els.content = container.querySelector("#jd-step-content");
+      els.progress = container.querySelector("#jd-flow-progress");
+      els.back = container.querySelector("#jd-flow-back");
+      els.next = container.querySelector("#jd-flow-next");
+      els.skip = container.querySelector("#jd-flow-skip");
+      els.msg = container.querySelector("#jd-flow-msg");
 
-      document.body.appendChild(els.overlay);
-
+      const closeBtn = container.querySelector("#jd-close-form");
       if (closeBtn) closeBtn.onclick = close;
       els.overlay.onclick = (e) => {
         if (e.target === els.overlay) close();
@@ -1007,19 +982,17 @@
         }
         .jd-close-modal:hover { color: #64748b; transform: none; animation: none; }
         .jd-flow-progress { font-size: 12px; font-weight: 600; color: #6d7175; margin-bottom: 16px; }
-        .jd-step-content { min-height: 120px; position: relative; }
+        .jd-step-content { min-height: 120px; }
         .jd-star-rating {
           display: inline-flex; flex-direction: column; align-items: stretch; gap: 8px;
-          margin-bottom: 4px; position: relative; z-index: 2; pointer-events: auto;
+          margin-bottom: 4px;
         }
         .jd-star-row { display: flex; gap: 10px; justify-content: center; }
         .jd-star-btn {
           border: none; background: transparent; padding: 4px; cursor: pointer;
-          line-height: 0; position: relative; z-index: 2; pointer-events: auto;
-          touch-action: manipulation;
+          line-height: 0; pointer-events: auto; touch-action: manipulation;
         }
         .jd-star-btn svg { pointer-events: none; display: block; }
-        .jd-rating-trust, .jd-rating-powered { position: relative; z-index: 1; }
         .jd-flow-nav { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 20px; }
         .jd-flow-back, .jd-flow-skip, .jd-flow-next {
           padding: 12px 18px; border-radius: ${inputRadius}px; font-weight: 700; font-size: 14px;
