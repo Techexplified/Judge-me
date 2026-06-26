@@ -336,7 +336,7 @@ export default function PerformanceOverview() {
 
         <PerformanceCard
           icon={LayoutGrid}
-          title="Storefront collection"
+          title="Storefront Collection"
           subtitle="Order status review widget"
           status={
             <StatusBadge
