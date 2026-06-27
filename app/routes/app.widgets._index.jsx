@@ -44,6 +44,13 @@ export default function WidgetsIndexRoute() {
         return;
       }
 
+      if (data.themeInstalled?.[widget.id]) {
+        shopify?.toast?.show?.(`${widget.title || "This widget"} is already added to your theme.`, {
+          isError: true,
+        });
+        return;
+      }
+
       if (widget.id === "video-reviews-slider" && !data.premium) {
         shopify?.toast?.show?.("Video Reviews Slider requires a Pro plan.", { isError: true });
         embedNavigate("/app/settings");
@@ -71,7 +78,7 @@ export default function WidgetsIndexRoute() {
         "Theme editor opened. Preview the block, then click Save. Enable JudgeMe Core in App embeds if prompted.",
       );
     },
-    [data.premium, data.themeEditorUrls, embedNavigate, fetcher, shopify],
+    [data.premium, data.themeEditorUrls, data.themeInstalled, embedNavigate, fetcher, shopify],
   );
 
   const handleEnableCore = useCallback(() => {

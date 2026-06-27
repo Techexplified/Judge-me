@@ -13,6 +13,53 @@
     return "★".repeat(c) + "☆".repeat(5 - c);
   }
 
+  function normalizeDistribution(raw) {
+    const out = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    if (!raw) return out;
+    if (Array.isArray(raw)) {
+      for (const row of raw) {
+        const star = Number(row?.star ?? row?.rating);
+        const count = Number(row?.count ?? row?.value ?? 0);
+        if (star >= 1 && star <= 5) out[star] = count;
+      }
+      return out;
+    }
+    for (const star of [1, 2, 3, 4, 5]) {
+      out[star] = Number(raw[star] ?? raw[String(star)] ?? 0) || 0;
+    }
+    return out;
+  }
+
+  function injectBarStyles() {
+    if (document.getElementById("jd-customer-love-bar-styles")) return;
+    const style = document.createElement("style");
+    style.id = "jd-customer-love-bar-styles";
+    style.textContent = `
+      .jd-customer-love-root .jd-love-bar-row { display:flex; align-items:center; gap:8px; font-size:13px; }
+      .jd-customer-love-root .jd-love-bar-track {
+        flex:1 1 auto;
+        min-width:0;
+        height:8px;
+        background:#fce7f3;
+        border-radius:999px;
+        overflow:hidden;
+        display:flex;
+        align-items:stretch;
+      }
+      .jd-customer-love-root .jd-love-bar-fill {
+        height:100%;
+        background:#e11d48;
+        border-radius:999px;
+        min-width:0;
+      }
+      .jd-customer-love-root .jd-love-bar-spacer {
+        height:100%;
+        min-width:0;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function timeAgo(dateStr) {
     const d = new Date(dateStr);
     const days = Math.floor((Date.now() - d.getTime()) / 86400000);
@@ -36,6 +83,7 @@
 
     let mediaFilter = "all";
     root.innerHTML = `<p style="color:#64748b;padding:24px 0">Loading reviews…</p>`;
+    injectBarStyles();
 
     async function render() {
       const res = await fetch(
@@ -44,20 +92,23 @@
       const data = await res.json();
       const { reviews = [], summary = {}, filters = {} } = data;
 
-      const dist = summary.distribution || {};
+      const dist = normalizeDistribution(summary.distribution);
       const maxDist = Math.max(1, ...[5, 4, 3, 2, 1].map((k) => dist[k] || 0));
       const bars = [5, 4, 3, 2, 1]
-        .map(
-          (star) => `
-          <div style="display:flex;align-items:center;gap:8px;font-size:13px">
+        .map((star) => {
+          const count = dist[star] || 0;
+          const remainder = Math.max(0, maxDist - count);
+          return `
+          <div class="jd-love-bar-row">
             <span style="width:14px">${star}</span>
             <span style="color:#f59e0b">★</span>
-            <div style="flex:1;height:8px;background:#fce7f3;border-radius:999px;overflow:hidden">
-              <div style="height:100%;width:${Math.round(((dist[star] || 0) / maxDist) * 100)}%;background:#e11d48"></div>
+            <div class="jd-love-bar-track" role="presentation" aria-hidden="true">
+              <div class="jd-love-bar-fill" style="flex:${count} 0 0;${count > 0 ? "min-width:4px;" : ""}"></div>
+              <div class="jd-love-bar-spacer" style="flex:${remainder} 0 0"></div>
             </div>
-            <span style="width:40px;text-align:right;color:#64748b">${dist[star] || 0}</span>
-          </div>`,
-        )
+            <span style="width:40px;text-align:right;color:#64748b">${count}</span>
+          </div>`;
+        })
         .join("");
 
       const collage = reviews

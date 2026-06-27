@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useState } from "react";
-import { ImageIcon } from "lucide-react";
+import { ImageIcon, X } from "lucide-react";
 import {
   PAGE_BG,
   SHOPIFY_GREEN,
@@ -84,6 +84,55 @@ const type = {
   },
 };
 
+const modalStyles = {
+  root: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 1000,
+    display: "grid",
+    placeItems: "center",
+    padding: 24,
+  },
+  backdrop: {
+    position: "absolute",
+    inset: 0,
+    border: "none",
+    background: "rgba(0,0,0,0.45)",
+    backdropFilter: "blur(2px)",
+    cursor: "pointer",
+  },
+  panel: {
+    position: "relative",
+    width: "min(560px, 100%)",
+    maxHeight: "min(90vh, 720px)",
+    overflow: "auto",
+    background: "#fff",
+    borderRadius: 16,
+    border: `1px solid ${SURFACE_BORDER}`,
+    boxShadow: "0 24px 48px rgba(0,0,0,0.18)",
+    display: "flex",
+    flexDirection: "column",
+  },
+  preview: {
+    width: "100%",
+    aspectRatio: "16/10",
+    background: SURFACE_BG,
+    borderBottom: `1px solid ${SURFACE_BORDER}`,
+    overflow: "hidden",
+  },
+  body: {
+    padding: "20px 22px 22px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+  },
+  footer: {
+    display: "flex",
+    justifyContent: "flex-end",
+    paddingTop: 12,
+  },
+};
+
 function WidgetPreview({ previewImage, title }) {
   if (previewImage) {
     return (
@@ -123,12 +172,148 @@ function WidgetPreview({ previewImage, title }) {
   );
 }
 
-function WidgetCard({ widget, onAddToTheme }) {
+function AlreadyAddedDialog({ widget, onClose }) {
+  return (
+    <div style={modalStyles.root} role="dialog" aria-modal="true" aria-labelledby="widget-already-added-title">
+      <button type="button" style={modalStyles.backdrop} aria-label="Close" onClick={onClose} />
+      <div style={{ ...modalStyles.panel, width: "min(420px, 100%)" }}>
+        <div style={{ ...modalStyles.body, padding: "22px 24px 24px" }}>
+          <h2 id="widget-already-added-title" style={{ ...type.cardTitle, fontSize: 18, marginBottom: 8 }}>
+            Already added to theme
+          </h2>
+          <p style={{ ...type.cardDesc, margin: 0 }}>
+            <strong style={{ color: "#202223" }}>{widget.title}</strong> is already on your live theme.
+            Open the theme editor if you want to move or customize it.
+          </p>
+          <div style={{ ...modalStyles.footer, paddingTop: 18 }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 8,
+                border: "none",
+                background: SHOPIFY_GREEN,
+                color: "#fff",
+                fontFamily: FONT,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlreadyAdded }) {
+  const ctaLabel = getWidgetCtaLabel(widget.id);
+  const installedLabel = widget.id === "review-translation-hub" ? ctaLabel : "Already in theme";
+
+  const handleAddClick = () => {
+    if (isInstalled) {
+      onAlreadyAdded?.(widget);
+      return;
+    }
+    onAddToTheme?.(widget);
+    onClose?.();
+  };
+
+  return (
+    <div style={modalStyles.root} role="dialog" aria-modal="true" aria-labelledby="widget-detail-title">
+      <button type="button" style={modalStyles.backdrop} aria-label="Close" onClick={onClose} />
+      <div style={modalStyles.panel}>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            zIndex: 2,
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            border: `1px solid ${SURFACE_BORDER}`,
+            background: "#fff",
+            display: "grid",
+            placeItems: "center",
+            cursor: "pointer",
+            color: "#6d7175",
+          }}
+        >
+          <X size={16} />
+        </button>
+        <div style={modalStyles.preview}>
+          <WidgetPreview previewImage={widget.previewImage} title={widget.title} />
+        </div>
+        <div style={modalStyles.body}>
+          <h2 id="widget-detail-title" style={{ ...type.cardTitle, fontSize: 20 }}>
+            {widget.title}
+          </h2>
+          <p style={{ ...type.cardDesc, margin: 0 }}>{widget.description}</p>
+          {isInstalled ? (
+            <p style={{ ...type.cardDesc, margin: "4px 0 0", color: "#008060", fontWeight: 600 }}>
+              This widget is already added to your theme.
+            </p>
+          ) : null}
+          <div style={modalStyles.footer}>
+            <button
+              type="button"
+              onClick={handleAddClick}
+              aria-disabled={isInstalled}
+              style={{
+                padding: "10px 16px",
+                borderRadius: 8,
+                border: "none",
+                background: isInstalled ? "#e4e5e7" : SHOPIFY_GREEN,
+                color: isInstalled ? "#6d7175" : "#fff",
+                fontFamily: FONT,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: isInstalled ? "not-allowed" : "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {isInstalled ? installedLabel : ctaLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WidgetCard({ widget, isInstalled, onOpen, onAddToTheme, onAlreadyAdded }) {
   const [hover, setHover] = useState(false);
   const ctaLabel = getWidgetCtaLabel(widget.id);
+  const installedLabel = widget.id === "review-translation-hub" ? ctaLabel : "Already in theme";
+
+  const handleAddClick = (event) => {
+    event.stopPropagation();
+    if (isInstalled) {
+      onAlreadyAdded?.(widget);
+      return;
+    }
+    onAddToTheme?.(widget);
+  };
 
   return (
     <article
+      onClick={() => onOpen?.(widget)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen?.(widget);
+        }
+      }}
+      role="button"
+      tabIndex={0}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
@@ -145,6 +330,7 @@ function WidgetCard({ widget, onAddToTheme }) {
           : "0 1px 3px rgba(0,0,0,0.04)",
         transform: hover ? "translateY(-4px) scale(1.015)" : "none",
         transition: "box-shadow 0.2s ease, transform 0.2s ease",
+        cursor: "pointer",
       }}
     >
       <div
@@ -184,22 +370,23 @@ function WidgetCard({ widget, onAddToTheme }) {
         >
           <button
             type="button"
-            onClick={() => onAddToTheme?.(widget)}
+            onClick={handleAddClick}
+            aria-disabled={isInstalled}
             style={{
               padding: "8px 14px",
               borderRadius: 8,
               border: "none",
-              background: SHOPIFY_GREEN,
-              color: "#fff",
+              background: isInstalled ? "#e4e5e7" : SHOPIFY_GREEN,
+              color: isInstalled ? "#6d7175" : "#fff",
               fontFamily: FONT,
               fontSize: 13,
               fontWeight: 600,
-              cursor: "pointer",
+              cursor: isInstalled ? "not-allowed" : "pointer",
               whiteSpace: "nowrap",
               flexShrink: 0,
             }}
           >
-            {ctaLabel}
+            {isInstalled ? installedLabel : ctaLabel}
           </button>
         </div>
       </div>
@@ -211,9 +398,19 @@ export function WidgetsPage({
   onAddToTheme,
   onEnableCore,
   widgetSettings,
+  themeInstalled,
   reviewCounts,
 }) {
   const showCoreBanner = !widgetSettings?.coreEmbedAcknowledged;
+  const [selectedWidget, setSelectedWidget] = useState(null);
+  const [alreadyAddedWidget, setAlreadyAddedWidget] = useState(null);
+
+  const isWidgetInstalled = (widgetId) =>
+    widgetId !== "review-translation-hub" && Boolean(themeInstalled?.[widgetId]);
+
+  const handleAlreadyAdded = (widget) => {
+    setAlreadyAddedWidget(widget);
+  };
 
   return (
     <div
@@ -303,10 +500,30 @@ export function WidgetsPage({
           <WidgetCard
             key={widget.id}
             widget={widget}
+            isInstalled={isWidgetInstalled(widget.id)}
+            onOpen={setSelectedWidget}
             onAddToTheme={onAddToTheme}
+            onAlreadyAdded={handleAlreadyAdded}
           />
         ))}
       </div>
+
+      {selectedWidget ? (
+        <WidgetDetailModal
+          widget={selectedWidget}
+          isInstalled={isWidgetInstalled(selectedWidget.id)}
+          onClose={() => setSelectedWidget(null)}
+          onAddToTheme={onAddToTheme}
+          onAlreadyAdded={handleAlreadyAdded}
+        />
+      ) : null}
+
+      {alreadyAddedWidget ? (
+        <AlreadyAddedDialog
+          widget={alreadyAddedWidget}
+          onClose={() => setAlreadyAddedWidget(null)}
+        />
+      ) : null}
 
       <style>{`
         @media (max-width: 900px) {
