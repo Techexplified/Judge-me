@@ -74,6 +74,18 @@ export function PricingPage({
         onCancel={onCancel}
       />
 
+      {planStatus?.featureUsage ? (
+        <div>
+          <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 800, color: "#202223" }}>
+            Plan usage
+          </h2>
+          <p style={{ margin: "0 0 16px", fontSize: 13, fontWeight: 500, color: "#6d7175" }}>
+            {hasPro ? "Pro plan" : "Free plan"} · Resets on your next bill.
+          </p>
+          <FeatureUsageGrid featureUsage={planStatus.featureUsage} />
+        </div>
+      ) : null}
+
       {!hasPro ? <PricingWhyUpgrade /> : null}
 
       <PricingFeatureGrid search={location.search} />
@@ -109,19 +121,8 @@ export function PricingPage({
         </div>
       ) : null}
 
-      {planStatus?.featureUsage ? (
-        <div>
-          <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 800, color: "#202223" }}>
-            Plan usage
-          </h2>
-          <p style={{ margin: "0 0 16px", fontSize: 13, fontWeight: 500, color: "#6d7175" }}>
-            {hasPro ? "Pro plan" : "Free plan"} · Resets on your next bill.
-          </p>
-          <FeatureUsageGrid featureUsage={planStatus.featureUsage} />
-        </div>
-      ) : null}
 
-      {hasPro ? (
+      {/* {hasPro ? (
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <SecondaryButton
             loading={isSubmitting}
@@ -131,7 +132,7 @@ export function PricingPage({
             Cancel subscription
           </SecondaryButton>
         </div>
-      ) : null}
+      ) : null} */}
     </Stack>
   );
 }

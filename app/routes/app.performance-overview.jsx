@@ -409,7 +409,7 @@ export default function PerformanceOverview() {
             ) : null}
           </div>
 
-          <div style={{ padding: "12px 0", borderTop: `1px solid ${SURFACE_BORDER}`, marginTop: 12 }}>
+          <div style={{ padding: "12px 0", borderTop: `1px solid ${SURFACE_BORDER}` }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <Percent size={16} color="#6d7175" />

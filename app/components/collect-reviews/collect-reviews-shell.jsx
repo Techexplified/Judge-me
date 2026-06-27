@@ -4,7 +4,7 @@ import { PAGE_BG, SHOPIFY_GREEN, SURFACE_BORDER, APP_FONT } from "../admin-ui";
 
 export const COLLECT_TABS = [
   { id: "widget", label: "Storefront Widget", icon: LayoutGrid },
-  { id: "review-form", label: "Review form", icon: FileText },
+  { id: "review-form", label: "Review Form", icon: FileText },
   { id: "import", label: "Import Reviews", icon: Upload },
 ];
 

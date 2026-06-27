@@ -384,7 +384,7 @@ export function FileDropZone({ file, onFile, error }) {
             <span
               style={{ fontSize: 12, fontWeight: 600, color: "#8c9196", display: "block", marginBottom: 12 }}
             >
-              or
+              OR
             </span>
             <span
               style={{

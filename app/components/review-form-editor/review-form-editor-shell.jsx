@@ -86,7 +86,7 @@ export function ReviewFormEditorShell({
           type="button"
           onClick={() => embedNavigate("/app/collect-reviews?tab=review-form")}
           style={{
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: 600,
             color: EDITOR_TOKENS.textMuted,
             border: "none",
@@ -96,7 +96,7 @@ export function ReviewFormEditorShell({
             padding: 0,
           }}
         >
-          ← Collect Reviews
+          ← Back
         </button>
 
         <div
