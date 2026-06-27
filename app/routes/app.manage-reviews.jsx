@@ -267,7 +267,7 @@ function StoreReviewsTab({ storeReviewLink, reviewCount = 0, onViewReviews, onRe
         </button>
       </div>
       {hasReviews ? (
-        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginTop: "auto" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginTop: "auto" }}>
           <button
             type="button"
             onClick={onViewReviews}
