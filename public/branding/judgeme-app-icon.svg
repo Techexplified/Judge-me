@@ -1,0 +1,14 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="JudgeMe Reviews">
+  <rect x="24" y="24" width="464" height="464" rx="72" fill="#0F9D8A"/>
+  <path
+    d="M145 120 H367 Q392 120 392 145 V304 Q392 329 367 329 H220 L170 368 V329 H145 Q120 329 120 304 V145 Q120 120 145 120 Z"
+    fill="white"
+  />
+  <path
+    d="M256 154 L266 175 L289 178 L272 194 L276 217 L256 206 L236 217 L240 194 L223 178 L246 175 Z"
+    fill="#0F9D8A"
+  />
+  <rect x="165" y="240" width="182" height="14" rx="7" fill="#0F9D8A"/>
+  <rect x="165" y="282" width="120" height="14" rx="7" fill="#0F9D8A"/>
+  <rect x="305" y="282" width="42" height="14" rx="7" fill="#0F9D8A"/>
+</svg>

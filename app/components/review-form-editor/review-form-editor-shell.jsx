@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
-import { CheckCircle2, Eye, Monitor, Redo2, Smartphone, Undo2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Eye, Monitor, Redo2, Smartphone, Undo2 } from "lucide-react";
 import { useEmbedNavigate } from "../../hooks/use-embed-navigate.js";
 import { EditorRootMenu } from "./editor-root-menu.jsx";
 import { PanelStyleColor } from "./panel-style-color.jsx";
@@ -86,17 +86,23 @@ export function ReviewFormEditorShell({
           type="button"
           onClick={() => embedNavigate("/app/collect-reviews?tab=review-form")}
           style={{
-            fontSize: 14,
-            fontWeight: 600,
-            color: EDITOR_TOKENS.textMuted,
-            border: "none",
-            background: "transparent",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "8px 12px",
+            borderRadius: 8,
+            border: `1px solid ${EDITOR_TOKENS.border}`,
+            background: EDITOR_TOKENS.white,
+            fontSize: 13,
+            fontWeight: 700,
+            color: EDITOR_TOKENS.text,
             cursor: "pointer",
             fontFamily: UI_FONT,
-            padding: 0,
+            boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
           }}
         >
-          ← Back
+          <ArrowLeft size={16} strokeWidth={2.25} />
+          Back
         </button>
 
         <div

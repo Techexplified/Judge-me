@@ -1,0 +1,12 @@
+<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="JudgeMe Reviews">
+  <!-- Upload this to Partner Dashboard → App setup → Embedded app (navigation icon).
+       Shopify tints it grey when inactive and green when active. -->
+  <path
+    fill="#000000"
+    d="M3.25 3.25h9.5a1 1 0 0 1 1 1v4.75a1 1 0 0 1-1 1H7.5L5.75 11.5V9.25H3.25a1 1 0 0 1-1-1V4.25a1 1 0 0 1 1-1z"
+  />
+  <path
+    fill="#000000"
+    d="M8 5.15l.55 1.1 1.22.18-.88.86.21 1.21-1.1-.58-1.1.58.21-1.21-.88-.86 1.22-.18z"
+  />
+</svg>
