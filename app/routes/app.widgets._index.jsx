@@ -1,5 +1,5 @@
-import { useCallback } from "react";
-import { useFetcher, useLoaderData } from "react-router";
+import { useCallback, useEffect } from "react";
+import { useFetcher, useLoaderData, useRevalidator } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import { normalizeShopDomain } from "../utils/shop.js";
@@ -34,6 +34,21 @@ export default function WidgetsIndexRoute() {
   const shopify = useAppBridge();
   const embedNavigate = useEmbedNavigate();
   const fetcher = useFetcher();
+  const revalidator = useRevalidator();
+
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") {
+        revalidator.revalidate();
+      }
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [revalidator]);
 
   const handleAddToTheme = useCallback(
     (widget) => {
@@ -93,11 +108,17 @@ export default function WidgetsIndexRoute() {
     shopify?.toast?.show?.("Enable JudgeMe Core under Theme Settings → App embeds, then Save.");
   }, [data.coreEmbedUrl, fetcher, shopify]);
 
+  const handleRefreshStatus = useCallback(() => {
+    revalidator.revalidate();
+    shopify?.toast?.show?.("Checking your theme for installed widgets…");
+  }, [revalidator, shopify]);
+
   return (
     <WidgetsPage
       {...data}
       onAddToTheme={handleAddToTheme}
       onEnableCore={handleEnableCore}
+      onRefreshStatus={handleRefreshStatus}
     />
   );
 }

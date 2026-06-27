@@ -6,7 +6,11 @@ import {
   buildThemeEditorCoreEmbedUrl,
   WIDGET_THEME_TARGETS,
 } from "./theme-editor-nav.shared.js";
-import { detectThemeInstalledWidgets } from "./theme-widgets.server.js";
+import {
+  detectThemeInstalledWidgets,
+  mergeThemeInstalledState,
+  persistThemeInstalledConfirmations,
+} from "./theme-widgets.server.js";
 
 const STORE_REVIEW_PRODUCT_IDS = new Set(["store", "shop", "store-review"]);
 
@@ -109,7 +113,9 @@ export async function loadWidgetsPageData({ session, admin, billing }) {
     themeEditorUrls[widgetId] = buildThemeEditorBlockUrl(shop, apiKey, widgetId);
   }
 
-  const themeInstalled = await detectThemeInstalledWidgets(admin);
+  const themeInstalledRaw = await detectThemeInstalledWidgets(admin);
+  await persistThemeInstalledConfirmations(shop, themeInstalledRaw);
+  const themeInstalled = mergeThemeInstalledState(themeInstalledRaw, widgetSettings);
 
   const reviewCounts = await db.review.groupBy({
     by: ["productId"],

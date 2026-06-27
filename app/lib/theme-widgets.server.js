@@ -1,3 +1,4 @@
+import db from "../db.server.js";
 import {
   CORE_EMBED_HANDLE,
   CUSTOMER_LOVE_PAGE_HANDLE,
@@ -11,6 +12,15 @@ const BLOCK_HANDLE_BY_WIDGET = {
   "video-reviews-slider": VIDEO_REVIEWS_SLIDER_HANDLE,
   "customers-love-page": CUSTOMER_LOVE_PAGE_HANDLE,
 };
+
+function extractThemeFileContent(body) {
+  if (!body) return "";
+  if (typeof body.content === "string") return body.content;
+  if (typeof body.contentBase64 === "string") {
+    return Buffer.from(body.contentBase64, "base64").toString("utf8");
+  }
+  return "";
+}
 
 function stripJsonComments(text) {
   return String(text || "")
@@ -35,17 +45,34 @@ function collectBlockTypes(obj, types = new Set()) {
   return types;
 }
 
-function blockHandleInstalled(blockTypes, handle) {
+function contentHasBlockHandle(content, handle) {
+  const text = String(content || "");
+  if (!text) return false;
+  return (
+    text.includes(`/blocks/${handle}/`) ||
+    text.includes(`/blocks/${handle}"`) ||
+    text.includes(`/blocks/${handle}'`)
+  );
+}
+
+function blockHandleInstalled(blockTypes, handlesWithContent, handle) {
+  if (contentHasBlockHandle(handlesWithContent, handle)) return true;
   const needle = `/blocks/${handle}/`;
   return [...blockTypes].some((type) => type.includes(needle));
 }
 
 async function fetchThemeTemplateFiles(admin, themeId) {
   const blockTypes = new Set();
+  const contentByHandle = Object.fromEntries(
+    Object.values(BLOCK_HANDLE_BY_WIDGET).map((handle) => [handle, ""]),
+  );
+  let allContent = "";
   let cursor = null;
   let hasNextPage = true;
+  let pageCount = 0;
 
-  while (hasNextPage) {
+  while (hasNextPage && pageCount < 20) {
+    pageCount += 1;
     const resp = await admin.graphql(
       `#graphql
       query ThemeWidgetTemplateFiles($id: ID!, $after: String) {
@@ -61,6 +88,9 @@ async function fetchThemeTemplateFiles(admin, themeId) {
                 ... on OnlineStoreThemeFileBodyText {
                   content
                 }
+                ... on OnlineStoreThemeFileBodyBase64 {
+                  contentBase64
+                }
               }
             }
           }
@@ -69,23 +99,34 @@ async function fetchThemeTemplateFiles(admin, themeId) {
       { variables: { id: themeId, after: cursor } },
     );
     const json = await resp.json();
+    if (json?.errors?.length) {
+      console.error("[detectThemeInstalledWidgets] GraphQL errors:", json.errors);
+      break;
+    }
+
     const connection = json?.data?.theme?.files;
     const nodes = connection?.nodes || [];
 
     for (const node of nodes) {
       const filename = String(node?.filename || "");
-      if (!filename.startsWith("templates/") && filename !== "config/settings_data.json") {
-        continue;
-      }
-      const content = node?.body?.content;
+      const content = extractThemeFileContent(node?.body);
       if (!content) continue;
+      allContent += content;
+
       const parsed = parseThemeJson(content);
-      if (!parsed) continue;
-      collectBlockTypes(parsed, blockTypes);
-      if (filename === "config/settings_data.json") {
-        const blocks = parsed?.current?.blocks || {};
-        for (const block of Object.values(blocks)) {
-          if (block?.type) blockTypes.add(block.type);
+      if (parsed) {
+        collectBlockTypes(parsed, blockTypes);
+        if (filename === "config/settings_data.json") {
+          const blocks = parsed?.current?.blocks || {};
+          for (const block of Object.values(blocks)) {
+            if (block?.type) blockTypes.add(block.type);
+          }
+        }
+      }
+
+      for (const handle of Object.values(BLOCK_HANDLE_BY_WIDGET)) {
+        if (contentHasBlockHandle(content, handle)) {
+          contentByHandle[handle] += content;
         }
       }
     }
@@ -95,7 +136,7 @@ async function fetchThemeTemplateFiles(admin, themeId) {
     if (!nodes.length) break;
   }
 
-  return blockTypes;
+  return { blockTypes, contentByHandle, allContent };
 }
 
 /** Returns which theme app blocks are present on the live theme. */
@@ -115,18 +156,84 @@ export async function detectThemeInstalledWidgets(admin) {
       }
     `);
     const themeJson = await themeResp.json();
+    if (themeJson?.errors?.length) {
+      console.error("[detectThemeInstalledWidgets] theme query errors:", themeJson.errors);
+      return installed;
+    }
+
     const themeId = themeJson?.data?.themes?.nodes?.[0]?.id;
     if (!themeId) return installed;
 
-    const blockTypes = await fetchThemeTemplateFiles(admin, themeId);
+    const { blockTypes, contentByHandle, allContent } = await fetchThemeTemplateFiles(admin, themeId);
 
     for (const [widgetId, handle] of Object.entries(BLOCK_HANDLE_BY_WIDGET)) {
-      installed[widgetId] = blockHandleInstalled(blockTypes, handle);
+      installed[widgetId] = blockHandleInstalled(
+        blockTypes,
+        contentByHandle[handle],
+        handle,
+      );
     }
-    installed.coreEmbed = blockHandleInstalled(blockTypes, CORE_EMBED_HANDLE);
+    installed.coreEmbed = blockHandleInstalled(blockTypes, allContent, CORE_EMBED_HANDLE);
   } catch (err) {
     console.error("[detectThemeInstalledWidgets]", err);
   }
 
   return installed;
+}
+
+export function mergeThemeInstalledState(themeInstalled, widgetSettings) {
+  const merged = { ...(themeInstalled || {}) };
+  const saved = widgetSettings?.installed || {};
+  for (const widgetId of Object.keys(WIDGET_THEME_TARGETS)) {
+    if (merged[widgetId]) continue;
+    if (saved[widgetId]?.confirmedInTheme) {
+      merged[widgetId] = true;
+    }
+  }
+  return merged;
+}
+
+export async function persistThemeInstalledConfirmations(shop, themeInstalled) {
+  const row = await db.settings.findUnique({ where: { shop } });
+  let config = {};
+  if (row?.config) {
+    try {
+      config = JSON.parse(row.config);
+    } catch {
+      config = {};
+    }
+  }
+
+  const current = config?.widgets?.installed || {};
+  let changed = false;
+  const nextInstalled = { ...current };
+
+  for (const [widgetId, isThere] of Object.entries(themeInstalled || {})) {
+    if (widgetId === "coreEmbed" || !isThere) continue;
+    const prev = nextInstalled[widgetId] || {};
+    if (!prev.confirmedInTheme) {
+      nextInstalled[widgetId] = {
+        ...prev,
+        confirmedInTheme: true,
+        confirmedAt: new Date().toISOString(),
+      };
+      changed = true;
+    }
+  }
+
+  if (!changed) return;
+
+  const next = {
+    ...config,
+    widgets: {
+      ...(config.widgets || {}),
+      installed: nextInstalled,
+    },
+  };
+
+  await db.settings.upsert({
+    where: { shop },
+    update: { config: JSON.stringify(next) },
+    create: { shop, config: JSON.stringify(next) },
+  });
 }

@@ -397,6 +397,7 @@ function WidgetCard({ widget, isInstalled, onOpen, onAddToTheme, onAlreadyAdded 
 export function WidgetsPage({
   onAddToTheme,
   onEnableCore,
+  onRefreshStatus,
   widgetSettings,
   themeInstalled,
   reviewCounts,
@@ -440,6 +441,26 @@ export function WidgetsPage({
           <p style={{ margin: "6px 0 0", ...type.subtitle }}>
             {reviewCounts.total} published review{reviewCounts.total === 1 ? "" : "s"} ready to display.
           </p>
+        ) : null}
+        {onRefreshStatus ? (
+          <button
+            type="button"
+            onClick={onRefreshStatus}
+            style={{
+              marginTop: 10,
+              padding: "6px 12px",
+              borderRadius: 8,
+              border: `1px solid ${SURFACE_BORDER}`,
+              background: "#fff",
+              color: "#202223",
+              fontFamily: FONT,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Refresh widget status
+          </button>
         ) : null}
       </header>
 
