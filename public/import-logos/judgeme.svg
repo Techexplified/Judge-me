@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Judge.me">
-  <rect width="64" height="64" rx="14" fill="#0ea5e9"/>
-  <path d="M32 14l4.5 9.1 10.1 1.5-7.3 7.1 1.7 10L32 37.8l-8.9 4.9 1.7-10-7.3-7.1 10.1-1.5z" fill="#fff"/>
-  <rect x="18" y="44" width="28" height="6" rx="3" fill="#fff" opacity="0.95"/>
-</svg>
