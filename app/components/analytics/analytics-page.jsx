@@ -27,6 +27,9 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  Bar,
+  ComposedChart,
+  LabelList,
 } from "recharts";
 import { mergeShopifyEmbedParams } from "../../utils/shopify-embed-nav.js";
 import { PAGE_BG, SHOPIFY_GREEN, SURFACE_BG, SURFACE_BORDER, APP_FONT } from "../admin-ui";
@@ -557,6 +560,119 @@ async function downloadExport(url, fallbackName) {
   URL.revokeObjectURL(objectUrl);
 }
 
+function WeeklyMomentumChart({ data = [] }) {
+  // Take exactly 4 weeks of data
+  const chartData = data.slice(-4).map((item, index) => ({
+    name: item.label || `Week ${index + 1}`,
+    reviews: Number(item.reviews) || 0, // Force strict numerical fallback
+    change: item.change || "",
+  }));
+
+  if (!chartData.length) {
+    return (
+      <div style={{ height: 160, display: "grid", placeItems: "center", color: "#6d7175", fontSize: 13, fontWeight: 600 }}>
+        Gathering weekly momentum data...
+      </div>
+    );
+  }
+
+  // Grab values to set a dynamic, clean upper domain bound
+  const maxVal = Math.max(...chartData.map(d => d.reviews), 0);
+  const yAxisMax = maxVal > 0 ? Math.ceil(maxVal * 1.2) : 4;
+
+  return (
+    <div style={{ width: "100%", height: 160 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        {/* CHANGED TO ComposedChart TO SUPPORT MIXED GRAPH TYPES NATIVELY */}
+        <ComposedChart data={chartData} margin={{ top: 15, right: 15, left: -25, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5ebe8" vertical={false} />
+          <XAxis
+            dataKey="name"
+            tick={{ fill: "#6d7175", fontSize: 11, fontWeight: 600 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            allowDecimals={false}
+            domain={[0, yAxisMax]}
+            tick={{ fill: "#6d7175", fontSize: 11, fontWeight: 600 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e5ebe8", borderRadius: 8 }} />
+
+          {/* Main Volume Bars */}
+          <Bar
+            dataKey="reviews"
+            fill="#005A43"
+            radius={[4, 4, 0, 0]}
+            barSize={24}
+          >
+            <LabelList
+              dataKey="change"
+              position="top"
+              // Use a custom function component for rendering the text node directly
+              content={(props) => {
+                const { x, y, width, value } = props;
+                if (!value) return null;
+
+                // Determine the color based on whether it's an increase (+) or decrease (-)
+                const isNegative = value.startsWith("-");
+                const textColor = isNegative ? "#d72c0d" : "#047857";
+
+                return (
+                  <text
+                    x={x + width / 2}
+                    y={y - 8} // Position it slightly above the top of the bar
+                    fill={textColor}
+                    textAnchor="middle"
+                    style={{ fontSize: "11px", fontWeight: 800 }}
+                  >
+                    {value}
+                  </text>
+                );
+              }}
+            />
+          </Bar>
+
+          {/* Trend Connector Line */}
+          <Line
+            type="monotone"
+            dataKey="reviews"
+            stroke="#5bb98c"
+            strokeWidth={2}
+            dot={{ r: 4, fill: "#5bb98c", strokeWidth: 0 }}
+            activeDot={{ r: 6 }}
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function AccountabilityCenter({ pendingCount, criticalCount}) {
+  const reviewsHref = mergeShopifyEmbedParams("/app/manage-reviews");
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, height: "100%", justifyContent: "center" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 14px", borderRadius: 8, background: "#fffaf0", border: "1px solid #fef3c7" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 16 }}></span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#92400e" }}>{pendingCount} new reviews need a response</span>
+        </div>
+        <Link to={`${reviewsHref}?status=unanswered`} style={{ fontSize: 12, fontWeight: 800, color: "#b45309", textDecoration: "none" }}>Reply Now →</Link>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 14px", borderRadius: 8, background: "#fff4f4", border: "1px solid #fcd4d4" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 16 }}></span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#8a1f1f" }}>{criticalCount} critical reviews require attention</span>
+        </div>
+        <Link to={`${reviewsHref}?rating_max=3`} style={{ fontSize: 12, fontWeight: 800, color: "#d72c0d", textDecoration: "none" }}>Resolve →</Link>
+      </div>
+    </div>
+  );
+}
+
 export function AnalyticsPageContent({
   pageData,
   rangeKey,
@@ -781,6 +897,37 @@ export function AnalyticsPageContent({
           <ReviewsOverTimeChart data={monthlyChart} />
         </ProLockedPanel>
       </CardShell>
+
+            <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+          gap: 20,
+          marginTop: 20,
+        }}
+      >
+        <CardShell
+          title="Weekly Momentum"
+          subtitle="Review velocity tracking over a rolling 4-week timeline"
+        >
+          <ProLockedPanel locked={!hasPremium} skeleton="bars" minHeight={260}>
+          <WeeklyMomentumChart data={pageData?.weeklyMomentum || []} />
+          </ProLockedPanel>
+        </CardShell>
+
+        <CardShell
+          title="Accountability Center"
+          subtitle="Action items for incoming reviews this week"
+        >
+          <ProLockedPanel locked={!hasPremium} skeleton="bars" minHeight={260}>
+          <AccountabilityCenter
+            pendingCount={pageData?.accountability?.pending || 0}
+            criticalCount={pageData?.accountability?.critical || 0}
+            reviewsHref={reviewsHref}
+          />
+          </ProLockedPanel>
+        </CardShell>
+      </div>
 
       <div
         style={{

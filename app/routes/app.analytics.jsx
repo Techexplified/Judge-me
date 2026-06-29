@@ -20,6 +20,59 @@ import {
 } from "../utils/dashboard-metrics.server.js";
 import { AnalyticsPageContent } from "../components/analytics/analytics-page.jsx";
 
+function computeWeeklySnapshot(reviewsAll) {
+  const referenceDate = new Date();
+  const oneDay = 24 * 60 * 60 * 1000;
+  
+  // 1. Accountability (Last 7 Days)
+  const sevenDaysAgo = new Date(referenceDate.getTime() - 7 * oneDay);
+  const recentReviews = reviewsAll.filter(r => new Date(r.createdAt) >= sevenDaysAgo);
+  
+  const pending = recentReviews.filter(r => !r.replyText || r.replyText.trim() === "").length;
+  const critical = recentReviews.filter(r => r.rating <= 3).length;
+
+  // 2. Weekly Momentum (4 Rolling Weeks)
+const weeklyMomentum = [];
+const tempCounts = [];
+
+
+for (let i = 3; i >= 0; i--) {
+  const startOfWeeksAgo = new Date(referenceDate.getTime() - (i + 1) * 7 * oneDay);
+  const endOfWeeksAgo = new Date(referenceDate.getTime() - i * 7 * oneDay);
+  const count = reviewsAll.filter(r => {
+    const d = new Date(r.createdAt);
+    return d >= startOfWeeksAgo && d < endOfWeeksAgo;
+  }).length;
+  tempCounts.push(count);
+}
+
+
+for (let i = 0; i < 4; i++) {
+  let label = `${4 - i} Wks Ago`;
+  if (i === 2) label = "Last Week";
+  if (i === 3) label = "This Week";
+
+  let pctChange = "";
+  if (i > 0) {
+    const prev = tempCounts[i - 1];
+    const curr = tempCounts[i];
+    if (prev === 0 && curr > 0) pctChange = `+${curr * 100}%`;
+    else if (prev === 0 && curr === 0) pctChange = "0%";
+    else {
+      const diff = ((curr - prev) / prev) * 100;
+      pctChange = diff >= 0 ? `+${Math.round(diff)}%` : `${Math.round(diff)}%`;
+    }
+  }
+
+  weeklyMomentum.push({ label, reviews: tempCounts[i], change: pctChange });
+}
+
+  return {
+    accountability: { pending, critical },
+    weeklyMomentum
+  };
+}
+
 export const loader = async ({ request }) => {
   const { session, billing } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
@@ -79,6 +132,8 @@ export const loader = async ({ request }) => {
     rangeStart,
   });
 
+  const weeklySnapshots = computeWeeklySnapshot(reviewsAll);
+
   return {
     shop,
     rangeKey,
@@ -86,13 +141,17 @@ export const loader = async ({ request }) => {
     planStatus: serializePlanStatus(planStatus),
     trialStatus: serializePlanStatus(planStatus),
     hasPremium,
-    pageData,
+    pageData: {
+      ...pageData,
+      weeklyMomentum: weeklySnapshots.weeklyMomentum,
+      accountability: weeklySnapshots.accountability,
+    },
     exportAccess: exportAccess
       ? {
-          ok: exportAccess.ok,
-          message: exportAccess.message,
-          remaining: exportAccess.remaining,
-        }
+        ok: exportAccess.ok,
+        message: exportAccess.message,
+        remaining: exportAccess.remaining,
+      }
       : null,
   };
 };
