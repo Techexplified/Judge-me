@@ -884,7 +884,7 @@ function ReviewDetailCard({
     } else if (fetcher.data.error) {
       setSaveError(fetcher.data.error);
     }
-  }, [fetcher.state, fetcher.data, review.id, replyText]);
+  }, [fetcher.state, fetcher.data, review.id]);
 
   const handleSave = () => {
     if (!replyText.trim()) {
