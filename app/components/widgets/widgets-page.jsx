@@ -7,7 +7,7 @@ import {
   SURFACE_BG,
   SURFACE_BORDER,
 } from "../admin-ui";
-import { getWidgetCtaLabel } from "../../lib/theme-editor-nav.shared.js";
+import { getWidgetCtaLabel, isWidgetCustomizable } from "../../lib/theme-editor-nav.shared.js";
 import reviewShowcaseImg from "./reviewshowcase-2.png";
 import reviewTranslationImg from "./reviewtranslation.png";
 import videoSliderImg from "./video-slider.png";
@@ -129,7 +129,9 @@ const modalStyles = {
   footer: {
     display: "flex",
     justifyContent: "flex-end",
+    alignItems: "center",
     paddingTop: 12,
+    gap: 10,
   },
 };
 
@@ -210,9 +212,10 @@ function AlreadyAddedDialog({ widget, onClose }) {
   );
 }
 
-function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlreadyAdded }) {
+function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlreadyAdded, onCustomize }) {
   const ctaLabel = getWidgetCtaLabel(widget.id);
   const installedLabel = widget.id === "review-translation-hub" ? ctaLabel : "Already in theme";
+  const customizable = isWidgetCustomizable(widget.id);
 
   const handleAddClick = () => {
     if (isInstalled) {
@@ -220,6 +223,11 @@ function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlrea
       return;
     }
     onAddToTheme?.(widget);
+    onClose?.();
+  };
+
+  const handleCustomizeClick = () => {
+    onCustomize?.(widget);
     onClose?.();
   };
 
@@ -263,6 +271,29 @@ function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlrea
             </p>
           ) : null}
           <div style={modalStyles.footer}>
+            {customizable ? (
+              <button
+                type="button"
+                onClick={handleCustomizeClick}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: 8,
+                  border: `1px solid ${SURFACE_BORDER}`,
+                  background: "#fff",
+                  color: "#202223",
+                  fontFamily: FONT,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  marginRight: "auto",
+                }}
+              >
+                Customize
+              </button>
+            ) : (
+              <span style={{ marginRight: "auto" }} />
+            )}
             <button
               type="button"
               onClick={handleAddClick}
@@ -289,10 +320,11 @@ function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlrea
   );
 }
 
-function WidgetCard({ widget, isInstalled, onOpen, onAddToTheme, onAlreadyAdded }) {
+function WidgetCard({ widget, isInstalled, onOpen, onAddToTheme, onAlreadyAdded, onCustomize }) {
   const [hover, setHover] = useState(false);
   const ctaLabel = getWidgetCtaLabel(widget.id);
   const installedLabel = widget.id === "review-translation-hub" ? ctaLabel : "Already in theme";
+  const customizable = isWidgetCustomizable(widget.id);
 
   const handleAddClick = (event) => {
     event.stopPropagation();
@@ -301,6 +333,11 @@ function WidgetCard({ widget, isInstalled, onOpen, onAddToTheme, onAlreadyAdded 
       return;
     }
     onAddToTheme?.(widget);
+  };
+
+  const handleCustomizeClick = (event) => {
+    event.stopPropagation();
+    onCustomize?.(widget);
   };
 
   return (
@@ -364,10 +401,32 @@ function WidgetCard({ widget, isInstalled, onOpen, onAddToTheme, onAlreadyAdded 
             display: "flex",
             alignItems: "center",
             justifyContent: "flex-end",
+            gap: 8,
             marginTop: "auto",
             paddingTop: 14,
           }}
         >
+          {customizable ? (
+            <button
+              type="button"
+              onClick={handleCustomizeClick}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 8,
+                border: `1px solid ${SURFACE_BORDER}`,
+                background: "#fff",
+                color: "#202223",
+                fontFamily: FONT,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+              }}
+            >
+              Customize
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={handleAddClick}
@@ -396,6 +455,7 @@ function WidgetCard({ widget, isInstalled, onOpen, onAddToTheme, onAlreadyAdded 
 
 export function WidgetsPage({
   onAddToTheme,
+  onCustomize,
   onEnableCore,
   onRefreshStatus,
   widgetSettings,
@@ -525,6 +585,7 @@ export function WidgetsPage({
             onOpen={setSelectedWidget}
             onAddToTheme={onAddToTheme}
             onAlreadyAdded={handleAlreadyAdded}
+            onCustomize={onCustomize}
           />
         ))}
       </div>
@@ -536,6 +597,7 @@ export function WidgetsPage({
           onClose={() => setSelectedWidget(null)}
           onAddToTheme={onAddToTheme}
           onAlreadyAdded={handleAlreadyAdded}
+          onCustomize={onCustomize}
         />
       ) : null}
 

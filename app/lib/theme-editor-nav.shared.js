@@ -64,3 +64,16 @@ export function getWidgetCtaLabel(widgetId) {
   if (widgetId === "review-translation-hub") return "Configure translation";
   return "Add to theme";
 }
+
+export function getWidgetCustomizePath(widgetId) {
+  const paths = {
+    "review-showcase": "/app/widgets/review-showcase",
+    "video-reviews-slider": "/app/widgets/video-reviews-slider",
+    "customers-love-page": "/app/widgets/customers-love-page",
+  };
+  return paths[widgetId] || null;
+}
+
+export function isWidgetCustomizable(widgetId) {
+  return Boolean(getWidgetCustomizePath(widgetId));
+}

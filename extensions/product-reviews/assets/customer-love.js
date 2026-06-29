@@ -13,6 +13,27 @@
     return "★".repeat(c) + "☆".repeat(5 - c);
   }
 
+  function getAppConfig() {
+    return window.__JUDGEME__?.config?.customerLove || {};
+  }
+
+  function resolveConfig(root) {
+    const app = getAppConfig();
+    return {
+      heading: app.heading || root.dataset.heading || "Customer Love",
+      limit: Number(app.limit ?? root.dataset.limit) || 12,
+      primaryColor: app.primaryColor || "#e11d48",
+      starColor: app.starColor || "#f59e0b",
+      barTrackColor: app.barTrackColor || "#fce7f3",
+      barFillColor: app.barFillColor || "#e11d48",
+      showDistribution: app.showDistribution !== false,
+      showFilterPills: app.showFilterPills !== false,
+      showPhotoCollage: app.showPhotoCollage !== false,
+      cardMinWidth: Number(app.cardMinWidth) || 260,
+      verifiedBadgeText: app.verifiedBadgeText || "Verified Buyer",
+    };
+  }
+
   function normalizeDistribution(raw) {
     const out = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     if (!raw) return out;
@@ -30,7 +51,7 @@
     return out;
   }
 
-  function injectBarStyles() {
+  function injectBarStyles(cfg) {
     if (document.getElementById("jd-customer-love-bar-styles")) return;
     const style = document.createElement("style");
     style.id = "jd-customer-love-bar-styles";
@@ -40,7 +61,7 @@
         flex:1 1 auto;
         min-width:0;
         height:8px;
-        background:#fce7f3;
+        background:${cfg.barTrackColor};
         border-radius:999px;
         overflow:hidden;
         display:flex;
@@ -48,7 +69,7 @@
       }
       .jd-customer-love-root .jd-love-bar-fill {
         height:100%;
-        background:#e11d48;
+        background:${cfg.barFillColor};
         border-radius:999px;
         min-width:0;
       }
@@ -77,17 +98,33 @@
 
     const shop = root.dataset.shop;
     const API = (root.dataset.apiBase || "").replace(/\/$/, "");
-    const heading = root.dataset.heading || "Customer Love";
-    const limit = Number(root.dataset.limit) || 12;
     if (!shop || !API) return;
+
+    let cfg = resolveConfig(root);
+
+    if (!window.__JUDGEME__?.config?.customerLove) {
+      try {
+        const settingsRes = await fetch(
+          `${API}/api/public/settings?shop=${encodeURIComponent(shop)}&t=${Date.now()}`,
+        );
+        const settingsData = await settingsRes.json();
+        if (settingsData?.config) {
+          window.__JUDGEME__ = window.__JUDGEME__ || {};
+          window.__JUDGEME__.config = { ...(window.__JUDGEME__.config || {}), ...settingsData.config };
+          cfg = resolveConfig(root);
+        }
+      } catch {
+        /* use fallbacks */
+      }
+    }
 
     let mediaFilter = "all";
     root.innerHTML = `<p style="color:#64748b;padding:24px 0">Loading reviews…</p>`;
-    injectBarStyles();
+    injectBarStyles(cfg);
 
     async function render() {
       const res = await fetch(
-        `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=shop&media=${mediaFilter}&limit=${limit}`,
+        `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=shop&media=${mediaFilter}&limit=${cfg.limit}`,
       );
       const data = await res.json();
       const { reviews = [], summary = {}, filters = {} } = data;
@@ -101,7 +138,7 @@
           return `
           <div class="jd-love-bar-row">
             <span style="width:14px">${star}</span>
-            <span style="color:#f59e0b">★</span>
+            <span style="color:${cfg.starColor}">★</span>
             <div class="jd-love-bar-track" role="presentation" aria-hidden="true">
               <div class="jd-love-bar-fill" style="flex:${count} 0 0;${count > 0 ? "min-width:4px;" : ""}"></div>
               <div class="jd-love-bar-spacer" style="flex:${remainder} 0 0"></div>
@@ -111,19 +148,26 @@
         })
         .join("");
 
-      const collage = reviews
-        .flatMap((r) => (r.media || []).filter((m) => m.type === "image").slice(0, 1))
-        .slice(0, 5)
-        .map((m) => `<button type="button" data-jd-preview="${esc(m.url)}" data-jd-preview-alt="Customer review photo" aria-label="View review photo" style="padding:0;border:none;background:none;cursor:zoom-in;border-radius:8px;overflow:hidden"><img src="${esc(m.url)}" alt="Review photo" style="width:64px;height:64px;object-fit:cover;border-radius:8px;display:block" loading="lazy" /></button>`)
-        .join("");
+      const collage = cfg.showPhotoCollage
+        ? reviews
+            .flatMap((r) => (r.media || []).filter((m) => m.type === "image").slice(0, 1))
+            .slice(0, 5)
+            .map(
+              (m) =>
+                `<button type="button" data-jd-preview="${esc(m.url)}" data-jd-preview-alt="Customer review photo" aria-label="View review photo" style="padding:0;border:none;background:none;cursor:zoom-in;border-radius:8px;overflow:hidden"><img src="${esc(m.url)}" alt="Review photo" style="width:64px;height:64px;object-fit:cover;border-radius:8px;display:block" loading="lazy" /></button>`,
+            )
+            .join("")
+        : "";
 
       const pill = (id, label, count) => `
         <button type="button" class="jd-love-pill" data-filter="${id}"
-          style="padding:8px 16px;border-radius:999px;border:1px solid ${mediaFilter === id ? "#e11d48" : "#e2e8f0"};
-          background:${mediaFilter === id ? "#e11d48" : "#fff"};color:${mediaFilter === id ? "#fff" : "#334155"};
+          style="padding:8px 16px;border-radius:999px;border:1px solid ${mediaFilter === id ? cfg.primaryColor : "#e2e8f0"};
+          background:${mediaFilter === id ? cfg.primaryColor : "#fff"};color:${mediaFilter === id ? "#fff" : "#334155"};
           font-weight:600;cursor:pointer;font-size:13px">
           ${esc(label)} (${count})
         </button>`;
+
+      const badgeBg = `${cfg.primaryColor}22`;
 
       const cards = reviews
         .map((r) => {
@@ -142,37 +186,45 @@
               : "";
           return `
             <article style="background:#fff;border:1px solid #f1f5f9;border-radius:12px;padding:16px">
-              <div style="color:#f59e0b;letter-spacing:1px;font-size:14px">${stars(r.rating)}</div>
+              <div style="color:${cfg.starColor};letter-spacing:1px;font-size:14px">${stars(r.rating)}</div>
               ${r.title ? `<h3 style="margin:8px 0 4px;font-size:15px">${esc(r.title)}</h3>` : ""}
               <p style="margin:0 0 8px;line-height:1.55;color:#334155;font-size:14px">${esc(r.comment)}</p>
               ${mediaHtml}
               <div style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px">
                 <strong>${esc(r.author)}</strong>
-                <span style="background:#fce7f3;color:#be185d;padding:2px 8px;border-radius:999px;font-weight:600">Verified Buyer</span>
+                <span style="background:${badgeBg};color:${cfg.primaryColor};padding:2px 8px;border-radius:999px;font-weight:600">${esc(cfg.verifiedBadgeText)}</span>
                 <span style="color:#94a3b8">${timeAgo(r.createdAt)}</span>
               </div>
             </article>`;
         })
         .join("");
 
-      root.innerHTML = `
-        <section style="font-family:system-ui,sans-serif;padding:32px 0;max-width:1100px;margin:0 auto">
-          <h1 style="font-size:28px;margin:0 0 24px">${esc(heading)}</h1>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px;margin-bottom:28px;align-items:center">
-            <div>
-              <div style="font-size:48px;font-weight:800;line-height:1">${summary.average || "0.0"}</div>
-              <div style="color:#f59e0b;font-size:20px;letter-spacing:2px">${stars(Math.round(summary.average || 0))}</div>
-              <div style="color:#64748b;margin-top:4px">${summary.total || 0} Reviews</div>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:6px">${bars}</div>
-            <div style="display:flex;flex-wrap:wrap;gap:8px">${collage || ""}</div>
-          </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+      const distributionBlock = cfg.showDistribution
+        ? `<div style="display:flex;flex-direction:column;gap:6px">${bars}</div>`
+        : "";
+      const collageBlock = collage ? `<div style="display:flex;flex-wrap:wrap;gap:8px">${collage}</div>` : "";
+      const filterBlock = cfg.showFilterPills
+        ? `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
             ${pill("all", "All Reviews", filters.all || 0)}
             ${pill("photo", "With Photos", filters.photos || 0)}
             ${pill("video", "With Videos", filters.videos || 0)}
+          </div>`
+        : "";
+
+      root.innerHTML = `
+        <section style="font-family:system-ui,sans-serif;padding:32px 0;max-width:1100px;margin:0 auto">
+          <h1 style="font-size:28px;margin:0 0 24px">${esc(cfg.heading)}</h1>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px;margin-bottom:28px;align-items:center">
+            <div>
+              <div style="font-size:48px;font-weight:800;line-height:1">${summary.average || "0.0"}</div>
+              <div style="color:${cfg.starColor};font-size:20px;letter-spacing:2px">${stars(Math.round(summary.average || 0))}</div>
+              <div style="color:#64748b;margin-top:4px">${summary.total || 0} Reviews</div>
+            </div>
+            ${distributionBlock}
+            ${collageBlock}
           </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
+          ${filterBlock}
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(${cfg.cardMinWidth}px,1fr));gap:16px">
             ${cards || '<p style="color:#64748b">No reviews match this filter.</p>'}
           </div>
         </section>`;

@@ -1,16 +1,27 @@
+/* eslint-disable react/prop-types */
 import { useCallback, useEffect, useState } from "react";
-import { useSubmit, useLoaderData, useNavigation, useActionData, useRouteError } from "react-router";
+import { useFetcher, useLoaderData, useNavigation, useActionData, useSubmit } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
+import { normalizeShopDomain } from "../utils/shop.js";
+import { buildThemeEditorBlockUrl } from "../lib/theme-editor-nav.shared.js";
 import { serializeFormConfig } from "../lib/review-form-config.shared.js";
 import { useConfigHistory } from "../hooks/use-config-history.js";
 import { ReviewFormEditorShell } from "../components/review-form-editor/review-form-editor-shell.jsx";
-import { boundary } from "@shopify/shopify-app-react-router/server";
+import { openThemeEditorUrl } from "../components/onboarding/theme-editor-guide.jsx";
+
+const WIDGET_ID = "review-showcase";
 
 export const loader = async ({ request }) => {
   const { session, billing, admin } = await authenticate.admin(request);
   const { reviewFormEditorLoader } = await import("../lib/review-form-editor.server.js");
-  return reviewFormEditorLoader({ request, session, billing, admin });
+  const base = await reviewFormEditorLoader({ request, session, billing, admin });
+  const shop = normalizeShopDomain(session.shop);
+  const apiKey = globalThis.process?.env?.SHOPIFY_API_KEY || "";
+  return {
+    ...base,
+    themeEditorUrl: buildThemeEditorBlockUrl(shop, apiKey, WIDGET_ID),
+  };
 };
 
 export const action = async ({ request }) => {
@@ -19,61 +30,46 @@ export const action = async ({ request }) => {
   return reviewFormEditorAction({ request, session, admin });
 };
 
-export default function ReviewFormCustomizeRoute() {
-  const { savedConfig, reviewContext, storefrontPreview, widgetUsage, shopDomain } = useLoaderData();
+export default function WidgetReviewShowcaseRoute() {
+  const { savedConfig, reviewContext, storefrontPreview, widgetUsage, shopDomain, themeEditorUrl } =
+    useLoaderData();
   const actionData = useActionData();
   const navigation = useNavigation();
   const submit = useSubmit();
+  const fetcher = useFetcher();
   const shopify = useAppBridge();
 
-  const {
-    config,
-    updateConfig,
-    patchConfig,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-  } = useConfigHistory(savedConfig);
+  const { config, updateConfig, patchConfig, undo, redo, canUndo, canRedo } = useConfigHistory(savedConfig);
 
   const [showSaveToast, setShowSaveToast] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [autofillError, setAutofillError] = useState("");
   const isSaving = navigation.state === "submitting";
-  const autofillLoading = navigation.state === "submitting" && navigation.formData?.get("_intent") === "generateFormCopy";
+  const autofillLoading =
+    navigation.state === "submitting" && navigation.formData?.get("_intent") === "generateFormCopy";
 
   useEffect(() => {
     if (actionData?.ok) {
-      queueMicrotask(() => {
-        setSaveError("");
-        setShowSaveToast(true);
-      });
+      setSaveError("");
+      setShowSaveToast(true);
       const t = setTimeout(() => setShowSaveToast(false), 4000);
       return () => clearTimeout(t);
     }
     if (actionData?.ok === false) {
-      queueMicrotask(() => {
-        setSaveError(actionData.publishError || "Could not save settings. Please try again.");
-      });
+      setSaveError(actionData.publishError || "Could not save settings. Please try again.");
     }
     if (actionData?.logoError) {
-      queueMicrotask(() => {
-        setSaveError(actionData.logoError);
-      });
+      setSaveError(actionData.logoError);
     }
     if (actionData?.autofillError) {
-      queueMicrotask(() => {
-        setAutofillError(actionData.autofillError);
-      });
+      setAutofillError(actionData.autofillError);
     }
   }, [actionData]);
 
   useEffect(() => {
     if (actionData?.autofillCopy) {
-      queueMicrotask(() => {
-        setAutofillError("");
-        patchConfig(actionData.autofillCopy);
-      });
+      setAutofillError("");
+      patchConfig(actionData.autofillCopy);
     }
   }, [actionData?.autofillCopy, patchConfig]);
 
@@ -133,6 +129,19 @@ export default function ReviewFormCustomizeRoute() {
     submit({ _intent: "generateFormCopy" }, { method: "POST" });
   };
 
+  const handleAddToTheme = useCallback(() => {
+    if (!themeEditorUrl) {
+      shopify?.toast?.show?.("Could not build theme editor link.", { isError: true });
+      return;
+    }
+    const fd = new FormData();
+    fd.set("intent", "mark_install");
+    fd.set("widgetId", WIDGET_ID);
+    fetcher.submit(fd, { method: "post" });
+    openThemeEditorUrl(themeEditorUrl, shopify);
+    shopify?.toast?.show?.("Theme editor opened. Save your theme after placing the block.");
+  }, [themeEditorUrl, fetcher, shopify]);
+
   return (
     <ReviewFormEditorShell
       config={config}
@@ -156,10 +165,8 @@ export default function ReviewFormCustomizeRoute() {
       storefrontPreview={storefrontPreview}
       publishBlocked={publishBlocked}
       publishBlockedMessage={publishBlockedMessage}
+      backHref="/app/widgets"
+      onAddToTheme={handleAddToTheme}
     />
   );
-}
-
-export function ErrorBoundary() {
-  return boundary.error(useRouteError());
 }

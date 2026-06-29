@@ -4,17 +4,19 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import { normalizeShopDomain } from "../utils/shop.js";
 import { WidgetsPage } from "../components/widgets/widgets-page.jsx";
-import { loadWidgetsPageData, markWidgetInstallIntent, markCoreEmbedAcknowledged } from "../lib/widgets.server.js";
+import { getWidgetCustomizePath } from "../lib/theme-editor-nav.shared.js";
 import { openThemeEditorUrl } from "../components/onboarding/theme-editor-guide.jsx";
 import { useEmbedNavigate } from "../hooks/use-embed-navigate.js";
 
 export const loader = async ({ request }) => {
   const { session, admin, billing } = await authenticate.admin(request);
+  const { loadWidgetsPageData } = await import("../lib/widgets.server.js");
   return loadWidgetsPageData({ session, admin, billing });
 };
 
 export const action = async ({ request }) => {
   const { session } = await authenticate.admin(request);
+  const { markWidgetInstallIntent, markCoreEmbedAcknowledged } = await import("../lib/widgets.server.js");
   const shop = normalizeShopDomain(session.shop);
   const fd = await request.formData();
   const widgetId = String(fd.get("widgetId") ?? "").trim();
@@ -113,10 +115,26 @@ export default function WidgetsIndexRoute() {
     shopify?.toast?.show?.("Checking your theme for installed widgets…");
   }, [revalidator, shopify]);
 
+  const handleCustomize = useCallback(
+    (widget) => {
+      if (!widget?.id) return;
+      if (widget.id === "review-translation-hub") {
+        embedNavigate("/app/widgets/translation");
+        return;
+      }
+      const path = getWidgetCustomizePath(widget.id);
+      if (path) {
+        embedNavigate(path);
+      }
+    },
+    [embedNavigate],
+  );
+
   return (
     <WidgetsPage
       {...data}
       onAddToTheme={handleAddToTheme}
+      onCustomize={handleCustomize}
       onEnableCore={handleEnableCore}
       onRefreshStatus={handleRefreshStatus}
     />
