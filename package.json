@@ -26,6 +26,7 @@
     "dev:localhost": "dotenv -e .env -- shopify app dev --use-localhost --theme-app-extension-port 9494",
     "db:init": "dotenv -e .env -- node scripts/init-db.mjs",
     "db:check": "dotenv -e .env -- node scripts/check-db.mjs",
+    "db:reset-pro-usage": "dotenv -e .env -- node scripts/reset-pro-usage.mjs",
     "dev:kill": "powershell -NoProfile -Command \"Get-CimInstance Win32_Process -Filter 'name=\\\"node.exe\\\"' | Where-Object { ($_.CommandLine -match '@shopify\\\\cli\\\\bin\\\\run.js') -or ($_.CommandLine -match 'shopify app dev') -or ($_.CommandLine -match '@react-router\\\\dev\\\\bin.js') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }\""
   },
   "type": "module",
