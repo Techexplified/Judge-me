@@ -2,16 +2,16 @@ import PDFDocument from "pdfkit";
 
 /* ── Unicode fallback map (PDFKit built-in fonts only support Latin-1) ────── */
 const UNICODE_FALLBACKS = {
-  "\u2022": "-",   "\u2023": ">",   "\u2043": "-",
-  "\u25CF": "*",   "\u25CB": "o",
-  "\u2013": "-",   "\u2014": "--",
-  "\u2018": "'",   "\u2019": "'",
-  "\u201C": '"',   "\u201D": '"',
+  "\u2022": "-", "\u2023": ">", "\u2043": "-",
+  "\u25CF": "*", "\u25CB": "o",
+  "\u2013": "-", "\u2014": "--",
+  "\u2018": "'", "\u2019": "'",
+  "\u201C": '"', "\u201D": '"',
   "\u2026": "...",
-  "\u2605": "*",   "\u2606": "*",
-  "\u2192": "->",  "\u2190": "<-",  "\u2191": "^", "\u2193": "v",
+  "\u2605": "*", "\u2606": "*",
+  "\u2192": "->", "\u2190": "<-", "\u2191": "^", "\u2193": "v",
   "\u2714": "[x]", "\u2716": "[X]",
-  "\u00B7": "-",   "\u2212": "-",
+  "\u00B7": "-", "\u2212": "-",
 };
 
 function safe(value) {
@@ -28,14 +28,15 @@ function safe(value) {
 }
 
 /* ── Layout constants ──────────────────────────────────────────────────────── */
-const MARGIN     = 48;
-const PAGE_W     = 612;                       // LETTER width in pt
-const CONTENT_W  = PAGE_W - MARGIN * 2;       // usable text width
-const BRAND      = "#0d9488";                  // teal accent
-const DARK       = "#0f172a";
-const MID        = "#334155";
-const LIGHT      = "#64748b";
+const MARGIN = 48;
+const PAGE_W = 612;                       // LETTER width in pt
+const CONTENT_W = PAGE_W - MARGIN * 2;       // usable text width
+const BRAND = "#0d9488";                  // teal accent
+const DARK = "#0f172a";
+const MID = "#334155";
+const LIGHT = "#64748b";
 const RULE_COLOR = "#e2e8f0";
+const ROW_ALT = "#f8fafc";                  // Soft background for clean table striping
 
 /* ── Helpers ───────────────────────────────────────────────────────────────── */
 function ensureSpace(doc, need = 48) {
@@ -81,7 +82,7 @@ function bullet(doc, text) {
   ensureSpace(doc, 20);
   doc.font("Helvetica").fontSize(10).fillColor(MID)
     .text(`-  ${safe(text)}`, MARGIN + 14, doc.y, { width: CONTENT_W - 14, lineGap: 2 });
-  doc.x = MARGIN; // Reset X for subsequent elements
+  doc.x = MARGIN; // Reset X
 }
 
 function kpiRow(doc, labelText, valueText) {
@@ -95,17 +96,6 @@ function kpiRow(doc, labelText, valueText) {
 }
 
 /* ── Main renderer ─────────────────────────────────────────────────────────── */
-/**
- * @param {{
- *   shop: string,
- *   metricsRangeLabel: string,
- *   kpis: Record<string, unknown>,
- *   products: Array<Record<string, unknown>>,
- *   scopedReviews: Array<Record<string, unknown>>,
- *   aiPanel: Record<string, unknown> | null,
- *   playbook: { summary: string, sections: Array<{ title: string, bullets: string[] }> } | null,
- * }} payload
- */
 export function renderDashboardReportPdf(payload) {
   const {
     shop,
@@ -136,13 +126,37 @@ export function renderDashboardReportPdf(payload) {
     /* ── KEY METRICS ─────────────────────────────────────────────── */
     sectionTitle(doc, "Key Metrics");
     const sentiment = kpis.sentiment || {};
-    kpiRow(doc, "Total Reviews", String(kpis.totalReviews));
-    kpiRow(doc, "Volume Trend", String(kpis.totalTrend) + " vs prior period");
-    kpiRow(doc, "Average Rating", `${kpis.avgRating} (${kpis.avgDelta} vs prior)`);
-    kpiRow(doc, "Positive / Neutral / Negative",
-      `${sentiment.positivePct}% / ${sentiment.neutralPct}% / ${sentiment.negativePct}%`);
-    kpiRow(doc, "Weekly Velocity", `${kpis.velocityPerWeek} reviews / week`);
-    doc.moveDown(0.3);
+
+    // Core data array structures
+    const metricCards = [
+      { label: "Total Reviews", val: String(kpis.totalReviews), note: `${kpis.totalTrend} vs prior period` },
+      { label: "Average Rating", val: `${kpis.avgRating} / 5`, note: `${kpis.avgDelta} vs prior period` },
+      { label: "Weekly Velocity", val: `${kpis.velocityPerWeek} / wk`, note: "Rolling volume speed" },
+      { label: "Customer Sentiment", val: `${sentiment.positivePct}% Positive`, note: `${sentiment.neutralPct}% Neutral  |  ${sentiment.negativePct}% Negative` }
+    ];
+
+    let cardTopY = doc.y;
+    metricCards.forEach((card, i) => {
+      // 2-Column layout coordinate matrix calculations
+      const col = i % 2;
+      const cardX = MARGIN + col * (CONTENT_W / 2 + 8);
+      const cardW = CONTENT_W / 2 - 8;
+
+      if (i > 0 && col === 0) cardTopY += 54; // Move down to next card row boundary
+
+      // Background Card Frame Panel
+      doc.roundedRect(cardX, cardTopY, cardW, 46, 6).fill("#f8fafc");
+
+      // Left indicator accent track bar
+      doc.rect(cardX, cardTopY, 3, 46).fill(BRAND);
+
+      // Value metrics text injections
+      doc.font("Helvetica-Bold").fontSize(13).fillColor(DARK).text(safe(card.val), cardX + 12, cardTopY + 8);
+      doc.font("Helvetica-Bold").fontSize(8.5).fillColor(LIGHT).text(safe(card.label).toUpperCase(), cardX + 12, cardTopY + 23);
+      doc.font("Helvetica").fontSize(7.5).fillColor(MID).text(safe(card.note), cardX + 12, cardTopY + 33);
+    });
+
+    doc.y = cardTopY + 60; // Push layout position pointer past card grid panels boundary
 
     /* ── AI DIGEST ───────────────────────────────────────────────── */
     if (aiPanel?.topInsight) {
@@ -181,7 +195,7 @@ export function renderDashboardReportPdf(payload) {
       }
     }
 
-    /* ── PRODUCTS TABLE ───────────────────────────────────────────── */
+    /* ── PRODUCTS OVERVIEW ────────────────────────────────────────── */
     sectionTitle(doc, "Products Overview");
 
     // Table header
@@ -198,27 +212,33 @@ export function renderDashboardReportPdf(payload) {
     });
     doc.y = headerY + 20;
 
-    // Table rows
-    for (const p of products) {
+    // Table rows with alternating row backgrounds
+    products.forEach((p, index) => {
       ensureSpace(doc, 22);
       const rowY = doc.y;
+
+      if (index % 2 === 1) {
+        doc.rect(MARGIN, rowY - 2, CONTENT_W, 18).fill(ROW_ALT);
+      }
+
       doc.font("Helvetica").fontSize(9).fillColor(DARK)
         .text(safe(p.productName), colX[0] + 4, rowY, { width: colW[0], lineBreak: false });
       doc.fillColor(MID)
-        .text(safe(`${p.avgRating} *`), colX[1] + 4, rowY, { width: colW[1], lineBreak: false })
+        .text(safe(`${p.avgRating} / 5`), colX[1] + 4, rowY, { width: colW[1], lineBreak: false })
         .text(safe(String(p.reviewCount)), colX[2] + 4, rowY, { width: colW[2], lineBreak: false })
         .text(safe(p.sentiment), colX[3] + 4, rowY, { width: colW[3], lineBreak: false })
         .text(safe(p.lastReview), colX[4] + 4, rowY, { width: colW[4], lineBreak: false });
+
       doc.x = MARGIN; // Reset X
       doc.y = rowY + 18;
-      // light row divider
+
       doc.strokeColor(RULE_COLOR).lineWidth(0.5)
         .moveTo(MARGIN, doc.y).lineTo(PAGE_W - MARGIN, doc.y).stroke();
       doc.y += 4;
-    }
+    });
     doc.moveDown(0.3);
 
-    /* ── PLAYBOOK ─────────────────────────────────────────────────── */
+    /* ── IMPROVEMENT PLAYBOOK ─────────────────────────────────────── */
     if (playbook?.summary) {
       sectionTitle(doc, "Improvement Playbook");
       body(doc, playbook.summary);
@@ -235,7 +255,7 @@ export function renderDashboardReportPdf(payload) {
       }
     }
 
-    /* ── REVIEW DETAIL ────────────────────────────────────────────── */
+/* ── REVIEW DETAIL ────────────────────────────────────────────── */
     sectionTitle(doc, "Review Detail");
 
     const byProduct = new Map();
@@ -248,42 +268,59 @@ export function renderDashboardReportPdf(payload) {
       byProduct.get(key).push(r);
     }
 
+    let productIndex = 1;
+
     for (const [productName, list] of byProduct.entries()) {
-      ensureSpace(doc, 50);
-      doc.font("Helvetica-Bold").fontSize(11).fillColor(DARK)
-        .text(safe(String(productName)), MARGIN, doc.y, { width: CONTENT_W });
-      doc.moveDown(0.25);
+      ensureSpace(doc, 60);
+      
+      const tagTopY = doc.y;
+      doc.rect(MARGIN, tagTopY, CONTENT_W, 20).fill("#f1f5f9");
+      doc.rect(MARGIN, tagTopY, 4, 20).fill(BRAND); 
+      
+      doc.font("Helvetica-Bold").fontSize(9.5).fillColor(DARK)
+        .text(safe(`${productIndex}.  ${String(productName).toUpperCase()}`), MARGIN + 10, tagTopY + 6, { width: CONTENT_W - 20 });
+      
+      doc.y = tagTopY + 26;
+      productIndex++; 
 
       for (const r of list) {
         ensureSpace(doc, 60);
 
-        // Review meta line
         const date = new Date(r.createdAt).toISOString().slice(0, 10);
-        const stars = "*".repeat(Math.min(5, Math.max(0, r.rating || 0)));
         const author = r.author || "Customer";
+        const ratingScore = `${r.rating || 0} / 5`; // Format matching image_668d33.png[cite: 7]
+
+        // Exact text formatting string matching image_668d33.png layout structures[cite: 7]
         doc.font("Helvetica-Bold").fontSize(9).fillColor(DARK)
-          .text(safe(`${stars}  ${author}`), { width: CONTENT_W, continued: true });
+          .text(safe(`[Rating: ${ratingScore}]  ${author}`),MARGIN, doc.y, { width: CONTENT_W, continued: true });
+          
         doc.font("Helvetica").fontSize(9).fillColor(LIGHT)
           .text(safe(`   ${date}`));
 
-        // Comment
         if (r.comment) {
           doc.font("Helvetica").fontSize(9.5).fillColor(MID)
             .text(safe(r.comment), MARGIN, doc.y, { width: CONTENT_W, lineGap: 1.5 });
         }
 
-        // Reply
         if (r.reply) {
-          doc.moveDown(0.15);
+          doc.moveDown(0.2);
+          const replyY = doc.y;
+          
           const rd = r.replyDate ? new Date(r.replyDate).toISOString().slice(0, 10) : "";
-          doc.font("Helvetica-Bold").fontSize(9).fillColor(BRAND)
-            .text(safe(`Store Reply${rd ? ` (${rd})` : ""}:`), MARGIN, doc.y, { width: CONTENT_W });
+          const textHeight = doc.heightOfString(r.reply, { width: CONTENT_W - 24, lineGap: 1.5 });
+          
+          doc.rect(MARGIN, replyY, CONTENT_W, textHeight + 20).fill("#f8fafc");
+          
+          doc.font("Helvetica-Bold").fontSize(8.5).fillColor(BRAND)
+            .text(safe(`Store Reply${rd ? ` (${rd})` : ""}:`), MARGIN + 12, replyY + 6, { width: CONTENT_W - 24 });
+            
           doc.font("Helvetica").fontSize(9.5).fillColor(MID)
-            .text(safe(r.reply), MARGIN, doc.y, { width: CONTENT_W, lineGap: 1.5 });
+            .text(safe(r.reply), MARGIN + 12, doc.y + 2, { width: CONTENT_W - 24, lineGap: 1.5 });
+            
+          doc.y += 6;
         }
 
         doc.moveDown(0.4);
-        // subtle divider between reviews
         doc.strokeColor(RULE_COLOR).lineWidth(0.4)
           .moveTo(MARGIN, doc.y).lineTo(MARGIN + 120, doc.y).stroke();
         doc.y += 6;

@@ -650,24 +650,44 @@ function WeeklyMomentumChart({ data = [] }) {
   );
 }
 
-function AccountabilityCenter({ pendingCount, criticalCount}) {
+function AccountabilityCenter({ pendingCount, criticalCount }) {
   const reviewsHref = mergeShopifyEmbedParams("/app/manage-reviews");
+  const completionRate = pendingCount === 0 ? 100 : Math.max(0, 100 - (pendingCount * 15));
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14, height: "100%", justifyContent: "center" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 14px", borderRadius: 8, background: "#fffaf0", border: "1px solid #fef3c7" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 16 }}></span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#92400e" }}>{pendingCount} new reviews need a response</span>
+    <div style={{ display: "flex", alignItems: "center", gap: 24, height: "100%", padding: "4px 0" }}>
+
+      {/* Visual Completion Ring */}
+      <div style={{ position: "relative", width: 90, height: 90, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <svg width="90" height="90" viewBox="0 0 36 36">
+          <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#eef2f0" strokeWidth="3" />
+          <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none"
+            stroke={pendingCount > 0 ? "#b45309" : "#047857"}
+            strokeDasharray={`${completionRate}, 100`}
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+        </svg>
+        <div style={{ position: "absolute", textAlign: "center" }}>
+          <div style={{ fontSize: 18, fontWeight: 900, color: "#202223" }}>{completionRate}%</div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: "#6d7175", textTransform: "uppercase" }}>Done</div>
         </div>
-        <Link to={`${reviewsHref}?status=unanswered`} style={{ fontSize: 12, fontWeight: 800, color: "#b45309", textDecoration: "none" }}>Reply Now →</Link>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 14px", borderRadius: 8, background: "#fff4f4", border: "1px solid #fcd4d4" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 16 }}></span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#8a1f1f" }}>{criticalCount} critical reviews require attention</span>
-        </div>
-        <Link to={`${reviewsHref}?rating_max=3`} style={{ fontSize: 12, fontWeight: 800, color: "#d72c0d", textDecoration: "none" }}>Resolve →</Link>
+      {/* Actionable Micro-Cards Grid */}
+      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+
+        <Link to={`${reviewsHref}`} style={{ textDecoration: "none", background: pendingCount > 0 ? "#fffaf0" : "#f6f6f7", border: `1px solid ${pendingCount > 0 ? "#fef3c7" : "#e5ebe8"}`, borderRadius: 10, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 4, transition: "all 0.2s" }}>
+          <div style={{ fontSize: 20, fontWeight: 900, color: pendingCount > 0 ? "#b45309" : "#202223", lineHeight: 1 }}>{pendingCount}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#6d7175" }}>Unanswered</div>
+          <span style={{ fontSize: 11, fontWeight: 800, color: pendingCount > 0 ? "#b45309" : "#6d7175", marginTop: 4 }}>Reply Now →</span>
+        </Link>
+
+        <Link to={`${reviewsHref}`} style={{ textDecoration: "none", background: criticalCount > 0 ? "#fff4f4" : "#ecfdf5", border: `1px solid ${criticalCount > 0 ? "#fcd4d4" : "#a7f3d0"}`, borderRadius: 10, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ fontSize: 20, fontWeight: 900, color: criticalCount > 0 ? "#d72c0d" : "#047857", lineHeight: 1 }}>{criticalCount}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#6d7175" }}>Low Rating (1-2★)</div>
+          <span style={{ fontSize: 11, fontWeight: 800, color: criticalCount > 0 ? "#d72c0d" : "#047857", marginTop: 4 }}>Resolve →</span>
+        </Link>
       </div>
     </div>
   );
