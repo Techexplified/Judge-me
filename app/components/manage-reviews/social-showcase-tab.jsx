@@ -532,7 +532,7 @@ export function SocialShowcaseTab({
             display: "flex",
             justifyContent: "flex-end",
             width: "100%",
-            maxWidth: 375,
+            maxWidth: 400,
             marginBottom: 12,
           }}
         >
@@ -561,10 +561,10 @@ export function SocialShowcaseTab({
         </div>
         <div
           style={{
-            width: 375,
+            width: 400,
             maxWidth: "100%",
-            height: 640,
-            maxHeight: "calc(100vh - 180px)",
+            height: 820,
+            maxHeight: "calc(100vh - 120px)",
             borderRadius: 28,
             border: "8px solid #111",
             overflow: "hidden",
