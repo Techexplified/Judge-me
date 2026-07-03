@@ -29,6 +29,8 @@ const inputStyle = {
   fontSize: 13,
   fontWeight: 500,
   width: "100%",
+  maxWidth: "100%",
+  boxSizing: "border-box",
   padding: "10px 12px",
   borderRadius: 8,
   border: "1px solid #c9cccf",
@@ -63,6 +65,8 @@ function SectionCard({ title, badge, children }) {
         borderRadius: 12,
         padding: 16,
         marginBottom: 16,
+        minWidth: 0,
+        overflow: "hidden",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14 }}>
@@ -212,41 +216,20 @@ export function SocialShowcaseTab({
   const previewUrl = shareUrl;
 
   return (
-    <div style={{ display: "flex", minHeight: 720, background: "#f6f6f7" }}>
+    <div style={{ display: "flex", minHeight: 720, background: "#f6f6f7", minWidth: 0, overflow: "hidden" }}>
       <div
         style={{
           flex: "1 1 420px",
           minWidth: 320,
           maxWidth: 520,
           overflowY: "auto",
+          overflowX: "hidden",
           padding: 20,
           borderRight: `1px solid ${SURFACE_BORDER}`,
         }}
       >
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-          <button
-            type="button"
-            onClick={saveConfig}
-            disabled={isSaving}
-            style={{
-              padding: "8px 14px",
-              borderRadius: 8,
-              border: "none",
-              background: SHOPIFY_GREEN,
-              color: "#fff",
-              fontFamily: FONT,
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: isSaving ? "wait" : "pointer",
-              opacity: isSaving ? 0.7 : 1,
-            }}
-          >
-            {isSaving ? "Saving…" : "Save changes"}
-          </button>
-        </div>
-
         <SectionCard title="CONTENT">
-          <label style={{ display: "block", marginBottom: 12 }}>
+          <label style={{ display: "block", marginBottom: 12, minWidth: 0 }}>
             <span style={{ ...sectionLabel, letterSpacing: 0, fontSize: 12, display: "block", marginBottom: 6 }}>
               Store name
             </span>
@@ -258,7 +241,7 @@ export function SocialShowcaseTab({
               maxLength={120}
             />
           </label>
-          <label style={{ display: "block", marginBottom: 12 }}>
+          <label style={{ display: "block", marginBottom: 12, minWidth: 0 }}>
             <span style={{ ...sectionLabel, letterSpacing: 0, fontSize: 12, display: "block", marginBottom: 6 }}>
               Tagline
             </span>
@@ -271,7 +254,7 @@ export function SocialShowcaseTab({
               placeholder={`See why ${(summary?.total || 0).toLocaleString()} customers love us`}
             />
           </label>
-          <label style={{ display: "block" }}>
+          <label style={{ display: "block", minWidth: 0 }}>
             <span style={{ ...sectionLabel, letterSpacing: 0, fontSize: 12, display: "block", marginBottom: 6 }}>
               Bottom CTA heading
             </span>
@@ -482,8 +465,13 @@ export function SocialShowcaseTab({
             <Send size={16} />
             Share Instantly
           </button>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input type="text" readOnly value={shareUrl} style={{ ...inputStyle, flex: 1 }} />
+          <div style={{ display: "flex", gap: 8, minWidth: 0 }}>
+            <input
+              type="text"
+              readOnly
+              value={shareUrl}
+              style={{ ...inputStyle, flex: 1, minWidth: 0 }}
+            />
             <button
               type="button"
               onClick={copyLink}
@@ -504,6 +492,28 @@ export function SocialShowcaseTab({
             </button>
           </div>
         </SectionCard>
+
+        <button
+          type="button"
+          onClick={saveConfig}
+          disabled={isSaving}
+          style={{
+            width: "100%",
+            padding: "12px 16px",
+            borderRadius: 8,
+            border: "none",
+            background: SHOPIFY_GREEN,
+            color: "#fff",
+            fontFamily: FONT,
+            fontSize: 14,
+            fontWeight: 700,
+            cursor: isSaving ? "wait" : "pointer",
+            opacity: isSaving ? 0.7 : 1,
+            marginBottom: 8,
+          }}
+        >
+          {isSaving ? "Saving…" : "Save changes"}
+        </button>
       </div>
 
       <div
@@ -514,6 +524,7 @@ export function SocialShowcaseTab({
           flexDirection: "column",
           alignItems: "center",
           background: "#e8eaed",
+          minHeight: 0,
         }}
       >
         <div
@@ -552,20 +563,34 @@ export function SocialShowcaseTab({
           style={{
             width: 375,
             maxWidth: "100%",
+            height: 640,
+            maxHeight: "calc(100vh - 180px)",
             borderRadius: 28,
             border: "8px solid #111",
             overflow: "hidden",
             boxShadow: "0 16px 40px rgba(0,0,0,0.18)",
             background: "#fff",
+            display: "flex",
+            flexDirection: "column",
           }}
         >
-          <SocialShowcasePreview
-            config={config}
-            brandLogoUrl={brandLogoUrl}
-            summary={summary}
-            reviewCandidates={reviewCandidates}
-            photoCandidates={photoCandidates}
-          />
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: "auto",
+              overflowX: "hidden",
+              WebkitOverflowScrolling: "touch",
+            }}
+          >
+            <SocialShowcasePreview
+              config={config}
+              brandLogoUrl={brandLogoUrl}
+              summary={summary}
+              reviewCandidates={reviewCandidates}
+              photoCandidates={photoCandidates}
+            />
+          </div>
         </div>
       </div>
     </div>

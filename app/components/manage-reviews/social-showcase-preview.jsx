@@ -56,8 +56,6 @@ export function SocialShowcasePreview({ config, brandLogoUrl, summary, reviewCan
       style={{
         fontFamily: FONT,
         background: "#fff",
-        minHeight: 640,
-        overflow: "auto",
       }}
     >
       <div
