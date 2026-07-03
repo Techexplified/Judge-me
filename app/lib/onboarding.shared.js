@@ -100,6 +100,21 @@ export function isOnboardingImportComplete(onboarding) {
   return Boolean(onboarding?.importConfiguredAt);
 }
 
+/** Resolved import preset id (e.g. loox, judgeme, custom) or empty when skipped. */
+export function resolveOnboardingImportSource(storeProfile, onboarding) {
+  const importChoice = onboarding?.importChoice;
+  const skippedImport =
+    importChoice === "skip" ||
+    !importChoice ||
+    storeProfile?.importingFromOtherApp === "no";
+  if (skippedImport) return "";
+  return (
+    storeProfile?.importSource ||
+    (importChoice && ONBOARDING_IMPORT_SOURCES[importChoice]) ||
+    ""
+  );
+}
+
 export function isOnboardingAppearanceComplete(appearance) {
   return Boolean(
     appearance?.layoutPreset &&

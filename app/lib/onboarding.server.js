@@ -1,5 +1,12 @@
 import db from "../db.server.js";
 import { mergeFormConfig, normalizeHex } from "./review-form-config.shared.js";
+import { getGroupShopList } from "./store-group.server.js";
+import { isStoreReview } from "../utils/performance-metrics.server.js";
+import {
+  hasRunInitialSync,
+  markInitialSyncDone,
+  syncExistingReviews,
+} from "./review-sync.server.js";
 import {
   ONBOARDING_IMPORT_SOURCES,
   ONBOARDING_VERSION,
@@ -24,6 +31,7 @@ export {
   isOnboardingStoreInfoComplete,
   isOnboardingGoalComplete,
   resolveOnboardingStep,
+  resolveOnboardingImportSource,
 } from "./onboarding.shared.js";
 
 async function readConfig(shop) {
@@ -235,6 +243,38 @@ export async function saveSyndicationChoice(shop, skippedSyndication) {
   };
   await writeConfig(shop, config);
   return config.onboarding;
+}
+
+/** Pull existing Shopify metafield reviews into DB once so completion stats are accurate. */
+export async function ensureReviewSyncForStats(admin, shop, preloadedConfig) {
+  try {
+    const alreadySynced = await hasRunInitialSync(shop, preloadedConfig);
+    if (!alreadySynced) {
+      await syncExistingReviews(admin, shop);
+      await markInitialSyncDone(shop);
+    }
+  } catch (err) {
+    console.error("[onboarding] review sync failed:", err);
+  }
+}
+
+export async function loadOnboardingCompletionStats(shop) {
+  const targetShops = await getGroupShopList(shop);
+  const reviews = await db.review.findMany({
+    where: { shop: { in: targetShops } },
+    select: { rating: true, productId: true, productName: true },
+  });
+  const productReviews = reviews.filter((r) => !isStoreReview(r));
+  const totalReviews = productReviews.length;
+  const avgRating =
+    totalReviews > 0
+      ? (productReviews.reduce((acc, r) => acc + r.rating, 0) / totalReviews).toFixed(1)
+      : null;
+
+  const config = await readConfig(shop);
+  const widgetViews = config.onsiteWidget?.metrics?.viewsThisMonth ?? 0;
+
+  return { totalReviews, avgRating, widgetViews };
 }
 
 export async function completeOnboarding(shop, { skippedSyndication = false } = {}) {

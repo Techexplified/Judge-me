@@ -23,17 +23,19 @@ import {
   saveOnboardingGoal,
   saveOnboardingImportChoice,
   saveOnboardingStoreInfo,
+  ensureReviewSyncForStats,
+  loadOnboardingCompletionStats,
 } from "../lib/onboarding.server";
 import {
   ONBOARDING_ACCENT_COLORS,
   ONBOARDING_COMPLETION_STEP,
   ONBOARDING_GOAL_OPTIONS,
   ONBOARDING_IMPORT_KEYS,
-  ONBOARDING_IMPORT_SOURCES,
   ONBOARDING_INDUSTRY_OPTIONS,
   ONBOARDING_LAYOUT_OPTIONS,
   ONBOARDING_TOTAL_STEPS,
   resolveOnboardingStep,
+  resolveOnboardingImportSource,
 } from "../lib/onboarding.shared.js";
 import { embedRedirect } from "../utils/shopify-embed-nav.server.js";
 import { buildThemeEditorProductBlockUrl } from "../lib/theme-editor-nav.shared.js";
@@ -66,20 +68,16 @@ function formatShopDisplayName(shop, shopName) {
     .join(" ");
 }
 
-function resolveImportRedirect(storeProfile, onboarding) {
-  const importChoice = onboarding?.importChoice;
-  const skippedImport =
-    importChoice === "skip" ||
-    !importChoice ||
-    storeProfile?.importingFromOtherApp === "no";
-  const importSource =
-    storeProfile?.importSource ||
-    (importChoice && ONBOARDING_IMPORT_SOURCES[importChoice]) ||
-    "";
-  if (!skippedImport && importSource && SOURCE_PRESETS[importSource]) {
+function resolveImportUrl(storeProfile, onboarding) {
+  const importSource = resolveOnboardingImportSource(storeProfile, onboarding);
+  if (importSource && SOURCE_PRESETS[importSource]) {
     return `/app/collect-reviews?tab=import&source=${encodeURIComponent(importSource)}`;
   }
-  return "/app/performance-overview?fromOnboarding=1";
+  return null;
+}
+
+function resolveImportRedirect(storeProfile, onboarding) {
+  return resolveImportUrl(storeProfile, onboarding) ?? "/app/performance-overview?fromOnboarding=1";
 }
 
 export const loader = async ({ request }) => {
@@ -117,7 +115,16 @@ export const loader = async ({ request }) => {
   const shopConfig = await loadShopConfig(shop);
   const apiKey = globalThis.process?.env?.SHOPIFY_API_KEY || "";
   const themeEditorUrl = buildThemeEditorProductBlockUrl(shop, apiKey);
+  const importSource = resolveOnboardingImportSource(storeProfile, onboarding);
+  const importUrl = resolveImportUrl(storeProfile, onboarding);
+  const importSourceName = importSource ? SOURCE_PRESETS[importSource]?.name ?? importSource : "";
   const dashboardUrl = resolveImportRedirect(storeProfile, onboarding);
+
+  let completionStats = { totalReviews: 0, avgRating: null, widgetViews: 0 };
+  if (step >= COMPLETION_STEP) {
+    await ensureReviewSyncForStats(admin, shop, shopConfig);
+    completionStats = await loadOnboardingCompletionStats(shop);
+  }
 
   const defaultAccent =
     appearance?.accentColor ||
@@ -150,6 +157,9 @@ export const loader = async ({ request }) => {
     trialActive: planStatus.hasPro,
     themeEditorUrl,
     dashboardUrl,
+    importUrl,
+    importSourceName,
+    completionStats,
   };
 };
 
@@ -305,6 +315,9 @@ export default function Onboarding() {
     trialActive,
     themeEditorUrl,
     dashboardUrl,
+    importUrl,
+    importSourceName,
+    completionStats,
   } = useLoaderData();
   const navigate = useNavigate();
   const location = useLocation();
@@ -467,9 +480,8 @@ export default function Onboarding() {
   };
 
   const handleStartImport = () => {
-    const source = ONBOARDING_IMPORT_SOURCES[importChoice];
-    if (source) {
-      embedNavigate(`/app/collect-reviews?tab=import&source=${encodeURIComponent(source)}`);
+    if (importUrl) {
+      embedNavigate(importUrl);
     }
   };
 
@@ -486,7 +498,7 @@ export default function Onboarding() {
   };
 
   const isCompletion = step >= COMPLETION_STEP;
-  const hasImport = Boolean(importChoice && importChoice !== "skip");
+  const hasImport = Boolean(importUrl);
 
   return (
     <OnboardingShell
@@ -566,6 +578,8 @@ export default function Onboarding() {
           videoReviews={videoReviews}
           trialActive={trialActive}
           hasImport={hasImport}
+          importSourceName={importSourceName}
+          completionStats={completionStats}
           themeEditorUrl={themeEditorUrl}
           onStartImport={handleStartImport}
           onGoToDashboard={handleGoToDashboard}

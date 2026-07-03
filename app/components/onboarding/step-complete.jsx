@@ -185,12 +185,22 @@ export function StepComplete({
   videoReviews,
   trialActive,
   hasImport,
+  importSourceName,
+  completionStats,
   themeEditorUrl,
   onStartImport,
   onGoToDashboard,
   goingToDashboard,
 }) {
   const shopify = useAppBridge();
+  const { totalReviews, avgRating, widgetViews } = completionStats ?? {};
+  const reviewsLabel = totalReviews ?? 0;
+  const ratingLabel = avgRating ?? "—";
+  const requestsLabel = widgetViews > 0 ? String(widgetViews) : "—";
+  const statsFootnote =
+    totalReviews > 0
+      ? "Live counts from your store. Widget views update as customers see your review prompt."
+      : "Numbers will populate as orders come in and reviews are collected.";
 
   const handleOpenThemeEditor = () => {
     if (!themeEditorUrl) {
@@ -281,12 +291,12 @@ export function StepComplete({
           Your dashboard, ready to track progress
         </p>
         <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
-          <Metric value="0" label="Reviews collected" />
-          <Metric value="—" label="Avg rating" />
-          <Metric value="0" label="Requests sent" />
+          <Metric value={reviewsLabel} label="Reviews collected" />
+          <Metric value={ratingLabel} label="Avg rating" />
+          <Metric value={requestsLabel} label="Widget views" />
         </div>
         <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: "#8c9196" }}>
-          Numbers will populate as orders come in and reviews are collected.
+          {statsFootnote}
         </p>
       </div>
 
@@ -302,8 +312,12 @@ export function StepComplete({
           />
           {hasImport ? (
             <NextStepRow
-              label="Import your reviews from the source you selected"
-              actionLabel="Start import"
+              label={
+                importSourceName
+                  ? `Import your reviews from ${importSourceName}`
+                  : "Import your reviews from the source you selected"
+              }
+              actionLabel="Start now"
               onAction={onStartImport}
             />
           ) : null}
