@@ -3,6 +3,7 @@ export const PRODUCT_REVIEWS_BLOCK_HANDLE = "product-reviews";
 export const VIDEO_REVIEWS_SLIDER_HANDLE = "video-reviews-slider";
 export const CUSTOMER_LOVE_PAGE_HANDLE = "customer-love-page";
 export const CORE_EMBED_HANDLE = "judgeme-core";
+export const TESTIMONIALS_BLOCK_HANDLE = "testimonials";
 
 export const WIDGET_THEME_TARGETS = {
   "review-showcase": {
@@ -18,6 +19,11 @@ export const WIDGET_THEME_TARGETS = {
   "customers-love-page": {
     template: "page",
     handle: CUSTOMER_LOVE_PAGE_HANDLE,
+    target: "newAppsSection",
+  },
+  "testimonials": {
+    template: "index",
+    handle: TESTIMONIALS_BLOCK_HANDLE,
     target: "newAppsSection",
   },
 };

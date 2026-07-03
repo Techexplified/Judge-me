@@ -12,6 +12,7 @@ import reviewShowcaseImg from "./reviewshowcase-2.png";
 import reviewTranslationImg from "./reviewtranslation.png";
 import videoSliderImg from "./video-slider.png";
 import customerLovePageImg from "./customerlove-page-1.png";
+import testimonialsImg from "./testimonials-1.jpeg";
 
 const FONT =
   "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
@@ -40,6 +41,12 @@ export const WIDGET_CATALOG = [
     title: "Customer's Love Page",
     description: "A dedicated page for all reviews, photos, and videos.",
     previewImage: customerLovePageImg,
+  },
+  {
+    id: "testimonials",
+    title: "Testimonials",
+    description: "Display all your store reviews to build trust and boost conversations",
+    previewImage: testimonialsImg,
   },
 ];
 
