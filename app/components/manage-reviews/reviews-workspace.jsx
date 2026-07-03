@@ -21,6 +21,7 @@ import {
   Languages,
   Eye,
   Sparkles,
+  Pin,
 } from "lucide-react";
 import {
   Badge,
@@ -497,7 +498,17 @@ function StatCard({ title, value, icon, subtitle, trend, isRating }) {
   );
 }
 
-export function ProductReviewsModal({ product, currentShop, modeReply, onClose, translation, premium, aiAvailable, formAction }) {
+export function ProductReviewsModal({
+  product,
+  currentShop,
+  modeReply,
+  onClose,
+  translation,
+  premium,
+  aiAvailable,
+  formAction,
+  showcaseReviewIds = [],
+}) {
   return (
     <div style={modalStyles.overlay} onClick={onClose} role="presentation">
       <div
@@ -516,6 +527,7 @@ export function ProductReviewsModal({ product, currentShop, modeReply, onClose, 
           onClose={onClose}
           variant="modal"
           formAction={formAction}
+          showcaseReviewIds={showcaseReviewIds}
         />
       </div>
     </div>
@@ -532,11 +544,15 @@ function ProductReviewsPanel({
   variant = "inline",
   onClose,
   formAction,
+  showcaseReviewIds = [],
 }) {
   const scrollAreaRef = useRef(null);
   const bulkFetcher = useFetcher();
+  const showcaseFetcher = useFetcher();
+  const shopify = useAppBridge();
   const revalidator = useRevalidator();
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [localShowcaseIds, setLocalShowcaseIds] = useState(() => new Set(showcaseReviewIds));
   const [localReviews, setLocalReviews] = useState(product.reviews ?? []);
   const needsReplyCount = localReviews.filter(
     (r) => !r.reply || !String(r.reply).trim(),
@@ -546,6 +562,20 @@ function ProductReviewsPanel({
     setLocalReviews(product.reviews ?? []);
     setSelectedIds(new Set());
   }, [product]);
+
+  useEffect(() => {
+    setLocalShowcaseIds(new Set(showcaseReviewIds));
+  }, [showcaseReviewIds]);
+
+  useEffect(() => {
+    if (showcaseFetcher.state !== "idle" || !showcaseFetcher.data) return;
+    if (showcaseFetcher.data.ok && showcaseFetcher.data.config) {
+      setLocalShowcaseIds(new Set(showcaseFetcher.data.config.selectedReviewIds || []));
+      shopify?.toast?.show?.("Showcase selection updated");
+    } else if (showcaseFetcher.data.error) {
+      shopify?.toast?.show?.(showcaseFetcher.data.error, { isError: true });
+    }
+  }, [showcaseFetcher.state, showcaseFetcher.data, shopify]);
 
   useEffect(() => {
     if (bulkFetcher.state !== "idle" || !bulkFetcher.data?.ok) return;
@@ -562,6 +592,18 @@ function ProductReviewsPanel({
       else next.add(id);
       return next;
     });
+  };
+
+  const toggleShowcase = (reviewId) => {
+    const pinned = localShowcaseIds.has(reviewId);
+    showcaseFetcher.submit(
+      {
+        _intent: "toggleShowcaseReview",
+        reviewId,
+        selected: pinned ? "false" : "true",
+      },
+      { method: "post", action: formAction },
+    );
   };
 
   const handleBulkTranslate = () => {
@@ -698,6 +740,12 @@ function ProductReviewsPanel({
                   selectable={canTranslate}
                   selected={selectedIds.has(rev.id)}
                   onToggleSelect={() => toggleReview(rev.id)}
+                  showcasePinned={localShowcaseIds.has(rev.id)}
+                  onToggleShowcase={() => toggleShowcase(rev.id)}
+                  showcaseLoading={
+                    showcaseFetcher.state !== "idle" &&
+                    showcaseFetcher.formData?.get("reviewId") === rev.id
+                  }
                   onTranslated={(updated) => {
                     setLocalReviews((rows) =>
                       rows.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)),
@@ -797,6 +845,9 @@ function ReviewDetailCard({
   selectable = false,
   selected = false,
   onToggleSelect,
+  showcasePinned = false,
+  onToggleShowcase,
+  showcaseLoading = false,
   onTranslated,
   formAction,
 }) {
@@ -962,7 +1013,33 @@ function ReviewDetailCard({
             </div>
           </div>
         </div>
-        <StarRating rating={review.rating} />
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          {onToggleShowcase ? (
+            <button
+              type="button"
+              onClick={onToggleShowcase}
+              disabled={showcaseLoading}
+              title={showcasePinned ? "Remove from Social Showcase" : "Add to Social Showcase"}
+              aria-label={showcasePinned ? "Remove from Social Showcase" : "Add to Social Showcase"}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                border: showcasePinned ? "1px solid #008060" : "1px solid #e1e3e5",
+                background: showcasePinned ? "#ecfdf5" : "#fff",
+                color: showcasePinned ? "#008060" : "#6d7175",
+                cursor: showcaseLoading ? "wait" : "pointer",
+                opacity: showcaseLoading ? 0.6 : 1,
+              }}
+            >
+              <Pin size={14} fill={showcasePinned ? "#008060" : "none"} />
+            </button>
+          ) : null}
+          <StarRating rating={review.rating} />
+        </div>
       </div>
 
       {displayTitle ? <h3 style={detailStyles.reviewTitle}>{displayTitle}</h3> : null}

@@ -40,7 +40,7 @@ export async function action({ request }) {
   }
 
   const shop = normalizeShopDomain(shopRaw);
-  if (event === "view" || event === "review_showcase_view") {
+  if (event === "view" || event === "review_showcase_view" || event === "social_showcase_view") {
     await incrementWidgetView(shop);
   }
 

@@ -44,6 +44,14 @@ export const APP_SEARCH_ITEMS = [
     keywords: ["store", "reviews", "shop"],
   },
   {
+    id: "social-showcase",
+    title: "Social Showcase",
+    description: "Curate reviews and photos for a shareable landing page",
+    path: "/app/manage-reviews?tab=social-showcase",
+    icon: Star,
+    keywords: ["social", "showcase", "share", "link", "landing", "mobile"],
+  },
+  {
     id: "store-integration",
     title: "Integrate Reviews from Other Stores",
     description: "Import reviews from other platforms and stores",

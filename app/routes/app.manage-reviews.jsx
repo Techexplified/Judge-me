@@ -32,6 +32,13 @@ import { mergeShopifyEmbedParams } from "../utils/shopify-embed-nav.js";
 import { normalizeShopDomain } from "../utils/shop.js";
 import { IntegrationSettingsPanel } from "../components/settings/integration-settings-panel";
 import { ProductReviewsModal } from "../components/manage-reviews/reviews-workspace.jsx";
+import { SocialShowcaseTab } from "../components/manage-reviews/social-showcase-tab.jsx";
+import {
+  loadSocialShowcaseAdminData,
+  saveSocialShowcaseConfig,
+  toggleShowcaseReview,
+} from "../lib/social-showcase.server.js";
+import { parseSocialShowcaseConfigPayload } from "../lib/social-showcase-config.shared.js";
 import {
   PAGE_BG,
   SHOPIFY_GREEN,
@@ -110,7 +117,7 @@ const type = {
   },
 };
 
-const MANAGE_REVIEWS_TABS = new Set(["product", "store", "integration"]);
+const MANAGE_REVIEWS_TABS = new Set(["product", "store", "social-showcase", "integration"]);
 
 export const loader = async ({ request }) => {
   const { session, admin, billing } = await authenticate.admin(request);
@@ -118,10 +125,11 @@ export const loader = async ({ request }) => {
   const url = new URL(request.url);
 
   try {
-    const [tableData, modalData, { group }] = await Promise.all([
+    const [tableData, modalData, { group }, socialShowcaseData] = await Promise.all([
       loadManageReviewsData({ request, session, admin }),
       loadReviewsManagementData({ request, session, billing }),
       loadStoreIntegrationGroup(shop),
+      loadSocialShowcaseAdminData({ shop, request }),
     ]);
 
     return {
@@ -133,6 +141,7 @@ export const loader = async ({ request }) => {
       premium: modalData.premium,
       aiAvailable: modalData.aiAvailable,
       group,
+      socialShowcase: socialShowcaseData,
       ...parseStoreIntegrationFlash(url),
     };
   } catch (error) {
@@ -157,6 +166,21 @@ export const action = async ({ request }) => {
       });
     }
 
+    const intent = formData.get("_intent");
+    const shop = normalizeShopDomain(session.shop);
+
+    if (intent === "saveSocialShowcase") {
+      const raw = formData.get("config");
+      const payload = parseSocialShowcaseConfigPayload(raw);
+      return saveSocialShowcaseConfig({ shop, payload });
+    }
+
+    if (intent === "toggleShowcaseReview") {
+      const reviewId = String(formData.get("reviewId") ?? "").trim();
+      const selected = formData.get("selected") === "true";
+      return toggleShowcaseReview({ shop, reviewId, selected });
+    }
+
     return await handleReviewsManagementAction({ session, formData });
   } catch (error) {
     console.error("[manage-reviews] action failed:", error);
@@ -168,6 +192,13 @@ export const action = async ({ request }) => {
 };
 
 export function shouldRevalidate(args) {
+  const intent = args.formData?.get("_intent");
+  if (intent === "saveSocialShowcase") {
+    return false;
+  }
+  if (intent === "toggleShowcaseReview") {
+    return true;
+  }
   return reviewsManagementShouldRevalidate(args);
 }
 
@@ -438,6 +469,7 @@ export default function ManageReviews() {
     group,
     linkedSuccess,
     unlinkedSuccess,
+    socialShowcase,
   } = useLoaderData();
   const actionData = useActionData();
   const location = useLocation();
@@ -611,6 +643,7 @@ export default function ManageReviews() {
         {[
           { id: "product", label: "Product Reviews" },
           { id: "store", label: "Store Reviews" },
+          { id: "social-showcase", label: "Social Showcase" },
           { id: "integration", label: "Store Integration" },
         ].map((tab) => {
           const active = activeTab === tab.id;
@@ -641,6 +674,16 @@ export default function ManageReviews() {
           linkedSuccess={linkedSuccess}
           unlinkedSuccess={unlinkedSuccess}
           actionError={actionData?.error}
+        />
+      ) : activeTab === "social-showcase" ? (
+        <SocialShowcaseTab
+          initialConfig={socialShowcase?.config}
+          brandLogoUrl={socialShowcase?.brandLogoUrl}
+          shareUrl={socialShowcase?.shareUrl}
+          reviewCandidates={socialShowcase?.reviewCandidates ?? []}
+          photoCandidates={socialShowcase?.photoCandidates ?? []}
+          summary={socialShowcase?.summary}
+          formAction={replyFormAction}
         />
       ) : (
         <div
@@ -892,6 +935,7 @@ export default function ManageReviews() {
           premium={premium}
           aiAvailable={aiAvailable}
           formAction={replyFormAction}
+          showcaseReviewIds={socialShowcase?.config?.selectedReviewIds ?? []}
         />
       ) : null}
     </div>
