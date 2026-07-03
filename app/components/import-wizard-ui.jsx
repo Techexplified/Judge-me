@@ -39,7 +39,7 @@ const SOURCE_COLORS = {
   custom: "#6d7175",
 };
 
-function SourceLogo({ source }) {
+export function SourceLogo({ source }) {
   const color = SOURCE_COLORS[source.id] ?? "#6d7175";
   if (source.logo) {
     return (

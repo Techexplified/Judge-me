@@ -11,6 +11,7 @@ const LOGO_MAX_BYTES = 2 * 1024 * 1024;
 export function OnboardingPreview({
   config,
   brandLogoUrl,
+  storeName,
   onLogoFile,
   onLogoRemove,
   logoError,
@@ -120,7 +121,7 @@ export function OnboardingPreview({
               color: config.textColor || "#202223",
             }}
           >
-            {config.formTitle || "Write a Review"}
+            {storeName?.trim() || config.formTitle || "Write a Review"}
           </h3>
           <p
             style={{
@@ -131,7 +132,9 @@ export function OnboardingPreview({
               maxWidth: 260,
             }}
           >
-            Share your experience with this product
+            {storeName?.trim()
+              ? `Share your experience shopping at ${storeName.trim()}`
+              : config.formSubtitle || "Share your experience with this product"}
           </p>
           <div
             style={{

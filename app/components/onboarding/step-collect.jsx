@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { OrderStatusPreview } from "../collect-reviews/order-status-preview.jsx";
 import { OnboardingHeading } from "./onboarding-shell.jsx";
+import { OnboardingOptionCard } from "./onboarding-option-card.jsx";
 
 function SettingToggle({ label, description, checked, onChange, proBadge, disabled }) {
   const accent = "#008060";
@@ -90,16 +91,25 @@ export function StepCollect({
   return (
     <div>
       <OnboardingHeading
-        title="Start collecting reviews"
-        subtitle="Turn on storefront collection so reviews come in without manual work."
+        eyebrow="Question 5 of 5"
+        title="One last thing: start collecting reviews"
+        subtitle="Turn on storefront collection so reviews come in automatically after each order."
       />
 
-      <SettingToggle
-        label="Storefront review widget"
-        description="Show a review prompt on the order status page after fulfillment or delivery"
-        checked={onsiteWidgetEnabled}
-        onChange={onOnsiteWidgetChange}
-      />
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
+        <OnboardingOptionCard
+          title="Yes, show the storefront review widget"
+          description="Recommended. Customers who are asked right after delivery are far more likely to leave a review."
+          selected={onsiteWidgetEnabled}
+          onSelect={() => onOnsiteWidgetChange(true)}
+        />
+        <OnboardingOptionCard
+          title="No, I'll set this up later"
+          description="You can turn this on anytime from Settings."
+          selected={!onsiteWidgetEnabled}
+          onSelect={() => onOnsiteWidgetChange(false)}
+        />
+      </div>
 
       <SettingToggle
         label="Photo reviews"
@@ -117,13 +127,35 @@ export function StepCollect({
         disabled={!hasPro}
       />
 
-      <div style={{ marginTop: 20 }}>
-        <OrderStatusPreview
-          timing="after_fulfillment"
-          buttonColor={accentColor}
-          accentColor={accentColor}
-        />
+      <div
+        style={{
+          marginTop: 8,
+          display: "flex",
+          gap: 10,
+          padding: "14px 16px",
+          borderRadius: 10,
+          border: "1px solid #fde68a",
+          background: "#fffbeb",
+        }}
+      >
+        <span aria-hidden style={{ fontSize: 15, lineHeight: 1.4 }}>
+          &#9432;
+        </span>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: "#92400e", lineHeight: 1.5 }}>
+          <strong>Why we ask:</strong> The storefront widget prompts customers to review from the
+          order status page after their order arrives. This is the single biggest driver of new reviews.
+        </p>
       </div>
+
+      {onsiteWidgetEnabled ? (
+        <div style={{ marginTop: 20 }}>
+          <OrderStatusPreview
+            timing="after_fulfillment"
+            buttonColor={accentColor}
+            accentColor={accentColor}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

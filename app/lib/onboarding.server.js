@@ -10,13 +10,19 @@ import {
 export {
   ONBOARDING_LAYOUT_OPTIONS,
   ONBOARDING_ACCENT_COLORS,
+  ONBOARDING_INDUSTRY_OPTIONS,
+  ONBOARDING_GOAL_OPTIONS,
   ONBOARDING_IMPORT_SOURCES,
   ONBOARDING_IMPORT_KEYS,
   ONBOARDING_VERSION,
+  ONBOARDING_TOTAL_STEPS,
+  ONBOARDING_COMPLETION_STEP,
   buildOnboardingFormConfig,
   isNewOnboardingComplete,
   isOnboardingAppearanceComplete,
   isOnboardingImportComplete,
+  isOnboardingStoreInfoComplete,
+  isOnboardingGoalComplete,
   resolveOnboardingStep,
 } from "./onboarding.shared.js";
 
@@ -90,6 +96,27 @@ export async function saveOnboardingAppearance(shop, { layoutPreset, accentColor
   Object.assign(config, formConfig);
   await writeConfig(shop, config);
   return appearance;
+}
+
+export async function saveOnboardingStoreInfo(shop, { storeName, industry }) {
+  const config = await readConfig(shop);
+  config.storeProfile = {
+    ...(config.storeProfile ?? {}),
+    storeName: String(storeName ?? "").trim(),
+    industry: String(industry ?? "").trim(),
+  };
+  await writeConfig(shop, config);
+  return config.storeProfile;
+}
+
+export async function saveOnboardingGoal(shop, { primaryGoal }) {
+  const config = await readConfig(shop);
+  config.storeProfile = {
+    ...(config.storeProfile ?? {}),
+    primaryGoal: String(primaryGoal ?? "").trim(),
+  };
+  await writeConfig(shop, config);
+  return config.storeProfile;
 }
 
 export async function saveOnboardingImportChoice(shop, { importKey, skipImport }) {

@@ -8,7 +8,7 @@ export const ONBOARDING_CARD_RADIUS = 12;
 
 export function OnboardingShell({
   step,
-  totalSteps = 3,
+  totalSteps = 5,
   wide = false,
   children,
   continueLabel = "Continue",
@@ -18,6 +18,8 @@ export function OnboardingShell({
   backDisabled = false,
   continueDisabled = false,
   continueLoading = false,
+  hideFooter = false,
+  progressComplete = false,
 }) {
   return (
     <div
@@ -47,22 +49,27 @@ export function OnboardingShell({
                   flex: 1,
                   height: 4,
                   borderRadius: 2,
-                  background: i < step ? ONBOARDING_PROGRESS_ACTIVE : "#e1e3e5",
+                  background:
+                    progressComplete || i < step ? ONBOARDING_PROGRESS_ACTIVE : "#e1e3e5",
                   transition: "background 0.2s",
                 }}
               />
             ))}
           </div>
-          <span
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: "#6d7175",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Step {step} of {totalSteps}
-          </span>
+          {progressComplete ? (
+            <span />
+          ) : (
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#6d7175",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Step {step} of {totalSteps}
+            </span>
+          )}
         </div>
 
         <div
@@ -77,6 +84,7 @@ export function OnboardingShell({
           {children}
         </div>
 
+        {hideFooter ? null : (
         <div
           style={{
             display: "flex",
@@ -137,14 +145,29 @@ export function OnboardingShell({
             {!continueLoading ? <ArrowRight size={16} /> : null}
           </button>
         </div>
+        )}
       </div>
     </div>
   );
 }
 
-export function OnboardingHeading({ title, subtitle }) {
+export function OnboardingHeading({ title, subtitle, eyebrow }) {
   return (
     <div style={{ marginBottom: 24 }}>
+      {eyebrow ? (
+        <p
+          style={{
+            margin: "0 0 8px",
+            fontSize: 12,
+            fontWeight: 700,
+            color: ONBOARDING_PROGRESS_ACTIVE,
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+          }}
+        >
+          {eyebrow}
+        </p>
+      ) : null}
       <h1
         style={{
           margin: "0 0 8px",

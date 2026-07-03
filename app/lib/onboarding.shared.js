@@ -18,6 +18,36 @@ export const ONBOARDING_ACCENT_COLORS = [
   { id: "black", value: "#1e293b" },
 ];
 
+export const ONBOARDING_INDUSTRY_OPTIONS = [
+  { id: "beauty", label: "Beauty & Skincare", description: "Cosmetics, skincare, personal care" },
+  { id: "fashion", label: "Fashion & Apparel", description: "Clothing, shoes, accessories" },
+  { id: "food", label: "Food & Beverage", description: "Coffee, snacks, specialty foods" },
+  { id: "home", label: "Home & Living", description: "Furniture, decor, kitchenware" },
+  { id: "electronics", label: "Electronics & Tech", description: "Gadgets, accessories, devices" },
+  { id: "other", label: "Other", description: "Something else entirely" },
+];
+
+export const ONBOARDING_GOAL_OPTIONS = [
+  {
+    id: "collect",
+    label: "Collect more reviews",
+    description:
+      "I have orders coming in but not enough reviews yet. I want to start collecting them automatically.",
+  },
+  {
+    id: "display",
+    label: "Display reviews I already have",
+    description:
+      "I have reviews on another platform or on Google. I want to bring them onto my store.",
+  },
+  {
+    id: "both",
+    label: "Both: grow and display",
+    description:
+      "Import what I have now, and also set up automatic collection going forward.",
+  },
+];
+
 export const ONBOARDING_IMPORT_SOURCES = {
   loox: "loox",
   judgeme: "judgeme",
@@ -29,7 +59,10 @@ export const ONBOARDING_IMPORT_SOURCES = {
 export const ONBOARDING_IMPORT_KEYS = ["loox", "judgeme", "amazon", "flipkart", "csv"];
 
 /** Bump when the onboarding wizard changes so existing installs re-run the flow. */
-export const ONBOARDING_VERSION = 3;
+export const ONBOARDING_VERSION = 4;
+
+export const ONBOARDING_TOTAL_STEPS = 5;
+export const ONBOARDING_COMPLETION_STEP = 6;
 
 export function isNewOnboardingComplete(onboarding) {
   return Boolean(
@@ -55,6 +88,18 @@ export function buildOnboardingFormConfig(layoutPreset, accentColor) {
   });
 }
 
+export function isOnboardingStoreInfoComplete(storeProfile) {
+  return Boolean(storeProfile?.storeName?.trim() && storeProfile?.industry?.trim());
+}
+
+export function isOnboardingGoalComplete(storeProfile) {
+  return Boolean(storeProfile?.primaryGoal?.trim());
+}
+
+export function isOnboardingImportComplete(onboarding) {
+  return Boolean(onboarding?.importConfiguredAt);
+}
+
 export function isOnboardingAppearanceComplete(appearance) {
   return Boolean(
     appearance?.layoutPreset &&
@@ -63,14 +108,26 @@ export function isOnboardingAppearanceComplete(appearance) {
   );
 }
 
-export function isOnboardingImportComplete(onboarding) {
-  return Boolean(onboarding?.importConfiguredAt);
-}
+export function resolveOnboardingStep(requestedStep, { onboarding, storeProfile } = {}) {
+  if (isNewOnboardingComplete(onboarding)) {
+    const capped = Math.min(
+      Math.max(1, requestedStep),
+      ONBOARDING_COMPLETION_STEP,
+    );
+    return capped;
+  }
 
-export function resolveOnboardingStep(requestedStep, onboarding) {
+  if (requestedStep >= ONBOARDING_COMPLETION_STEP) {
+    return 5;
+  }
+
   if (requestedStep <= 1) return 1;
-  if (!isOnboardingAppearanceComplete(onboarding?.appearance)) return 1;
+  if (!isOnboardingStoreInfoComplete(storeProfile)) return 1;
   if (requestedStep <= 2) return 2;
-  if (!isOnboardingImportComplete(onboarding)) return 2;
-  return 3;
+  if (!isOnboardingGoalComplete(storeProfile)) return 2;
+  if (requestedStep <= 3) return 3;
+  if (!isOnboardingImportComplete(onboarding)) return 3;
+  if (requestedStep <= 4) return 4;
+  if (!isOnboardingAppearanceComplete(onboarding?.appearance)) return 4;
+  return 5;
 }
