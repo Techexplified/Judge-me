@@ -154,7 +154,12 @@ export const loader = async ({ request }) => {
       collection?.videoReviews ??
       (planStatus.hasPro && formConfig.showVideos !== false),
     hasPro: planStatus.hasPro,
-    trialActive: planStatus.hasPro,
+    trialActive: planStatus.isInTrial === true,
+    planLabel: planStatus.isInTrial
+      ? "Pro trial"
+      : planStatus.hasPro
+        ? "Pro"
+        : "Free",
     themeEditorUrl,
     dashboardUrl,
     importUrl,
@@ -313,6 +318,7 @@ export default function Onboarding() {
     videoReviews: savedVideoReviews,
     hasPro,
     trialActive,
+    planLabel,
     themeEditorUrl,
     dashboardUrl,
     importUrl,
@@ -576,7 +582,9 @@ export default function Onboarding() {
           onsiteWidgetEnabled={onsiteWidgetEnabled}
           photoReviews={photoReviews}
           videoReviews={videoReviews}
+          hasPro={hasPro}
           trialActive={trialActive}
+          planLabel={planLabel}
           hasImport={hasImport}
           importSourceName={importSourceName}
           completionStats={completionStats}

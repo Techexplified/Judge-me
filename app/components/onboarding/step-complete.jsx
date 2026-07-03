@@ -184,6 +184,8 @@ export function StepComplete({
   photoReviews,
   videoReviews,
   trialActive,
+  hasPro,
+  planLabel,
   hasImport,
   importSourceName,
   completionStats,
@@ -265,8 +267,14 @@ export function StepComplete({
         <Pill>Widget style saved</Pill>
         {onsiteWidgetEnabled ? <Pill>Storefront collection on</Pill> : null}
         {photoReviews ? <Pill>Photo reviews on</Pill> : null}
-        {videoReviews ? <Pill>Video reviews on</Pill> : null}
-        {trialActive ? <Pill>Pro trial active</Pill> : null}
+        {videoReviews && hasPro ? <Pill>Video reviews on</Pill> : null}
+        {trialActive ? (
+          <Pill>Pro trial active</Pill>
+        ) : planLabel === "Free" ? (
+          <Pill>Free plan</Pill>
+        ) : planLabel === "Pro" ? (
+          <Pill>Pro plan</Pill>
+        ) : null}
       </div>
 
       <div
