@@ -26,6 +26,7 @@ import {
   markAppRatingSubmitted,
 } from "../utils/performance-metrics.server.js";
 import { AppRatingBanner, SHOPIFY_GREEN, SHOPIFY_GREEN_DARK } from "../components/performance/app-rating-banner.jsx";
+import { WhatsNewSection } from "../components/performance/whats-new-section.jsx";
 import { PAGE_BG, SURFACE_BG, SURFACE_BORDER } from "../components/admin-ui";
 
 export const loader = async ({ request }) => {
@@ -458,6 +459,10 @@ export default function PerformanceOverview() {
           />
         </PerformanceCard>
       </div>
+
+      <WhatsNewSection
+        resolveHref={(path) => mergeShopifyEmbedParams(path, location.search)}
+      />
     </div>
   );
 }
