@@ -15,7 +15,6 @@ const WHATS_NEW_ITEMS = [
   {
     id: "social-showcase",
     tag: "New",
-    date: "July 4, 2026",
     title: "Social showcase feature",
     description:
       "Share your reviews on Instagram with one link. Add it to your bio and turn followers into buyers.",
@@ -25,7 +24,6 @@ const WHATS_NEW_ITEMS = [
   {
     id: "testimonials",
     tag: "Widgets",
-    date: "July 4, 2026",
     title: "Try our new widget for store reviews",
     description: "Testimonials UI matching our current theme.",
     cta: "Learn more",
@@ -49,15 +47,7 @@ function WhatsNewCard({ item, href }) {
         boxSizing: "border-box",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
-          marginBottom: 12,
-        }}
-      >
+      <div style={{ marginBottom: 12 }}>
         <span
           style={{
             display: "inline-flex",
@@ -73,17 +63,6 @@ function WhatsNewCard({ item, href }) {
           }}
         >
           {item.tag}
-        </span>
-        <span
-          style={{
-            fontFamily: FONT,
-            fontSize: 11,
-            fontWeight: 500,
-            color: "#8c9196",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {item.date}
         </span>
       </div>
 
@@ -143,11 +122,12 @@ export function WhatsNewSection({ resolveHref }) {
     <section style={{ marginTop: 24 }}>
       <h2
         style={{
-          margin: "0 0 12px",
+          margin: "0 0 14px",
           fontFamily: FONT,
-          fontSize: 18,
-          fontWeight: 800,
+          fontSize: 24,
+          fontWeight: 900,
           color: "#202223",
+          letterSpacing: "-0.01em",
         }}
       >
         What is new
