@@ -1,10 +1,15 @@
 /* eslint-disable react/prop-types */
 import { Link } from "react-router";
 import { ArrowRight } from "lucide-react";
-import { SHOPIFY_GREEN, SURFACE_BG, SURFACE_BORDER } from "../admin-ui";
+import { SURFACE_BORDER } from "../admin-ui";
 
 const FONT =
   "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
+const TAG_STYLES = {
+  New: { bg: "#fff4e5", color: "#8a6116" },
+  Widgets: { bg: "#ecfdf5", color: "#047857" },
+};
 
 const WHATS_NEW_ITEMS = [
   {
@@ -29,16 +34,19 @@ const WHATS_NEW_ITEMS = [
 ];
 
 function WhatsNewCard({ item, href }) {
+  const tagStyle = TAG_STYLES[item.tag] || TAG_STYLES.Widgets;
+
   return (
     <article
       style={{
-        background: SURFACE_BG,
+        background: "#fff",
         border: `1px solid ${SURFACE_BORDER}`,
-        borderRadius: 12,
-        overflow: "hidden",
+        borderRadius: 10,
+        padding: "14px 16px 16px",
         display: "flex",
         flexDirection: "column",
-        minHeight: 220,
+        height: "100%",
+        boxSizing: "border-box",
       }}
     >
       <div
@@ -46,24 +54,22 @@ function WhatsNewCard({ item, href }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: 12,
-          padding: "10px 16px",
-          background: "#ecfdf5",
-          borderBottom: `1px solid ${SURFACE_BORDER}`,
+          gap: 10,
+          marginBottom: 12,
         }}
       >
         <span
           style={{
             display: "inline-flex",
             alignItems: "center",
-            padding: "4px 10px",
+            padding: "3px 8px",
             borderRadius: 999,
-            background: SHOPIFY_GREEN,
-            color: "#fff",
+            background: tagStyle.bg,
+            color: tagStyle.color,
             fontFamily: FONT,
             fontSize: 11,
-            fontWeight: 800,
-            letterSpacing: "0.02em",
+            fontWeight: 700,
+            lineHeight: 1.2,
           }}
         >
           {item.tag}
@@ -71,87 +77,87 @@ function WhatsNewCard({ item, href }) {
         <span
           style={{
             fontFamily: FONT,
-            fontSize: 12,
-            fontWeight: 600,
-            color: "#6d7175",
+            fontSize: 11,
+            fontWeight: 500,
+            color: "#8c9196",
+            whiteSpace: "nowrap",
           }}
         >
           {item.date}
         </span>
       </div>
 
-      <div style={{ padding: "18px 16px 16px", display: "flex", flexDirection: "column", flex: 1 }}>
-        <h3
-          style={{
-            margin: "0 0 10px",
-            fontFamily: FONT,
-            fontSize: 18,
-            fontWeight: 800,
-            color: "#202223",
-            lineHeight: 1.35,
-          }}
-        >
-          {item.title}
-        </h3>
-        <p
-          style={{
-            margin: 0,
-            flex: 1,
-            fontFamily: FONT,
-            fontSize: 13,
-            fontWeight: 500,
-            color: "#6d7175",
-            lineHeight: 1.55,
-          }}
-        >
-          {item.description}
-        </p>
-        <Link
-          to={href}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            marginTop: 18,
-            padding: "10px 14px",
-            width: "fit-content",
-            borderRadius: 8,
-            border: `1px solid ${SURFACE_BORDER}`,
-            background: "#fff",
-            color: "#202223",
-            fontFamily: FONT,
-            fontSize: 13,
-            fontWeight: 700,
-            textDecoration: "none",
-          }}
-        >
-          {item.cta}
-          <ArrowRight size={15} />
-        </Link>
-      </div>
+      <h3
+        style={{
+          margin: "0 0 8px",
+          fontFamily: FONT,
+          fontSize: 15,
+          fontWeight: 700,
+          color: "#202223",
+          lineHeight: 1.35,
+        }}
+      >
+        {item.title}
+      </h3>
+      <p
+        style={{
+          margin: 0,
+          flex: 1,
+          fontFamily: FONT,
+          fontSize: 12,
+          fontWeight: 400,
+          color: "#6d7175",
+          lineHeight: 1.5,
+        }}
+      >
+        {item.description}
+      </p>
+      <Link
+        to={href}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          marginTop: 14,
+          padding: "7px 11px",
+          width: "fit-content",
+          borderRadius: 8,
+          border: `1px solid ${SURFACE_BORDER}`,
+          background: "#fff",
+          color: "#202223",
+          fontFamily: FONT,
+          fontSize: 12,
+          fontWeight: 600,
+          textDecoration: "none",
+        }}
+      >
+        {item.cta}
+        <ArrowRight size={13} strokeWidth={2.25} />
+      </Link>
     </article>
   );
 }
 
 export function WhatsNewSection({ resolveHref }) {
   return (
-    <section style={{ marginTop: 28 }}>
+    <section style={{ marginTop: 24 }}>
       <h2
         style={{
-          margin: "0 0 16px",
+          margin: "0 0 12px",
           fontFamily: FONT,
-          fontSize: 22,
-          fontWeight: 900,
+          fontSize: 18,
+          fontWeight: 800,
           color: "#202223",
         }}
       >
         What is new
       </h2>
+
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: 16,
+          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+          gap: 12,
         }}
       >
         {WHATS_NEW_ITEMS.map((item) => (
