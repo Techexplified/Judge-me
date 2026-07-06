@@ -9,58 +9,62 @@
         --tw-text:#1e293b; 
         --tw-card-bg:#fff; 
         --tw-radius:16px; 
+        max-width: 1200px;      /* NEW: cap width */
         width: 100%; 
-        margin: 0 auto;
-        padding: 40px 0; /* Vertical padding only */
+        margin: 0 auto;         /* NEW: centers within parent */
+        padding: 40px 0;
         box-sizing: border-box; 
         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; 
     }
 
-    .testimonials-heading { font-size:28px; font-weight:700; color:var(--tw-text); text-align:center; margin:0 0 32px;font-family: inherit !important; }
+    .testimonials-heading { 
+        font-size:28px; font-weight:700; color:var(--tw-text); text-align:center; margin:0 0 32px; 
+        font-family: inherit;   /* NEW: force inherit, beats theme h2 rules */
+    }
     
-.testimonials-carousel {
-    position: relative;
-    width: 100%;
-    padding: 0 60px;
-    box-sizing: border-box;
-    overflow: hidden;          /* NEW: viewport clips here */
-}
+    .testimonials-carousel { 
+        position: relative; 
+        display: block; 
+        width: 100%; 
+        padding: 0 60px; 
+        box-sizing: border-box;
+        overflow: hidden;       /* NEW: viewport clips, doesn't scroll */
+    }
     
-.testimonials-track {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 24px;
-    overflow-x: auto;          /* CHANGED: was hidden, now scrolls */
-    scroll-behavior: smooth;
-    scroll-snap-type: x mandatory;   /* NEW */
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-    width: 100%;
-    padding: 10px 0;
-    margin: 0;
-    box-sizing: border-box;
-}
-.testimonials-track::-webkit-scrollbar { display: none; }  /* NEW: hide scrollbar */
+    .testimonials-track { 
+        display: flex; 
+        flex-wrap: nowrap;
+        gap: 24px; 
+        overflow-x: auto;       /* CHANGED: was hidden, now scrolls */
+        scroll-behavior: smooth; 
+        scroll-snap-type: x mandatory;  /* NEW */
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+        width: 100%; 
+        padding: 10px 0; 
+        margin: 0;
+        box-sizing: border-box; 
+    }
+    .testimonials-track::-webkit-scrollbar { display: none; }  /* NEW */
     
-  .testimonial-card {
-    flex: 0 0 calc((100% - ((var(--per-view) - 1) * 24px)) / var(--per-view));
-    width: calc((100% - ((var(--per-view) - 1) * 24px)) / var(--per-view));
-    max-width: calc((100% - ((var(--per-view) - 1) * 24px)) / var(--per-view));
-    scroll-snap-align: start;   /* NEW */
-    box-sizing: border-box;
-    background: var(--tw-card-bg);
-    border: 1px solid #f1f5f9;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.02);
-    border-radius: var(--tw-radius);
-    padding: 28px;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-}
+    .testimonial-card { 
+        flex: 0 0 calc((100% - ((var(--per-view) - 1) * 24px)) / var(--per-view)); 
+        width: calc((100% - ((var(--per-view) - 1) * 24px)) / var(--per-view)); 
+        max-width: calc((100% - ((var(--per-view) - 1) * 24px)) / var(--per-view)); 
+        scroll-snap-align: start;  /* NEW */
+        box-sizing: border-box; 
+        background: var(--tw-card-bg); 
+        border: 1px solid #f1f5f9; 
+        box-shadow: 0 4px 20px rgba(0,0,0,0.02); 
+        border-radius: var(--tw-radius); 
+        padding: 28px; 
+        display: flex; 
+        flex-direction: column; 
+        position: relative; 
+    }
     
-    /* Original Card Styling Restored */
     .testimonial-card::before { 
-        content: "?"; 
+        content: "\u201c"; 
         position: absolute; 
         left: 28px; 
         top: 64px; 
@@ -71,7 +75,7 @@
         font-weight: bold; 
     }
     
-    .stars { color: var(--tw-star,#6366f1); font-size: 16px; letter-spacing: 2px; margin-bottom: 12px; display: block; }
+    .stars { color: var(--tw-star,#6366f1); font-size: 16px; letter-spacing: 2px; margin-bottom: 12px; display: block; font-family: inherit; }
     
     .verified-badge { 
         position: absolute; 
@@ -87,15 +91,15 @@
         padding: 4px 12px; 
         border-radius: 999px; 
         margin: 0; 
+        font-family: inherit;
     }
     
-    .comment { color: #334155; font-size: 15px; line-height: 1.6; flex: 1; margin: 40px 0 24px 0; text-align: left; }
-    .reviewer { display: flex; align-items: center; gap: 12px; border-top: 1px solid #f8fafc; padding-top: 20px; }
-    .avatar { width: 44px; height: 44px; border-radius: 50%; background: #e2e8f0; color: #475569; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; flex-shrink: 0; }
-    .name { font-weight: 700; color: var(--tw-text); font-size: 15px; margin-bottom: 2px; }
-    .sub { color: #94a3b8; font-size: 13px; }
+    .comment { color: #334155; font-size: 15px; line-height: 1.6; flex: 1; margin: 40px 0 24px 0; text-align: left; font-family: inherit; }
+    .reviewer { display: flex; align-items: center; gap: 12px; border-top: 1px solid #f8fafc; padding-top: 20px; font-family: inherit; }
+    .avatar { width: 44px; height: 44px; border-radius: 50%; background: #e2e8f0; color: #475569; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; flex-shrink: 0; font-family: inherit; }
+    .name { font-weight: 700; color: var(--tw-text); font-size: 15px; margin-bottom: 2px; font-family: inherit; }
+    .sub { color: #94a3b8; font-size: 13px; font-family: inherit; }
     
-    /* Arrow Positioning */
     .prev-btn, .next-btn { 
         position: absolute; 
         top: 50%; 
@@ -133,9 +137,9 @@
 
     function getPerView(root) {
         const width = root.offsetWidth;
-        if (width < 640) return 1;
-        if (width < 900) return 2;
-        return 3;   // CHANGED: cap at 3 instead of jumping to 4
+        if (width < 640) return 1;   // Mobile
+        if (width < 900) return 2;   // Tablet
+        return 3;                   // CHANGED: capped at 3, no 4th tier
     }
 
     function initCarousel(root, config) {
@@ -195,6 +199,7 @@
         renderDots();
         goToPage(0);
 
+        // NEW: ResizeObserver replaces window resize listener — catches container-driven size changes too
         const ro = new ResizeObserver(() => {
             updateLayout();
             renderDots();
@@ -207,7 +212,7 @@
         const full = Math.round(rating) || 0;
         let html = "";
         for (let i = 1; i <= 5; i++) {
-            html += i <= full ? "?" : "?";
+            html += i <= full ? "\u2605" : "\u2606";
         }
         return html;
     }
@@ -216,7 +221,7 @@
         const stars = buildStarsHtml(review.rating);
         const initials = getInitials({ name: review.author });
         const badgeHtml = config.showVerifiedBadge
-            ? `<span class="verified-badge">? ${config.verifiedBadgeText}</span>`
+            ? `<span class="verified-badge">\u2713 ${config.verifiedBadgeText}</span>`
             : "";
         return `
             <div class="testimonial-card">
@@ -260,18 +265,18 @@
         initCarousel(root, config);
     }
 
- function applyConfigVars(root, config) {
-    root.style.setProperty("--tw-accent", config.accentColor);
-    root.style.setProperty("--tw-star", config.starColor);
-    root.style.setProperty("--tw-text", config.textColor);
-    root.style.setProperty("--tw-radius", `${config.borderRadius}px`);
-    if (config.fontFamily && config.fontFamily !== "inherit") {
-        root.style.setProperty("font-family", config.fontFamily);
+    function applyConfigVars(root, config) {
+        root.style.setProperty("--tw-accent", config.accentColor);
+        root.style.setProperty("--tw-star", config.starColor);
+        root.style.setProperty("--tw-text", config.textColor);
+        root.style.setProperty("--tw-radius", `${config.borderRadius}px`);
+        if (config.fontFamily && config.fontFamily !== "inherit") {
+            root.style.setProperty("font-family", config.fontFamily);
+        }
+        root.style.setProperty("padding", `${config.sectionPadding}px 20px`);
+        const headingEl = root.querySelector(".testimonials-heading");
+        if (headingEl) headingEl.style.fontSize = `${config.headingFontSize}px`;
     }
-    root.style.setProperty("padding", `${config.sectionPadding}px 20px`);
-    const headingEl = root.querySelector(".testimonials-heading");
-    if (headingEl) headingEl.style.fontSize = `${config.headingFontSize}px`;
-}
 
     function getAppConfig() {
         return window.__JUDGEME__?.config?.testimonials || null;
@@ -283,7 +288,7 @@
 
         try {
             const res = await fetch(
-                `${API}/api/public/settings?shop=${encodeURIComponent(shop)}`
+                `${API}/api/public/settings?shop=${encodeURIComponent(shop)}&t=${Date.now()}`
             );
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
@@ -332,7 +337,7 @@
 
         try {
             const res = await fetch(
-                `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=store&limit=${config.limit}`
+                `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=store&limit=${config.limit}&t=${Date.now()}`
             );
 
             if (!res.ok) {
