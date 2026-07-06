@@ -199,7 +199,7 @@
         renderDots();
         goToPage(0);
 
-        // NEW: ResizeObserver replaces window resize listener — catches container-driven size changes too
+        // NEW: ResizeObserver replaces window resize listener ? catches container-driven size changes too
         const ro = new ResizeObserver(() => {
             updateLayout();
             renderDots();
@@ -288,7 +288,7 @@
 
         try {
             const res = await fetch(
-                `${API}/api/public/settings?shop=${encodeURIComponent(shop)}&t=${Date.now()}`
+                `${API}/api/public/settings?shop=${encodeURIComponent(shop)}`
             );
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
@@ -337,7 +337,7 @@
 
         try {
             const res = await fetch(
-                `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=store&limit=${config.limit}&t=${Date.now()}`
+                `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=store&limit=${config.limit}`
             );
 
             if (!res.ok) {
