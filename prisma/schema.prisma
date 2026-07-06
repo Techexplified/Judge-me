@@ -50,6 +50,9 @@ model Review {
 
   @@index([shop])
   @@index([shop, createdAt])
+  @@index([shop, status, createdAt])
+  @@index([shop, productId, status, createdAt])
+  @@index([shop, status, rating])
 }
 
 model ReviewMedia {
@@ -64,6 +67,7 @@ model ReviewMedia {
   createdAt DateTime @default(now())
 
   @@index([reviewId])
+  @@index([reviewId, type])
 }
 
 model Settings {
@@ -134,6 +138,8 @@ model GroupStoreLink {
 
   // Relations
   group        StoreGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
 }
 
 // Cached product details to facilitate efficient SKU/Handle matching without making live Shopify API calls
@@ -149,4 +155,6 @@ model ProductIndex {
   @@unique([shop, productId])
   @@index([sku])
   @@index([handle])
+  @@index([shop, sku])
+  @@index([shop, handle])
 }

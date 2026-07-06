@@ -20,6 +20,24 @@ import {
 import { loadOnsiteWidgetMetrics } from "../lib/collect-reviews.server.js";
 
 const STORE_REVIEW_PRODUCT_IDS = new Set(["store", "shop", "store-review"]);
+const PERFORMANCE_REVIEW_SELECT = {
+  id: true,
+  shop: true,
+  productId: true,
+  productName: true,
+  productImage: true,
+  rating: true,
+  title: true,
+  comment: true,
+  author: true,
+  status: true,
+  reply: true,
+  replyDate: true,
+  originalComment: true,
+  originalTitle: true,
+  translatedLang: true,
+  createdAt: true,
+};
 
 export function isStoreReview(review) {
   const pid = String(review.productId ?? "").trim().toLowerCase();
@@ -148,7 +166,7 @@ export async function loadPerformanceOverviewData({ request, session, admin }) {
   const reviewsAll = await db.review.findMany({
     where: { shop: { in: targetShops } },
     orderBy: { createdAt: "desc" },
-    select: REVIEW_LIST_SELECT,
+    select: PERFORMANCE_REVIEW_SELECT,
   });
 
   const productReviews = reviewsAll.filter((r) => !isStoreReview(r));

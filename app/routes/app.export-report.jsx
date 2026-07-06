@@ -18,6 +18,25 @@ import {
 } from "../lib/billing.server.js";
 import { getGroupShopList } from "../lib/store-group.server";
 
+const REPORT_REVIEW_SELECT = {
+  id: true,
+  shop: true,
+  productId: true,
+  productName: true,
+  productImage: true,
+  rating: true,
+  title: true,
+  comment: true,
+  author: true,
+  status: true,
+  reply: true,
+  replyDate: true,
+  originalComment: true,
+  originalTitle: true,
+  translatedLang: true,
+  createdAt: true,
+};
+
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
@@ -49,13 +68,16 @@ export const loader = async ({ request }) => {
   const openRouterKey = getResolvedOpenRouterKey();
 
   const targetShops = await getGroupShopList(shop);
-  const reviewsAll = await db.review.findMany({
-    where: { shop: { in: targetShops } },
-    orderBy: { createdAt: "desc" },
-  });
-
   const now = new Date();
   const rangeStart = rangeStartFromKey(now, rangeKey);
+  const reviewsAll = await db.review.findMany({
+    where: {
+      shop: { in: targetShops },
+      ...(rangeStart ? { createdAt: { gte: rangeStart } } : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    select: REPORT_REVIEW_SELECT,
+  });
   const scopedReviews = filterReviewsByRangeStart(reviewsAll, rangeStart);
 
   const {

@@ -45,7 +45,7 @@
     if (!window.__JUDGEME__?.config?.videoSlider) {
       try {
         const settingsRes = await fetch(
-          `${API}/api/public/settings?shop=${encodeURIComponent(shop)}&t=${Date.now()}`,
+          `${API}/api/public/settings?shop=${encodeURIComponent(shop)}`,
         );
         const settingsData = await settingsRes.json();
         if (settingsData?.config) {

@@ -14,6 +14,22 @@ import {
 } from "../lib/billing.server.js";
 import { getGroupShopList } from "../lib/store-group.server";
 
+const CSV_REVIEW_SELECT = {
+  id: true,
+  shop: true,
+  productId: true,
+  productName: true,
+  rating: true,
+  title: true,
+  comment: true,
+  author: true,
+  email: true,
+  status: true,
+  reply: true,
+  replyDate: true,
+  createdAt: true,
+};
+
 function escapeCsvCell(value) {
   const s = value == null ? "" : String(value);
   if (/[",\n\r]/.test(s)) {
@@ -40,13 +56,16 @@ export const loader = async ({ request }) => {
   }
 
   const targetShops = await getGroupShopList(shop);
-  const reviewsAll = await db.review.findMany({
-    where: { shop: { in: targetShops } },
-    orderBy: { createdAt: "desc" },
-  });
-
   const now = new Date();
   const rangeStart = rangeStartFromKey(now, rangeKey);
+  const reviewsAll = await db.review.findMany({
+    where: {
+      shop: { in: targetShops },
+      ...(rangeStart ? { createdAt: { gte: rangeStart } } : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    select: CSV_REVIEW_SELECT,
+  });
   const scopedReviews = filterReviewsByRangeStart(reviewsAll, rangeStart);
 
   const headers = [

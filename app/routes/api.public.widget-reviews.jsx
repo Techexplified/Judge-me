@@ -1,7 +1,13 @@
 import db from "../db.server";
 import { getActiveTranslationContext, storefrontReviewText } from "../lib/review-translation.server.js";
 import { attachPublicMediaUrls } from "../lib/review-media.server.js";
-import { isStoreReview } from "../utils/performance-metrics.server.js";
+import {
+  getPublicCache,
+  publicCacheHeaders,
+  publicCacheKey,
+  setPublicCache,
+} from "../lib/public-cache.server.js";
+import { productIdMatchList } from "../utils/product-id.server.js";
 import { normalizeShopDomain } from "../utils/shop.server";
 
 const corsHeaders = {
@@ -11,9 +17,48 @@ const corsHeaders = {
 };
 
 const PUBLISHED_STATUSES = ["PUBLISHED", "APPROVED"];
+const STORE_REVIEW_PRODUCT_IDS = ["store", "shop", "store-review"];
 
-function computeSummary(reviews) {
-  const total = reviews.length;
+function storeReviewWhere() {
+  return {
+    OR: [
+      { productId: { in: STORE_REVIEW_PRODUCT_IDS } },
+      { productName: { equals: "store review", mode: "insensitive" } },
+      { productName: { equals: "store reviews", mode: "insensitive" } },
+    ],
+  };
+}
+
+function productReviewWhere(productId) {
+  if (productId) {
+    const ids = productIdMatchList(productId);
+    return ids.length
+      ? { productId: { in: ids }, NOT: storeReviewWhere() }
+      : { productId: "__never_match__", NOT: storeReviewWhere() };
+  }
+  return { NOT: storeReviewWhere() };
+}
+
+function scopeWhere(scope, productId) {
+  if (scope === "store") return storeReviewWhere();
+  if (scope === "product") return productReviewWhere(productId);
+  return {};
+}
+
+function mediaWhere(media) {
+  if (media === "video") return { media: { some: { type: "video" } } };
+  if (media === "photo") return { media: { some: { type: "image" } } };
+  return {};
+}
+
+function combineWhere(...parts) {
+  const cleaned = parts.filter((part) => part && Object.keys(part).length > 0);
+  if (cleaned.length === 0) return {};
+  if (cleaned.length === 1) return cleaned[0];
+  return { AND: cleaned };
+}
+
+function computeSummary(total, average, ratingGroups) {
   if (total === 0) {
     return {
       average: 0,
@@ -22,41 +67,15 @@ function computeSummary(reviews) {
     };
   }
   const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-  let sum = 0;
-  for (const r of reviews) {
-    const rating = Math.min(5, Math.max(1, Number(r.rating) || 0));
-    if (rating >= 1 && rating <= 5) distribution[rating] += 1;
-    sum += rating;
+  for (const group of ratingGroups) {
+    const rating = Math.min(5, Math.max(1, Number(group.rating) || 0));
+    if (rating >= 1 && rating <= 5) distribution[rating] += Number(group.count) || 0;
   }
   return {
-    average: Math.round((sum / total) * 10) / 10,
+    average: Math.round((Number(average) || 0) * 10) / 10,
     total,
     distribution,
   };
-}
-
-function filterByMedia(reviews, media) {
-  if (media === "video") {
-    return reviews.filter((r) => (r.media || []).some((m) => m.type === "video"));
-  }
-  if (media === "photo") {
-    return reviews.filter((r) => (r.media || []).some((m) => m.type === "image"));
-  }
-  return reviews;
-}
-
-function filterByScope(reviews, scope, productId) {
-  if (scope === "store") {
-    return reviews.filter((r) => isStoreReview(r));
-  }
-  if (scope === "product" && productId) {
-    const pid = String(productId).trim();
-    return reviews.filter((r) => !isStoreReview(r) && String(r.productId) === pid);
-  }
-  if (scope === "product") {
-    return reviews.filter((r) => !isStoreReview(r));
-  }
-  return reviews;
 }
 
 function serializeReview(r, active, translation) {
@@ -76,7 +95,7 @@ function serializeReview(r, active, translation) {
     replyDate: r.replyDate,
     createdAt: r.createdAt,
     media: r.media,
-    isStoreReview: isStoreReview(r),
+    isStoreReview: STORE_REVIEW_PRODUCT_IDS.includes(String(r.productId ?? "").toLowerCase()),
   };
 }
 
@@ -100,58 +119,109 @@ export async function loader({ request }) {
   const media = url.searchParams.get("media") || "all";
   const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
   const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
+  const cacheKey = publicCacheKey(request, "widget-reviews");
+  const cached = getPublicCache(cacheKey);
+  if (cached) {
+    return new Response(cached, {
+      headers: {
+        ...corsHeaders,
+        ...publicCacheHeaders(true),
+        "Content-Type": "application/json",
+      },
+    });
+  }
 
-  const allReviews = await db.review.findMany({
-    where: {
-      shop: shopNorm,
-      status: { in: PUBLISHED_STATUSES },
-    },
-    orderBy: { createdAt: "desc" },
-    include: {
-      media: {
-        orderBy: { createdAt: "asc" },
-        select: {
-          id: true,
-          type: true,
-          mimeType: true,
-          filename: true,
+  const baseWhere = { shop: shopNorm, status: { in: PUBLISHED_STATUSES } };
+  const scopedWhere = combineWhere(baseWhere, scopeWhere(scope, productId));
+  const pagedWhere = combineWhere(scopedWhere, mediaWhere(media));
+
+  const [
+    page,
+    filteredTotal,
+    aggregate,
+    ratingGroups,
+    photoCount,
+    videoCount,
+    productCount,
+    storeCount,
+  ] = await Promise.all([
+    db.review.findMany({
+      where: pagedWhere,
+      orderBy: { createdAt: "desc" },
+      skip: offset,
+      take: limit,
+      include: {
+        media: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            type: true,
+            mimeType: true,
+            filename: true,
+          },
         },
       },
-    },
-  });
+    }),
+    db.review.count({ where: pagedWhere }),
+    db.review.aggregate({
+      where: scopedWhere,
+      _count: { _all: true },
+      _avg: { rating: true },
+    }),
+    db.review.groupBy({
+      by: ["rating"],
+      where: scopedWhere,
+      _count: { _all: true },
+    }),
+    db.review.count({ where: combineWhere(scopedWhere, mediaWhere("photo")) }),
+    db.review.count({ where: combineWhere(scopedWhere, mediaWhere("video")) }),
+    db.review.count({ where: combineWhere(baseWhere, productReviewWhere()) }),
+    db.review.count({ where: combineWhere(baseWhere, storeReviewWhere()) }),
+  ]);
 
-  const scoped = filterByScope(allReviews, scope, productId);
-  const withMediaFilter = filterByMedia(scoped, media);
-  const summary = computeSummary(scoped);
+  const summary = computeSummary(
+    aggregate._count._all,
+    aggregate._avg.rating,
+    ratingGroups.map((group) => ({ rating: group.rating, count: group._count._all })),
+  );
 
   const filters = {
-    all: scoped.length,
-    photos: filterByMedia(scoped, "photo").length,
-    videos: filterByMedia(scoped, "video").length,
-    product: filterByScope(allReviews, "product").length,
-    store: filterByScope(allReviews, "store").length,
+    all: summary.total,
+    photos: photoCount,
+    videos: videoCount,
+    product: productCount,
+    store: storeCount,
   };
 
-  const page = withMediaFilter.slice(offset, offset + limit);
   const withUrls = attachPublicMediaUrls(request, page);
 
   const { active, translation } = await getActiveTranslationContext(shopNorm);
   const reviews = withUrls.map((r) => serializeReview(r, active, translation));
 
-  return new Response(
-    JSON.stringify({
+  const body = JSON.stringify({
       reviews,
       summary,
       filters,
       pagination: {
         offset,
         limit,
-        total: withMediaFilter.length,
-        hasMore: offset + limit < withMediaFilter.length,
+        total: filteredTotal,
+        hasMore: offset + limit < filteredTotal,
       },
-    }),
-    {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+  setPublicCache(cacheKey, body, {
+    tags: [
+      `reviews:${shopNorm}`,
+      ...productIdMatchList(productId).map((id) => `reviews:${shopNorm}:product:${id}`),
+    ],
+  });
+
+  return new Response(body, {
+    headers: {
+      ...corsHeaders,
+      ...publicCacheHeaders(false),
+      "Content-Type": "application/json",
     },
-  );
+  });
 }

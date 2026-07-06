@@ -4,6 +4,7 @@ import { normalizeShopDomain } from "../utils/shop.js";
 import { getGroupShopList } from "../lib/store-group.server.js";
 import { getResolvedOpenRouterKey } from "../lib/openrouter.server.js";
 import { hasProAccess, serializePlanStatus } from "../lib/billing.server.js";
+import { invalidatePublicCacheTags } from "../lib/public-cache.server.js";
 import { REVIEW_LIST_SELECT } from "../lib/review-query.shared.js";
 import { getTranslationSettings } from "../lib/review-translation.shared.js";
 import { isStoreReview } from "../utils/performance-metrics.server.js";
@@ -321,6 +322,10 @@ export async function handleReviewsManagementAction(requestOrCtx) {
     where: { id: reviewId },
     data: { reply: trimmed, replyDate: new Date() },
   });
+  invalidatePublicCacheTags([
+    `reviews:${existing.shop}`,
+    `reviews:${existing.shop}:product:${existing.productId}`,
+  ]);
   return { ok: true, reviewId, reply: trimmed };
   } catch (error) {
     console.error("[reviews-management] action failed:", error);

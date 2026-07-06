@@ -60,7 +60,7 @@
     
     /* Original Card Styling Restored */
     .testimonial-card::before { 
-        content: "“"; 
+        content: "?"; 
         position: absolute; 
         left: 28px; 
         top: 64px; 
@@ -207,7 +207,7 @@
         const full = Math.round(rating) || 0;
         let html = "";
         for (let i = 1; i <= 5; i++) {
-            html += i <= full ? "★" : "☆";
+            html += i <= full ? "?" : "?";
         }
         return html;
     }
@@ -216,7 +216,7 @@
         const stars = buildStarsHtml(review.rating);
         const initials = getInitials({ name: review.author });
         const badgeHtml = config.showVerifiedBadge
-            ? `<span class="verified-badge">✓ ${config.verifiedBadgeText}</span>`
+            ? `<span class="verified-badge">? ${config.verifiedBadgeText}</span>`
             : "";
         return `
             <div class="testimonial-card">
@@ -283,7 +283,7 @@
 
         try {
             const res = await fetch(
-                `${API}/api/public/settings?shop=${encodeURIComponent(shop)}&t=${Date.now()}`
+                `${API}/api/public/settings?shop=${encodeURIComponent(shop)}`
             );
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
@@ -332,7 +332,7 @@
 
         try {
             const res = await fetch(
-                `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=store&limit=${config.limit}&t=${Date.now()}`
+                `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=store&limit=${config.limit}`
             );
 
             if (!res.ok) {

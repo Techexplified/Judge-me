@@ -9,7 +9,7 @@
 
   window.__JUDGEME__ = { ...cfg, shop, apiBase: API, ready: true };
 
-  fetch(`${API}/api/public/settings?shop=${encodeURIComponent(shop)}&t=${Date.now()}`)
+  fetch(`${API}/api/public/settings?shop=${encodeURIComponent(shop)}`)
     .then((r) => (r.ok ? r.json() : null))
     .then((data) => {
       if (data?.config) {

@@ -4,7 +4,6 @@ import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { normalizeShopDomain } from "../utils/shop.js";
 import { getGroupShopList } from "../lib/store-group.server";
-import { REVIEW_LIST_SELECT } from "../lib/review-query.shared.js";
 import {
   hasProAccess,
   serializePlanStatus,
@@ -19,6 +18,25 @@ import {
   rangeStartFromKey,
 } from "../utils/dashboard-metrics.server.js";
 import { AnalyticsPageContent } from "../components/analytics/analytics-page.jsx";
+
+const ANALYTICS_REVIEW_SELECT = {
+  id: true,
+  shop: true,
+  productId: true,
+  productName: true,
+  productImage: true,
+  rating: true,
+  title: true,
+  comment: true,
+  author: true,
+  status: true,
+  reply: true,
+  replyDate: true,
+  originalComment: true,
+  originalTitle: true,
+  translatedLang: true,
+  createdAt: true,
+};
 
 function computeWeeklySnapshot(reviewsAll) {
   const referenceDate = new Date();
@@ -116,7 +134,7 @@ export const loader = async ({ request }) => {
   const reviewsAll = await db.review.findMany({
     where: { shop: { in: targetShops } },
     orderBy: { createdAt: "desc" },
-    select: REVIEW_LIST_SELECT,
+    select: ANALYTICS_REVIEW_SELECT,
   });
 
   const now = new Date();

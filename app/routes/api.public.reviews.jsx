@@ -1,6 +1,13 @@
 import db from "../db.server";
 import { emitReviewCollectedFlowTrigger } from "../lib/flow-review-trigger.server";
 import {
+  getPublicCache,
+  invalidatePublicCacheTags,
+  publicCacheHeaders,
+  publicCacheKey,
+  setPublicCache,
+} from "../lib/public-cache.server.js";
+import {
   getActiveTranslationContext,
   storefrontReviewText,
   maybeAutoTranslateReviewData,
@@ -18,6 +25,34 @@ const corsHeaders = {
 };
 
 const PUBLISHED_STATUSES = ["PUBLISHED", "APPROVED"];
+
+const PUBLIC_REVIEW_SELECT = {
+  id: true,
+  shop: true,
+  productId: true,
+  productName: true,
+  productImage: true,
+  rating: true,
+  title: true,
+  comment: true,
+  author: true,
+  status: true,
+  reply: true,
+  replyDate: true,
+  originalComment: true,
+  originalTitle: true,
+  translatedLang: true,
+  createdAt: true,
+  media: {
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      type: true,
+      mimeType: true,
+      filename: true,
+    },
+  },
+};
 
 /** Non-blocking post-create work (translation + Flow). Never blocks the submit response. */
 async function runPostReviewCreateTasks(shopNorm, created, reviewData) {
@@ -41,6 +76,10 @@ async function runPostReviewCreateTasks(shopNorm, created, reviewData) {
           translatedLang: translatedData.translatedLang ?? null,
         },
       });
+      invalidatePublicCacheTags([
+        `reviews:${shopNorm}`,
+        `reviews:${shopNorm}:product:${created.productId}`,
+      ]);
     }
   } catch (err) {
     console.error("[api.public.reviews] post-create translate failed (non-fatal):", err);
@@ -96,6 +135,8 @@ export async function loader({ request }) {
   const url = new URL(request.url);
   const productId = url.searchParams.get("productId");
   const shop = url.searchParams.get("shop");
+  const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || 50));
+  const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
 
   if (!productId || !shop) {
     return new Response("Missing params", {
@@ -108,7 +149,23 @@ export async function loader({ request }) {
   const idVariants = productIdMatchList(productId);
   if (idVariants.length === 0) {
     return new Response(JSON.stringify([]), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: {
+        ...corsHeaders,
+        ...publicCacheHeaders(false),
+        "Content-Type": "application/json",
+      },
+    });
+  }
+
+  const cacheKey = publicCacheKey(request, "product-reviews");
+  const cached = getPublicCache(cacheKey);
+  if (cached) {
+    return new Response(cached, {
+      headers: {
+        ...corsHeaders,
+        ...publicCacheHeaders(true),
+        "Content-Type": "application/json",
+      },
     });
   }
 
@@ -119,7 +176,13 @@ export async function loader({ request }) {
   try {
     const link = await db.groupStoreLink.findUnique({
       where: { shop: shopNorm },
-      include: { group: { include: { members: true } } },
+      select: {
+        group: {
+          select: {
+            members: { select: { shop: true } },
+          },
+        },
+      },
     });
 
     if (link?.group) {
@@ -130,6 +193,7 @@ export async function loader({ request }) {
       if (sisterShops.length > 0) {
         const productIndex = await db.productIndex.findFirst({
           where: { shop: shopNorm, productId: { in: idVariants } },
+          select: { sku: true, handle: true },
         });
 
         let matchingProducts = [];
@@ -140,6 +204,7 @@ export async function loader({ request }) {
               shop: { in: sisterShops },
               sku: productIndex.sku,
             },
+            select: { shop: true, productId: true },
           });
         } else if (productIndex?.handle) {
           matchingProducts = await db.productIndex.findMany({
@@ -147,6 +212,7 @@ export async function loader({ request }) {
               shop: { in: sisterShops },
               handle: productIndex.handle,
             },
+            select: { shop: true, productId: true },
           });
         }
 
@@ -164,17 +230,9 @@ export async function loader({ request }) {
       status: { in: PUBLISHED_STATUSES },
     },
     orderBy: { createdAt: "desc" },
-    include: {
-      media: {
-        orderBy: { createdAt: "asc" },
-        select: {
-          id: true,
-          type: true,
-          mimeType: true,
-          filename: true,
-        },
-      },
-    },
+    skip: offset,
+    take: limit,
+    select: PUBLIC_REVIEW_SELECT,
   });
 
   const { active, translation } = await getActiveTranslationContext(shopNorm);
@@ -202,8 +260,20 @@ export async function loader({ request }) {
     };
   });
 
-  return new Response(JSON.stringify(payload), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  const body = JSON.stringify(payload);
+  setPublicCache(cacheKey, body, {
+    tags: [
+      `reviews:${shopNorm}`,
+      ...idVariants.map((id) => `reviews:${shopNorm}:product:${id}`),
+    ],
+  });
+
+  return new Response(body, {
+    headers: {
+      ...corsHeaders,
+      ...publicCacheHeaders(false),
+      "Content-Type": "application/json",
+    },
   });
 }
 
@@ -342,6 +412,12 @@ export async function action({ request }) {
       const { saveReviewMedia } = await import("../lib/review-media.server.js");
       await saveReviewMedia(created.id, mediaFiles);
     }
+
+    invalidatePublicCacheTags([
+      `reviews:${shopNorm}`,
+      `reviews:${shopNorm}:product:${pid}`,
+      `reviews:${shopNorm}:product:${productId}`,
+    ]);
 
     // Return immediately — auto-translate and Flow triggers run after the response.
     void runPostReviewCreateTasks(shopNorm, created, reviewData);

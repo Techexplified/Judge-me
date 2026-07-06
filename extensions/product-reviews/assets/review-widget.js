@@ -142,21 +142,6 @@
       .trim();
   }
 
-  function resolveRatingPageTitle(cfg, context) {
-    const item = (context.item || "").trim();
-    const ctx = item ? context : { ...context, item: "this product" };
-    return resolveFormText(cfg.ratingPageTitle, ctx) || DEFAULT_CFG.ratingPageTitle;
-  }
-
-  function getVisibleFlowSteps(cfg) {
-    const steps = ["rating"];
-    if (cfg.showWrittenReviews !== false) steps.push("written");
-    if (cfg.showPhotos !== false) steps.push("photo");
-    if (cfg.showVideos !== false) steps.push("video");
-    steps.push("submit");
-    return steps;
-  }
-
   function deriveInactiveStarColor(starColor) {
     const hex = normalizeHex(starColor);
     if (!hex) return DEFAULT_CFG.inactiveStarColor;
@@ -277,10 +262,6 @@
       svgStrokeWidth: 0,
       fontSizeScale: 1,
     };
-  }
-
-  function starChar(index, rating, cfg) {
-    return resolveStarDisplay(index, rating, cfg).glyph;
   }
 
   function starsHtml(rating, cfg) {
@@ -892,12 +873,12 @@
 
     try {
       const [settingsRes, reviewsRes, storeMetaRes] = await Promise.all([
-        fetch(`${API}/api/public/settings?shop=${encodeURIComponent(shop)}&t=${Date.now()}`),
+        fetch(`${API}/api/public/settings?shop=${encodeURIComponent(shop)}`),
         fetch(
-          `${API}/api/public/reviews?productId=${encodeURIComponent(productId)}&shop=${encodeURIComponent(shop)}&t=${Date.now()}`,
+          `${API}/api/public/reviews?productId=${encodeURIComponent(productId)}&shop=${encodeURIComponent(shop)}&limit=50`,
         ),
         fetch(
-          `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=store&limit=50&t=${Date.now()}`,
+          `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=store&limit=50`,
         ),
       ]);
 

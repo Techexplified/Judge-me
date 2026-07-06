@@ -1,4 +1,10 @@
 import db from "../db.server";
+import {
+  getPublicCache,
+  publicCacheHeaders,
+  publicCacheKey,
+  setPublicCache,
+} from "../lib/public-cache.server.js";
 import { normalizeShopDomain } from "../utils/shop.server";
 import { stripSensitiveFromConfig } from "../lib/settings.server";
 
@@ -14,6 +20,20 @@ export const loader = async ({ request }) => {
   }
 
   const shop = normalizeShopDomain(shopRaw);
+  const cacheKey = publicCacheKey(request, "public-settings");
+  const cached = getPublicCache(cacheKey);
+  if (cached) {
+    return new Response(cached, {
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        ...publicCacheHeaders(true),
+      },
+    });
+  }
+
   const settings = await db.settings.findUnique({
     where: { shop },
   });
@@ -27,16 +47,16 @@ export const loader = async ({ request }) => {
     }
   }
 
-  return new Response(JSON.stringify({ config }), {
+  const body = JSON.stringify({ config });
+  setPublicCache(cacheKey, body, { tags: [`settings:${shop}`] });
+
+  return new Response(body, {
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
-      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-      "Pragma": "no-cache",
-      "Expires": "0",
+      ...publicCacheHeaders(false),
     },
   });
 };
-
