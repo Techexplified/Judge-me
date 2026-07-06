@@ -76,6 +76,7 @@ export function getWidgetCustomizePath(widgetId) {
     "review-showcase": "/app/widgets/review-showcase",
     "video-reviews-slider": "/app/widgets/video-reviews-slider",
     "customers-love-page": "/app/widgets/customers-love-page",
+    "testimonials": "/app/widgets/testimonials",
   };
   return paths[widgetId] || null;
 }

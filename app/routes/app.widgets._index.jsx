@@ -80,6 +80,12 @@ export default function WidgetsIndexRoute() {
         return;
       }
 
+      if (widget.id === "testimonials" && !data.premium) {
+        shopify?.toast?.show?.("Testimonials requires a Pro plan.", { isError: true });
+        embedNavigate("/app/settings");
+        return;
+      }
+
       const url = data.themeEditorUrls?.[widget.id];
       if (!url) {
         shopify?.toast?.show?.("Could not build theme editor link.", { isError: true });

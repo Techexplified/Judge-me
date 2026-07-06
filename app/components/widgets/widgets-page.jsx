@@ -13,6 +13,7 @@ import reviewTranslationImg from "./reviewtranslation.png";
 import videoSliderImg from "./video-slider.png";
 import customerLovePageImg from "./customerlove-page-1.png";
 import testimonialsImg from "./testimonials-1.jpeg";
+import { ProLockedButton } from "../admin-ui";
 
 const FONT =
   "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
@@ -301,6 +302,7 @@ function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlrea
             ) : (
               <span style={{ marginRight: "auto" }} />
             )}
+            <ProLockedButton>
             <button
               type="button"
               onClick={handleAddClick}
@@ -320,6 +322,7 @@ function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlrea
             >
               {isInstalled ? installedLabel : ctaLabel}
             </button>
+            </ProLockedButton>
           </div>
         </div>
       </div>

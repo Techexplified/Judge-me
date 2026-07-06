@@ -103,6 +103,7 @@ export function SocialShowcaseTab({
   photoCandidates,
   summary,
   formAction,
+  onSaveReady,
 }) {
   const shopify = useAppBridge();
   const fetcher = useFetcher();
@@ -147,6 +148,10 @@ export function SocialShowcaseTab({
       { method: "post", action: formAction },
     );
   }, [config, fetcher, formAction]);
+
+  useEffect(() => {
+  onSaveReady?.(() => saveConfig);
+}, [onSaveReady, saveConfig]);
 
   const toggleReview = (reviewId) => {
     const ids = new Set(config.selectedReviewIds || []);

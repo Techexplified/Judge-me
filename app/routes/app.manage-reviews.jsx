@@ -484,6 +484,7 @@ export default function ManageReviews() {
   const [modalReplyMode, setModalReplyMode] = useState(false);
   const [importBanner, setImportBanner] = useState(null);
   const importProcessed = useRef(false);
+  const [saveShowcase,setSaveShowcase] = useState(null);
 
   useEffect(() => {
     if (importProcessed.current) return;
@@ -684,6 +685,7 @@ export default function ManageReviews() {
           photoCandidates={socialShowcase?.photoCandidates ?? []}
           summary={socialShowcase?.summary}
           formAction={replyFormAction}
+          onSaveReady={setSaveShowcase}
         />
       ) : (
         <div
