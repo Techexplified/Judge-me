@@ -2,7 +2,7 @@ import db from "../db.server";
 import { emitReviewCollectedFlowTrigger } from "../lib/flow-review-trigger.server";
 import {
   getPublicCache,
-  invalidatePublicCacheTags,
+  invalidateShopReviewsCache,
   publicCacheHeaders,
   publicCacheKey,
   setPublicCache,
@@ -76,10 +76,7 @@ async function runPostReviewCreateTasks(shopNorm, created, reviewData) {
           translatedLang: translatedData.translatedLang ?? null,
         },
       });
-      invalidatePublicCacheTags([
-        `reviews:${shopNorm}`,
-        `reviews:${shopNorm}:product:${created.productId}`,
-      ]);
+      invalidateShopReviewsCache(shopNorm, [created.productId]);
     }
   } catch (err) {
     console.error("[api.public.reviews] post-create translate failed (non-fatal):", err);
@@ -413,11 +410,7 @@ export async function action({ request }) {
       await saveReviewMedia(created.id, mediaFiles);
     }
 
-    invalidatePublicCacheTags([
-      `reviews:${shopNorm}`,
-      `reviews:${shopNorm}:product:${pid}`,
-      `reviews:${shopNorm}:product:${productId}`,
-    ]);
+    invalidateShopReviewsCache(shopNorm, [pid, productId]);
 
     // Return immediately — auto-translate and Flow triggers run after the response.
     void runPostReviewCreateTasks(shopNorm, created, reviewData);

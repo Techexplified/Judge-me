@@ -1,5 +1,6 @@
 ﻿import db from "../db.server.js";
 import { normalizeShopDomain } from "../utils/shop.js";
+import { invalidateShopSettingsCache } from "./public-cache.server.js";
 import { hasProAccess, serializePlanStatus } from "./billing.server.js";
 import { getResolvedOpenRouterKey } from "./openrouter.server.js";
 import {
@@ -126,6 +127,7 @@ export async function handleTranslationSettingsAction({ request, session }) {
       update: { config: JSON.stringify(nextConfig) },
       create: { shop, config: JSON.stringify(nextConfig) },
     });
+    invalidateShopSettingsCache(shop);
 
     const shouldBulk =
       enabled &&
@@ -204,6 +206,7 @@ export async function handleTranslationSettingsAction({ request, session }) {
       update: { config: JSON.stringify(nextConfig) },
       create: { shop, config: JSON.stringify(nextConfig) },
     });
+    invalidateShopSettingsCache(shop);
 
     return { ok: true, translation: getTranslationSettings(nextConfig) };
   }

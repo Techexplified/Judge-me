@@ -1,6 +1,7 @@
 import db from "../db.server.js";
 import { getResolvedOpenRouterKey } from "./openrouter.server.js";
 import { hasProAccess, getShopPlanStatus } from "./billing.server.js";
+import { invalidateShopReviewsCache } from "./public-cache.server.js";
 import {
   AUTO_DETECT,
   languageLabel,
@@ -219,6 +220,7 @@ async function persistReviewTranslation(review, hit, targetLanguage) {
       translatedLang: targetLanguage,
     },
   });
+  invalidateShopReviewsCache(review.shop, [review.productId]);
   return true;
 }
 
@@ -262,6 +264,8 @@ export async function bulkTranslateShopReviews(
     where: { shop },
     select: {
       id: true,
+      shop: true,
+      productId: true,
       title: true,
       comment: true,
       originalComment: true,
@@ -312,6 +316,8 @@ export async function bulkTranslateShopReviewsBatch(
     where: { shop },
     select: {
       id: true,
+      shop: true,
+      productId: true,
       title: true,
       comment: true,
       originalComment: true,
@@ -380,6 +386,8 @@ export async function translateReviewIds(
     where: { shop, id: { in: reviewIds } },
     select: {
       id: true,
+      shop: true,
+      productId: true,
       title: true,
       comment: true,
       originalComment: true,
@@ -434,6 +442,7 @@ export async function translateSingleReview(
     where: { id: reviewId, shop },
     select: {
       id: true,
+      productId: true,
       title: true,
       comment: true,
       originalComment: true,
@@ -487,6 +496,7 @@ export async function translateSingleReview(
     },
   });
 
+  invalidateShopReviewsCache(shop, [review.productId]);
   return { ok: true, unchanged: false, review: updated };
 }
 

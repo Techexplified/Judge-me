@@ -1,4 +1,5 @@
 import db from "../db.server.js";
+import { invalidateShopReviewsCache } from "./public-cache.server.js";
 
 /**
  * Fingerprint for duplicate detection: author + first 60 chars of comment.
@@ -54,6 +55,7 @@ export async function insertReviewCandidates(shop, productId, candidates) {
 
   if (toInsert.length > 0) {
     await db.review.createMany({ data: toInsert });
+    invalidateShopReviewsCache(shop, [productId]);
   }
 
   return {
@@ -96,6 +98,13 @@ export async function batchInsertReviews(shop, records, existingFingerprints) {
     const chunk = toInsert.slice(i, i + CHUNK);
     await db.review.createMany({ data: chunk });
     imported += chunk.length;
+  }
+
+  if (imported > 0) {
+    invalidateShopReviewsCache(
+      shop,
+      [...new Set(toInsert.map((r) => r.productId).filter(Boolean))],
+    );
   }
 
   return { imported, skipped };

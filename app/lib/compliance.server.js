@@ -1,5 +1,9 @@
 import db from "../db.server.js";
 import { normalizeShopDomain } from "../utils/shop.server.js";
+import {
+  invalidateShopReviewsCache,
+  invalidateShopSettingsCache,
+} from "./public-cache.server.js";
 
 const REDACTED_AUTHOR = "Redacted";
 const REDACTED_COMMENT = "[Redacted per customer privacy request]";
@@ -60,6 +64,9 @@ async function redactCustomerData(shop, payload) {
   console.log(
     `[compliance] CUSTOMERS_REDACT for ${shop}: customer=${email}, reviewsRedacted=${result.count}`,
   );
+  if (result.count > 0) {
+    invalidateShopReviewsCache(shop);
+  }
 }
 
 export async function redactShopData(shop) {
@@ -71,5 +78,7 @@ export async function redactShopData(shop) {
   await db.session.deleteMany({ where: { shop } });
   await db.shop.deleteMany({ where: { shop } });
 
+  invalidateShopReviewsCache(shop);
+  invalidateShopSettingsCache(shop);
   console.log(`[compliance] SHOP_REDACT completed for ${shop}`);
 }

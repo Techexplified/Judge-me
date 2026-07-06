@@ -82,6 +82,22 @@ export function invalidatePublicCacheTags(tags) {
   }
 }
 
+/** Invalidate storefront review caches for a shop (optional product IDs). */
+export function invalidateShopReviewsCache(shop, productIds = []) {
+  if (!shop) return;
+  const tags = [`reviews:${shop}`];
+  for (const id of productIds.filter(Boolean)) {
+    tags.push(`reviews:${shop}:product:${id}`);
+  }
+  invalidatePublicCacheTags(tags);
+}
+
+/** Invalidate cached public settings for a shop. */
+export function invalidateShopSettingsCache(shop) {
+  if (!shop) return;
+  invalidatePublicCacheTags([`settings:${shop}`]);
+}
+
 export function publicCacheKey(request, namespace) {
   const url = new URL(request.url);
   url.searchParams.sort();

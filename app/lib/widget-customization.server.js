@@ -1,4 +1,5 @@
 import db from "../db.server.js";
+import { invalidateShopSettingsCache } from "./public-cache.server.js";
 import {
   mergeVideoSliderConfig,
   pickVideoSliderConfigForSave,
@@ -74,6 +75,7 @@ export async function saveWidgetCustomization(shop, widgetId, payload) {
     update: { config: JSON.stringify(merged) },
     create: { shop, config: JSON.stringify(merged) },
   });
+  invalidateShopSettingsCache(shop);
 
   return { ok: true, publishedAt: merged[`${key}PublishedAt`] };
 }

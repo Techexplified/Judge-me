@@ -1,6 +1,10 @@
 import { Buffer } from "node:buffer";
 import db from "../db.server.js";
 import { normalizeShopDomain } from "../utils/shop.js";
+import {
+  invalidateShopReviewsCache,
+  invalidateShopSettingsCache,
+} from "./public-cache.server.js";
 import { normalizeShopifyProductId } from "../utils/product-id.shared.js";
 import {
   FORM_TEXT_KEYS,
@@ -184,6 +188,7 @@ export async function reviewFormEditorAction({ request, session, admin }) {
       update: { config: JSON.stringify({ ...stored, ...merged }) },
       create: { shop, config: JSON.stringify(merged) },
     });
+    invalidateShopSettingsCache(shop);
     return { logoUploaded: true, brandLogoUrl: dataUrl };
   }
 
@@ -267,6 +272,7 @@ export async function reviewFormEditorAction({ request, session, admin }) {
     if (mediaResult.files.length > 0) {
       await saveReviewMedia(created.id, mediaResult.files);
     }
+    invalidateShopReviewsCache(shop, [reviewData.productId]);
 
     const { emitReviewCollectedFlowTrigger } = await import("./flow-review-trigger.server.js");
     await emitReviewCollectedFlowTrigger(shop, created, { admin });
@@ -315,6 +321,7 @@ export async function reviewFormEditorAction({ request, session, admin }) {
     update: { config: JSON.stringify(merged) },
     create: { shop, config: JSON.stringify(merged) },
   });
+  invalidateShopSettingsCache(shop);
 
   const { getFeatureLimit } = await import("./usage.shared.js");
   const widgetLimit = getFeatureLimit(planStatus, "ai_widget_customization");

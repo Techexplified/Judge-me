@@ -19,7 +19,7 @@
 
   /* ---------------- LOAD REVIEWS ---------------- */
   const res = await fetch(
-    `${API}/api/public/reviews?productId=${productId}&shop=${shop}`
+    `${API}/api/public/reviews?productId=${productId}&shop=${shop}&limit=50`
   );
   const reviews = await res.json();
 

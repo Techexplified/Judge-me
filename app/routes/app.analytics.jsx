@@ -36,6 +36,7 @@ const ANALYTICS_REVIEW_SELECT = {
   originalTitle: true,
   translatedLang: true,
   createdAt: true,
+  media: { select: { id: true } },
 };
 
 function computeWeeklySnapshot(reviewsAll) {
@@ -46,7 +47,7 @@ function computeWeeklySnapshot(reviewsAll) {
   const sevenDaysAgo = new Date(referenceDate.getTime() - 7 * oneDay);
   const recentReviews = reviewsAll.filter(r => new Date(r.createdAt) >= sevenDaysAgo);
   
-  const pending = recentReviews.filter(r => !r.replyText || r.replyText.trim() === "").length;
+  const pending = recentReviews.filter((r) => !r.reply || String(r.reply).trim() === "").length;
   const critical = recentReviews.filter(r => r.rating <= 3).length;
 
   // 2. Weekly Momentum (4 Rolling Weeks)
