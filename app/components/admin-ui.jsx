@@ -578,6 +578,40 @@ export function WizardShell({ step, total = 5, children, actions }) {
   );
 }
 
+export function ProBadge({ style = {} }) {
+  return (
+    <span
+      style={{
+        position: "absolute",
+        top: 6,
+        right: 6,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "2px 8px",
+        borderRadius: 999,
+        background:
+          "linear-gradient(135deg, #ffffff 0%, #dbeafe 35%, #ede9fe 65%, #fee2e2 100%)",
+        border: "1px solid rgba(255,255,255,0.65)",
+        boxShadow:
+          "0 2px 8px rgba(59,130,246,.15), inset 0 1px 1px rgba(255,255,255,.8)",
+        backdropFilter: "blur(6px)",
+        color: "#334155",
+        fontSize: 10,
+        fontWeight: 800,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        userSelect: "none",
+        pointerEvents: "none",
+
+        ...style,
+      }}
+    >
+      PRO
+    </span>
+  );
+}
+
 export const INDUSTRY_OPTIONS = [
   { value: "", label: "Select industry" },
   { value: "fashion", label: "Fashion & apparel" },

@@ -143,6 +143,7 @@ export default function WidgetsIndexRoute() {
       onCustomize={handleCustomize}
       onEnableCore={handleEnableCore}
       onRefreshStatus={handleRefreshStatus}
+      isPremium = {data.premium}
     />
   );
 }

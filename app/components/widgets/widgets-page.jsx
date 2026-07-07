@@ -13,7 +13,7 @@ import reviewTranslationImg from "./reviewtranslation.png";
 import videoSliderImg from "./video-slider.png";
 import customerLovePageImg from "./customerlove-page-1.png";
 import testimonialsImg from "./testimonials-1.jpeg";
-import { ProLockedButton } from "../admin-ui";
+import { ProBadge } from "../admin-ui";
 
 const FONT =
   "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
@@ -220,7 +220,7 @@ function AlreadyAddedDialog({ widget, onClose }) {
   );
 }
 
-function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlreadyAdded, onCustomize }) {
+function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlreadyAdded, onCustomize, isPremium }) {
   const ctaLabel = getWidgetCtaLabel(widget.id);
   const installedLabel = widget.id === "review-translation-hub" ? ctaLabel : "Already in theme";
   const customizable = isWidgetCustomizable(widget.id);
@@ -302,13 +302,14 @@ function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlrea
             ) : (
               <span style={{ marginRight: "auto" }} />
             )}
-            <ProLockedButton>
             <button
               type="button"
               onClick={handleAddClick}
               aria-disabled={isInstalled}
               style={{
                 padding: "10px 16px",
+                paddingRight: !isInstalled && !isPremium ? "58px" : "16px",
+                position: "relative",
                 borderRadius: 8,
                 border: "none",
                 background: isInstalled ? "#e4e5e7" : SHOPIFY_GREEN,
@@ -321,8 +322,8 @@ function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlrea
               }}
             >
               {isInstalled ? installedLabel : ctaLabel}
+              {!isInstalled && isPremium && <ProBadge />}
             </button>
-            </ProLockedButton>
           </div>
         </div>
       </div>
@@ -330,7 +331,7 @@ function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlrea
   );
 }
 
-function WidgetCard({ widget, isInstalled, onOpen, onAddToTheme, onAlreadyAdded, onCustomize }) {
+function WidgetCard({ widget, isInstalled, onOpen, onAddToTheme, onAlreadyAdded, onCustomize, isPremium }) {
   const [hover, setHover] = useState(false);
   const ctaLabel = getWidgetCtaLabel(widget.id);
   const installedLabel = widget.id === "review-translation-hub" ? ctaLabel : "Already in theme";
@@ -443,6 +444,8 @@ function WidgetCard({ widget, isInstalled, onOpen, onAddToTheme, onAlreadyAdded,
             aria-disabled={isInstalled}
             style={{
               padding: "8px 14px",
+              paddingRight: !isInstalled && !isPremium ? "58px" : "14px",
+              position: "relative",
               borderRadius: 8,
               border: "none",
               background: isInstalled ? "#e4e5e7" : SHOPIFY_GREEN,
@@ -456,6 +459,7 @@ function WidgetCard({ widget, isInstalled, onOpen, onAddToTheme, onAlreadyAdded,
             }}
           >
             {isInstalled ? installedLabel : ctaLabel}
+            {!isInstalled && !isPremium && <ProBadge />}
           </button>
         </div>
       </div>
@@ -468,6 +472,7 @@ export function WidgetsPage({
   onCustomize,
   onEnableCore,
   onRefreshStatus,
+  isPremium,
   widgetSettings,
   themeInstalled,
   reviewCounts,
@@ -596,6 +601,7 @@ export function WidgetsPage({
             onAddToTheme={onAddToTheme}
             onAlreadyAdded={handleAlreadyAdded}
             onCustomize={onCustomize}
+            isPremium={isPremium}
           />
         ))}
       </div>
@@ -608,6 +614,7 @@ export function WidgetsPage({
           onAddToTheme={onAddToTheme}
           onAlreadyAdded={handleAlreadyAdded}
           onCustomize={onCustomize}
+          isPremium={isPremium}
         />
       ) : null}
 
