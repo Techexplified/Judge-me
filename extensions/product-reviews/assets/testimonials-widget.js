@@ -379,12 +379,17 @@
                         <div class="tw-trust-footer" style="border-top:none;margin-top:0;padding-top:0">🔒 ${esc(STORE_REVIEW_COPY.trustText)}</div>
                         <p class="tw-powered">Powered by JudgeMe Reviews</p>
                     </div>`;
+                // NEW CODE
                 els.progress.textContent = "Review submitted";
                 els.back.style.display = "none";
                 els.next.textContent = "Close";
-                els.next.onclick = close;
                 els.next.disabled = false;
-                if (typeof onComplete === "function") onComplete();
+
+                // Wait for the user to actually click "Close" before doing anything else
+                els.next.onclick = () => {
+                    close();
+                    if (typeof onComplete === "function") onComplete();
+                };
             } catch (err) {
                 els.msg.style.color = "#dc2626";
                 els.msg.textContent = err.message;
@@ -576,7 +581,7 @@
                 shop,
                 storeName,
                 API,
-                onComplete: () => setTimeout(init, 400),
+                onComplete: () => {},
             });
             storeReviewFlow.mount(root);
             root.querySelector("#tw-write-review").onclick = () => storeReviewFlow.open();
