@@ -359,18 +359,41 @@
 
         async function handleNext() {
             if (!validate()) return;
-            if (step < steps.length - 1) { step++; renderStep(); syncNav(); return; }
 
+            // If not on the final step, just move forward in the UI
+            if (step < steps.length - 1) {
+                step++;
+                renderStep();
+                syncNav();
+                return;
+            }
+
+            // Lock the button and show loading state
             els.next.disabled = true;
             els.msg.style.color = "#64748b";
             els.msg.textContent = "Submitting\u2026";
+
             try {
+                // Post to the backend
                 const res = await fetch(`${API}/api/public/reviews`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ shop, productId: "store-review", productName: "Store Review", rating, author, comment }),
+                    body: JSON.stringify({
+                        shop,
+                        productId: "store-review",
+                        productName: "Store Review",
+                        rating,
+                        author,
+                        comment
+                    }),
                 });
-                if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Failed to submit review");
+
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error || "Failed to submit review");
+                }
+
+                // Show Success Screen
                 els.content.innerHTML = `
                     <div style="text-align:center;padding:10px 0">
                         <div class="tw-confirm-icon">✓</div>
@@ -379,18 +402,28 @@
                         <div class="tw-trust-footer" style="border-top:none;margin-top:0;padding-top:0">🔒 ${esc(STORE_REVIEW_COPY.trustText)}</div>
                         <p class="tw-powered">Powered by JudgeMe Reviews</p>
                     </div>`;
-                // NEW CODE
+
+                // Update navigation controls to act as a Close button
                 els.progress.textContent = "Review submitted";
                 els.back.style.display = "none";
                 els.next.textContent = "Close";
                 els.next.disabled = false;
+                els.msg.textContent = "";
 
-                // Wait for the user to actually click "Close" before doing anything else
+                // Optimistic Data Handoff (Fires only when they click "Close")
                 els.next.onclick = () => {
                     close();
-                    if (typeof onComplete === "function") onComplete();
+                    if (typeof onComplete === "function") {
+                        onComplete({
+                            id: "optimistic-" + Date.now(),
+                            author: author,
+                            rating: rating,
+                            comment: comment
+                        });
+                    }
                 };
             } catch (err) {
+                // Handle errors and unlock the button
                 els.msg.style.color = "#dc2626";
                 els.msg.textContent = err.message;
                 els.next.disabled = false;
@@ -581,7 +614,21 @@
                 shop,
                 storeName,
                 API,
-                onComplete: () => {},
+                onComplete: (newReview) => {
+                    if (newReview) {
+                        // Add the new review to the beginning of the array
+                        reviews.unshift(newReview);
+                        
+                        // Keep the array length to the limit so we don't break the layout
+                        if (reviews.length > config.limit) reviews.pop();
+                        
+                        // Re-render the widget with the updated array
+                        renderWidget({ root, reviews, heading: config.heading, config });
+                        
+                        // Re-bind the click event to the "Write a Review" button since we overwrote the DOM
+                        root.querySelector("#tw-write-review").onclick = () => storeReviewFlow.open();
+                    }
+                },
             });
             storeReviewFlow.mount(root);
             root.querySelector("#tw-write-review").onclick = () => storeReviewFlow.open();
