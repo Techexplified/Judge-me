@@ -308,7 +308,7 @@ function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlrea
               aria-disabled={isInstalled}
               style={{
                 padding: "10px 16px",
-                paddingRight: !isInstalled && !isPremium ? "58px" : "16px",
+                paddingRight: !isInstalled && !isPremium && widget.title !== "Review Showcase" ? "58px" : "16px",
                 position: "relative",
                 borderRadius: 8,
                 border: "none",
@@ -322,7 +322,7 @@ function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlrea
               }}
             >
               {isInstalled ? installedLabel : ctaLabel}
-              {!isInstalled && isPremium && <ProBadge />}
+              {!isInstalled && isPremium && widget.title !== "Review Showcase" && <ProBadge />}
             </button>
           </div>
         </div>
@@ -444,7 +444,7 @@ function WidgetCard({ widget, isInstalled, onOpen, onAddToTheme, onAlreadyAdded,
             aria-disabled={isInstalled}
             style={{
               padding: "8px 14px",
-              paddingRight: !isInstalled && !isPremium ? "58px" : "14px",
+              paddingRight: !isInstalled && !isPremium && widget.title !== "Review Showcase" ? "58px" : "14px",
               position: "relative",
               borderRadius: 8,
               border: "none",
@@ -459,7 +459,7 @@ function WidgetCard({ widget, isInstalled, onOpen, onAddToTheme, onAlreadyAdded,
             }}
           >
             {isInstalled ? installedLabel : ctaLabel}
-            {!isInstalled && !isPremium && <ProBadge />}
+            {!isInstalled && !isPremium && widget.title !== "Review Showcase" && <ProBadge />}
           </button>
         </div>
       </div>
