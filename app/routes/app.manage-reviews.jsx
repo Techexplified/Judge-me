@@ -484,7 +484,7 @@ export default function ManageReviews() {
   const [modalReplyMode, setModalReplyMode] = useState(false);
   const [importBanner, setImportBanner] = useState(null);
   const importProcessed = useRef(false);
-  const [saveShowcase,setSaveShowcase] = useState(null);
+  const [saveShowcase, setSaveShowcase] = useState(null);
 
   useEffect(() => {
     if (importProcessed.current) return;
@@ -640,33 +640,78 @@ export default function ManageReviews() {
         </div>
       ) : null}
 
-      <div style={{ display: "flex", gap: 24, borderBottom: `1px solid ${SURFACE_BORDER}`, marginBottom: 20 }}>
-        {[
-          { id: "product", label: "Product Reviews" },
-          { id: "store", label: "Store Reviews" },
-          { id: "social-showcase", label: "Social Showcase" },
-          { id: "integration", label: "Store Integration" },
-        ].map((tab) => {
-          const active = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => selectTab(tab.id)}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${SURFACE_BORDER}`, marginBottom: 20 }}>
+        <div style={{ display: "flex", gap: 24 }}>
+          {[
+            { id: "product", label: "Product Reviews" },
+            { id: "store", label: "Store Reviews" },
+            { id: "social-showcase", label: "Social Showcase" },
+            { id: "integration", label: "Store Integration" },
+          ].map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => selectTab(tab.id)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: "0 0 12px",
+                  marginBottom: -1,
+                  borderBottom: active ? `2px solid ${SHOPIFY_GREEN}` : "2px solid transparent",
+                  cursor: "pointer",
+                  ...type.tab(active),
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {activeTab === "social-showcase" && (
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <a
+              href={socialShowcase?.shareUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               style={{
-                background: "none",
-                border: "none",
-                padding: "0 0 12px",
-                marginBottom: -1,
-                borderBottom: active ? `2px solid ${SHOPIFY_GREEN}` : "2px solid transparent",
-                cursor: "pointer",
-                ...type.tab(active),
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "12px 16px",
+                borderRadius: 8,
+                border: `1px solid ${SURFACE_BORDER}`,
+                background: "#fff",
+                color: "#202223",
+                fontFamily: FONT,
+                fontSize: 14,
+                fontWeight: 700,
+                textDecoration: "none",
+                marginBottom: 8,
               }}
             >
-              {tab.label}
+              Preview in new tab
+              <ExternalLink size={14} />
+            </a>
+            <button type="button" onClick={() => saveShowcase?.save()} disabled={saveShowcase?.isSaving} style={{
+              padding: "12px 16px",
+              borderRadius: 8,
+              border: "none",
+              background: SHOPIFY_GREEN,
+              color: "#fff",
+              fontFamily: FONT,
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: saveShowcase?.isSaving ? "wait" : "pointer",
+              opacity: saveShowcase?.isSaving ? 0.7 : 1,
+              marginBottom: 8,
+            }}>
+              {saveShowcase?.isSaving ? "Saving..." : "Save Changes"}
             </button>
-          );
-        })}
+          </div>
+        )}
       </div>
 
       {activeTab === "integration" ? (

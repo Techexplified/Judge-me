@@ -150,8 +150,8 @@ export function SocialShowcaseTab({
   }, [config, fetcher, formAction]);
 
   useEffect(() => {
-  onSaveReady?.(() => saveConfig);
-}, [onSaveReady, saveConfig]);
+    onSaveReady?.({ save: saveConfig, isSaving });
+  }, [onSaveReady, saveConfig, isSaving]);
 
   const toggleReview = (reviewId) => {
     const ids = new Set(config.selectedReviewIds || []);
@@ -498,7 +498,7 @@ export function SocialShowcaseTab({
           </div>
         </SectionCard>
 
-        <button
+        {/* <button
           type="button"
           onClick={saveConfig}
           disabled={isSaving}
@@ -518,7 +518,7 @@ export function SocialShowcaseTab({
           }}
         >
           {isSaving ? "Saving…" : "Save changes"}
-        </button>
+        </button> */}
       </div>
 
       <div
@@ -530,9 +530,10 @@ export function SocialShowcaseTab({
           alignItems: "center",
           background: "#e8eaed",
           minHeight: 0,
+          marginTop: 12,
         }}
       >
-        <div
+        {/* <div
           style={{
             display: "flex",
             justifyContent: "flex-end",
@@ -563,7 +564,7 @@ export function SocialShowcaseTab({
             Preview in new tab
             <ExternalLink size={14} />
           </a>
-        </div>
+        </div> */}
         <div
           style={{
             width: 400,
