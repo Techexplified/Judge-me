@@ -501,7 +501,7 @@ export function ProLockedButton({ children, onClick, title = "Upgrade to Pro to 
       style={{
         ...ui.btnSecondary,
         position: "relative",
-        paddingRight: 44,
+        paddingRight: 52,
         cursor: "pointer",
         opacity: 0.88,
       }}
