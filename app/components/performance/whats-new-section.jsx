@@ -119,7 +119,6 @@ function WhatsNewCard({ item, href, isHovered, onMouseEnter, onMouseLeave }) {
         borderRadius: 6,
         overflow: "hidden",
         marginBottom: 14,
-        filter: "blur(2px)",
       }}>
         <WidgetPreview previewImage={item.previewImg} title={item.title} />
       </div>
