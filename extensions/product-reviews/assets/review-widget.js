@@ -872,20 +872,15 @@
     root.innerHTML = '<p style="color:#64748b">Loading reviews…</p>';
 
     try {
-      const [settingsRes, reviewsRes, storeMetaRes] = await Promise.all([
+      const [settingsRes, reviewsRes] = await Promise.all([
         fetch(`${API}/api/public/settings?shop=${encodeURIComponent(shop)}`),
         fetch(
           `${API}/api/public/reviews?productId=${encodeURIComponent(productId)}&shop=${encodeURIComponent(shop)}&limit=50`,
-        ),
-        fetch(
-          `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=store&limit=50`,
         ),
       ]);
 
       const settingsData = await settingsRes.json();
       let reviewsData = await reviewsRes.json();
-      const storeMeta = storeMetaRes.ok ? await storeMetaRes.json() : { reviews: [], filters: {} };
-      let storeReviews = storeMeta.reviews || [];
 
       const isDesignMode =
         Boolean(window.Shopify?.designMode) ||
@@ -915,12 +910,8 @@
       if (reviewsData.length === 0 && isDesignMode) {
         reviewsData = SAMPLE_REVIEWS;
       }
-      if (storeReviews.length === 0 && isDesignMode) {
-        storeReviews = SAMPLE_REVIEWS.map((r) => ({ ...r, id: `store-${r.id}` }));
-      }
 
       const productCount = Array.isArray(reviewsData) ? reviewsData.length : 0;
-      const storeCount = storeReviews.length || storeMeta.filters?.store || 0;
       const hasSavedConfig = settingsData?.config && typeof settingsData.config === "object";
       if (!hasSavedConfig) {
         console.warn(
@@ -1114,7 +1105,6 @@
 
       let activeTab = "product";
       const productHtml = renderList(reviewsData);
-      const storeHtml = renderList(storeReviews);
 
       const listLogoHtml = cfg.brandLogoUrl
         ? `<img class="jd-list-logo" src="${esc(cfg.brandLogoUrl)}" alt="" />`
@@ -1190,8 +1180,7 @@
 
       const openBtn = root.querySelector("#jd-open-form");
       if (openBtn) {
-        openBtn.onclick = () =>
-          flow.open({ mode: activeTab === "store" ? "store" : "product" });
+        openBtn.onclick = () => flow.open({ mode: "product" });
       }
 
       const listEl = root.querySelector("#jd-reviews-list");
@@ -1202,11 +1191,10 @@
             t.classList.toggle("active", t.getAttribute("data-tab") === activeTab);
           });
           if (listEl) {
-            listEl.innerHTML = activeTab === "store" ? storeHtml : productHtml;
+            listEl.innerHTML = productHtml;
           }
           if (openBtn) {
-            openBtn.textContent =
-              activeTab === "store" ? "Write a Store Review" : "Write a Product Review";
+            openBtn.textContent = "Write a Product Review";
           }
         });
       });
