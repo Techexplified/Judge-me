@@ -22,7 +22,7 @@ const styles = {
   },
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
     gap: 16,
   },
   previewCard: {
@@ -31,7 +31,7 @@ const styles = {
     overflow: "hidden",
   },
   previewHeader: (tone) => ({
-    height: 120,
+    height: 160,
     background: tone === "mint" ? "#e8f5ee" : "#e8f4fc",
     backgroundImage:
       "repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,0.4) 8px, rgba(255,255,255,0.4) 9px)",
@@ -42,25 +42,25 @@ const styles = {
   }),
   mockWindow: {
     background: "#fff",
-    borderRadius: 8,
-    padding: "12px 14px",
+    borderRadius: 10,
+    padding: "16px 18px",
     boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-    width: "85%",
-    maxWidth: 160,
-    fontSize: 11,
+    width: "90%",
+    maxWidth: 200,
+    fontSize: 13,
     fontWeight: 700,
     color: "#202223",
     textAlign: "center",
   },
   stars: {
     color: "#F59E0B",
-    fontSize: 14,
+    fontSize: 18,
     letterSpacing: 2,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   previewBody: {
     padding: "14px 16px",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 700,
     color: "#202223",
   },
@@ -83,14 +83,14 @@ const PREVIEWS = [
     label: "Analytics",
     mock: (
       <div style={styles.mockWindow}>
-        <div style={{ fontSize: 10, color: "#6d7175", marginBottom: 4 }}>4.8 avg</div>
-        <div style={{ display: "flex", gap: 3, justifyContent: "center" }}>
+        <div style={{ fontSize: 11, color: "#6d7175", marginBottom: 6 }}>4.8 avg</div>
+        <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
           {[40, 60, 80, 50, 30].map((h, i) => (
             <div
               key={i}
               style={{
-                width: 8,
-                height: h / 4,
+                width: 10,
+                height: h / 3,
                 background: "#008060",
                 borderRadius: 2,
               }}
@@ -106,7 +106,7 @@ const PREVIEWS = [
     label: "Translation",
     mock: (
       <div style={styles.mockWindow}>
-        <div style={{ fontSize: 10, color: "#6d7175" }}>EN → FR</div>
+        <div style={{ fontSize: 11, color: "#6d7175", marginBottom: 4 }}>EN → FR</div>
         Auto translate reviews
       </div>
     ),
