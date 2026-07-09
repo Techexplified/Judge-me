@@ -1198,7 +1198,6 @@
                 <p class="jd-subtitle">${esc(cfg.formSubtitle || `Reviews for ${productName || "this product"}.`)}</p>
                 <div class="jd-tabs">
                   <button type="button" class="jd-tab active" data-tab="product">Product reviews (${productCount})</button>
-                  <!--<button type="button" class="jd-tab" data-tab="store">Store Reviews (${storeCount})</button> -->
                 </div>
                 <button type="button" class="jd-write-btn" id="jd-open-form">Write a Product Review</button>
                 <div id="jd-reviews-list">${productHtml}</div>
