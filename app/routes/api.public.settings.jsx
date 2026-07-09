@@ -47,6 +47,15 @@ export const loader = async ({ request }) => {
     }
   }
 
+  // Normalize proxy-relative logo paths to absolute app URLs (admin + storefront).
+  if (config?.brandLogoUrl) {
+    const { normalizeBrandLogoUrl } = await import("../lib/shop-assets.server.js");
+    config = {
+      ...config,
+      brandLogoUrl: normalizeBrandLogoUrl(config.brandLogoUrl),
+    };
+  }
+
   const body = JSON.stringify({ config });
   setPublicCache(cacheKey, body, { tags: [`settings:${shop}`] });
 

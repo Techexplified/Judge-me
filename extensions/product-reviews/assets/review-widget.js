@@ -380,6 +380,7 @@
     let photoFiles = [];
     let videoFiles = [];
     let complete = false;
+    let lastCreatedReview = null;
 
     function getFlowSteps() {
       const flowSteps = ["rating"];
@@ -744,7 +745,7 @@
     async function handleNext() {
       if (complete) {
         close();
-        if (typeof onComplete === "function") onComplete();
+        if (typeof onComplete === "function") onComplete(lastCreatedReview);
         return;
       }
 
@@ -766,13 +767,23 @@
       els.msg.textContent = "Submitting…";
 
       try {
-        await onSubmit({
+        const submitPayload = {
           rating: cfg.showRatings !== false ? rating : 5,
           author: author || "Anonymous",
           comment: comment || "—",
           mediaFiles: [...photoFiles, ...videoFiles],
           reviewMode,
-        });
+        };
+        await onSubmit(submitPayload);
+        lastCreatedReview = {
+          id: `local-${Date.now()}`,
+          author: submitPayload.author,
+          rating: submitPayload.rating,
+          comment: submitPayload.comment,
+          createdAt: new Date().toISOString(),
+          media: [],
+          verified: true,
+        };
         complete = true;
         els.next.disabled = false;
         renderStep();
@@ -872,15 +883,23 @@
     root.innerHTML = '<p style="color:#64748b">Loading reviews…</p>';
 
     try {
-      const [settingsRes, reviewsRes] = await Promise.all([
-        fetch(`${API}/api/public/settings?shop=${encodeURIComponent(shop)}`),
+      const settingsPromise =
+        typeof window.__JUDGEME__?.ensureConfig === "function"
+          ? window.__JUDGEME__.ensureConfig().then((config) => ({ config }))
+          : window.__JUDGEME__?.config
+            ? Promise.resolve({ config: window.__JUDGEME__.config })
+            : fetch(`${API}/api/public/settings?shop=${encodeURIComponent(shop)}`).then((r) =>
+                r.ok ? r.json() : { config: null },
+              );
+
+      const [settingsData, reviewsDataRaw] = await Promise.all([
+        settingsPromise,
         fetch(
-          `${API}/api/public/reviews?productId=${encodeURIComponent(productId)}&shop=${encodeURIComponent(shop)}&limit=50`,
-        ),
+          `${API}/api/public/reviews?productId=${encodeURIComponent(productId)}&shop=${encodeURIComponent(shop)}&limit=24`,
+        ).then((r) => r.json()),
       ]);
 
-      const settingsData = await settingsRes.json();
-      let reviewsData = await reviewsRes.json();
+      let reviewsData = reviewsDataRaw;
 
       const isDesignMode =
         Boolean(window.Shopify?.designMode) ||
@@ -1104,7 +1123,7 @@
       };
 
       let activeTab = "product";
-      const productHtml = renderList(reviewsData);
+      let productHtml = renderList(reviewsData);
 
       const listLogoHtml = cfg.brandLogoUrl
         ? `<img class="jd-list-logo" src="${esc(cfg.brandLogoUrl)}" alt="" />`
@@ -1173,7 +1192,22 @@
             throw new Error(err.error || "Failed to submit review");
           }
         },
-        onComplete: () => setTimeout(() => init(), 400),
+        onComplete: (created) => {
+          // Soft refresh: prepend new review without re-fetching settings + all media.
+          if (created && typeof created === "object") {
+            reviewsData = [created, ...(Array.isArray(reviewsData) ? reviewsData : [])];
+            productHtml = renderList(reviewsData);
+            const list = root.querySelector("#jd-reviews-list");
+            const tab = root.querySelector('.jd-tab[data-tab="product"]');
+            if (list) {
+              list.innerHTML = productHtml;
+              window.JudgeMeMediaLightbox?.bind?.(root);
+            }
+            if (tab) {
+              tab.textContent = `Product reviews (${reviewsData.length})`;
+            }
+          }
+        },
       });
 
       flow.mount(root.querySelector("#jd-flow-mount"));
@@ -1199,11 +1233,20 @@
         });
       });
 
-      fetch(`${API}/api/public/widget-event`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shop, event: "review_showcase_view", productId }),
-      }).catch(() => {});
+      try {
+        const viewKey = `jd_showcase_${shop}_${productId || "all"}`;
+        if (!sessionStorage.getItem(viewKey)) {
+          sessionStorage.setItem(viewKey, "1");
+          fetch(`${API}/api/public/widget-event`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ shop, event: "review_showcase_view", productId }),
+            keepalive: true,
+          }).catch(() => {});
+        }
+      } catch {
+        /* ignore */
+      }
 
       if (textContext.autoOpen) {
         flow.open();

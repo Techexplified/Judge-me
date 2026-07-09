@@ -541,12 +541,37 @@
         const fromCore = getAppConfig();
         if (fromCore) return fromCore;
 
+        if (typeof window.__JUDGEME__?.ensureConfig === "function") {
+            const cfg = await window.__JUDGEME__.ensureConfig();
+            if (cfg?.testimonials) return cfg.testimonials;
+        }
+
+        if (window.__JUDGEME__?.configReady) {
+            try {
+                await Promise.race([
+                    window.__JUDGEME__.configReady,
+                    new Promise((r) => setTimeout(r, 1500)),
+                ]);
+                const waited = getAppConfig();
+                if (waited) return waited;
+            } catch {
+                /* fall through */
+            }
+        }
+
         try {
             const res = await fetch(
                 `${API}/api/public/settings?shop=${encodeURIComponent(shop)}`
             );
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
+            if (data?.config) {
+                window.__JUDGEME__ = window.__JUDGEME__ || {};
+                window.__JUDGEME__.config = {
+                    ...(window.__JUDGEME__.config || {}),
+                    ...data.config,
+                };
+            }
             return data?.config?.testimonials || null;
         } catch (err) {
             console.error("Testimonials settings fetch failed:", err);
@@ -593,7 +618,7 @@
 
         try {
             const res = await fetch(
-                `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=store&limit=${config.limit}`
+                `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=store&limit=${config.limit}&lite=1`
             );
 
             if (!res.ok) {

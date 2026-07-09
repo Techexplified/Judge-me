@@ -92,6 +92,24 @@
     return d.toLocaleDateString();
   }
 
+  async function waitForSharedConfig() {
+    if (window.__JUDGEME__?.config) return window.__JUDGEME__.config;
+    if (typeof window.__JUDGEME__?.ensureConfig === "function") {
+      return window.__JUDGEME__.ensureConfig();
+    }
+    if (window.__JUDGEME__?.configReady) {
+      try {
+        await Promise.race([
+          window.__JUDGEME__.configReady,
+          new Promise((r) => setTimeout(r, 1500)),
+        ]);
+      } catch {
+        /* ignore */
+      }
+    }
+    return window.__JUDGEME__?.config || null;
+  }
+
   async function init() {
     const root = document.getElementById("jd-customer-love-root");
     if (!root) return;
@@ -100,33 +118,40 @@
     const API = (root.dataset.apiBase || "").replace(/\/$/, "");
     if (!shop || !API) return;
 
+    await waitForSharedConfig();
     let cfg = resolveConfig(root);
 
-    if (!window.__JUDGEME__?.config?.customerLove) {
-      try {
-        const settingsRes = await fetch(
-          `${API}/api/public/settings?shop=${encodeURIComponent(shop)}`,
-        );
-        const settingsData = await settingsRes.json();
-        if (settingsData?.config) {
-          window.__JUDGEME__ = window.__JUDGEME__ || {};
-          window.__JUDGEME__.config = { ...(window.__JUDGEME__.config || {}), ...settingsData.config };
-          cfg = resolveConfig(root);
-        }
-      } catch {
-        /* use fallbacks */
-      }
-    }
-
     let mediaFilter = "all";
+    let summaryCache = null;
+    let filtersCache = null;
+    const reviewsByFilter = Object.create(null);
     root.innerHTML = `<p style="color:#64748b;padding:24px 0">Loading reviews…</p>`;
     injectBarStyles(cfg);
 
+    async function loadPayload() {
+      if (!reviewsByFilter[mediaFilter]) {
+        const res = await fetch(
+          `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=shop&media=${mediaFilter}&limit=${cfg.limit}`,
+        );
+        const data = await res.json();
+        reviewsByFilter[mediaFilter] = data.reviews || [];
+        // Keep summary/filter counts from the richest response (prefer "all").
+        if (!summaryCache || mediaFilter === "all") {
+          summaryCache = data.summary || summaryCache;
+        }
+        if (!filtersCache || mediaFilter === "all") {
+          filtersCache = data.filters || filtersCache;
+        }
+      }
+      return {
+        reviews: reviewsByFilter[mediaFilter] || [],
+        summary: summaryCache || {},
+        filters: filtersCache || {},
+      };
+    }
+
     async function render() {
-      const res = await fetch(
-        `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=shop&media=${mediaFilter}&limit=${cfg.limit}`,
-      );
-      const data = await res.json();
+      const data = await loadPayload();
       const { reviews = [], summary = {}, filters = {} } = data;
 
       const dist = normalizeDistribution(summary.distribution);
@@ -174,13 +199,14 @@
           const img = (r.media || []).find((m) => m.type === "image");
           const vid = (r.media || []).find((m) => m.type === "video");
           const mediaHtml = vid
-            ? `<div style="position:relative;margin-top:12px;border-radius:10px;overflow:hidden">
-                <video src="${esc(vid.url)}" style="width:100%;max-height:200px;object-fit:cover" muted playsinline></video>
+            ? `<button type="button" class="jd-love-video-poster" data-video-url="${esc(vid.url)}" aria-label="Play video review"
+                style="position:relative;margin-top:12px;border-radius:10px;overflow:hidden;display:block;width:100%;padding:0;border:none;background:#0f172a;cursor:pointer;min-height:160px">
+                ${img ? `<img src="${esc(img.url)}" alt="" loading="lazy" decoding="async" style="width:100%;max-height:200px;object-fit:cover;display:block;opacity:0.85" />` : `<div style="height:160px"></div>`}
                 <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,0.9);border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center">▶</span>
-              </div>`
+              </button>`
             : img
               ? `<button type="button" data-jd-preview="${esc(img.url)}" data-jd-preview-alt="Review photo by ${esc(r.author)}" aria-label="View review photo" style="display:block;width:100%;padding:0;border:none;background:none;cursor:zoom-in;margin-top:12px;border-radius:10px;overflow:hidden;position:relative">
-                  <img src="${esc(img.url)}" alt="Review photo" style="width:100%;max-height:200px;object-fit:cover;display:block" loading="lazy" />
+                  <img src="${esc(img.url)}" alt="Review photo" style="width:100%;max-height:200px;object-fit:cover;display:block" loading="lazy" decoding="async" />
                   <span aria-hidden="true" style="position:absolute;bottom:10px;right:10px;width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.92);display:flex;align-items:center;justify-content:center;font-size:14px;color:#334155;box-shadow:0 2px 8px rgba(0,0,0,0.12)">⤢</span>
                 </button>`
               : "";
@@ -236,17 +262,35 @@
         });
       });
 
+      root.querySelectorAll(".jd-love-video-poster").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const url = btn.getAttribute("data-video-url");
+          if (!url || btn.dataset.playing === "1") return;
+          btn.dataset.playing = "1";
+          btn.innerHTML = `<video src="${esc(url)}" style="width:100%;max-height:200px;object-fit:cover;display:block" controls playsinline autoplay></video>`;
+        });
+      });
+
       window.JudgeMeMediaLightbox?.injectStyles?.();
       window.JudgeMeMediaLightbox?.bind?.(root);
     }
 
     try {
       await render();
-      fetch(`${API}/api/public/widget-event`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shop, event: "customer_love_view" }),
-      }).catch(() => {});
+      try {
+        const viewKey = `jd_love_${shop}`;
+        if (!sessionStorage.getItem(viewKey)) {
+          sessionStorage.setItem(viewKey, "1");
+          fetch(`${API}/api/public/widget-event`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ shop, event: "customer_love_view" }),
+            keepalive: true,
+          }).catch(() => {});
+        }
+      } catch {
+        /* ignore */
+      }
     } catch (e) {
       console.error("[JudgeMe Customer Love]", e);
       root.innerHTML = `<p style="color:#e53e3e">Could not load reviews.</p>`;

@@ -305,10 +305,16 @@ function renderPage(data, shop) {
     (function () {
       var shop = ${JSON.stringify(shop)};
       if (!shop) return;
+      try {
+        var key = 'jd_social_' + shop;
+        if (sessionStorage.getItem(key)) return;
+        sessionStorage.setItem(key, '1');
+      } catch (e) {}
       fetch('/apps/judgeme-reviews/api/public/widget-event', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ shop: shop, event: 'social_showcase_view' }),
+        keepalive: true,
       }).catch(function () {});
     })();
   </script>
@@ -334,7 +340,8 @@ export async function loader({ request }) {
   return new Response(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-store",
+      // Allow short CDN/browser cache — page embeds many media URLs; no-store forced full re-download.
+      "Cache-Control": "public, max-age=120, s-maxage=300, stale-while-revalidate=600",
     },
   });
 }

@@ -1,5 +1,10 @@
 import db from "../db.server.js";
 import { mergeFormConfig } from "./review-form-config.shared.js";
+import {
+  getCachedShopConfig,
+  setCachedShopConfig,
+} from "./shop-config-cache.server.js";
+import { invalidateShopSettingsCache } from "./public-cache.server.js";
 
 const DEFAULT_ONSITE_WIDGET = {
   timing: "after_fulfillment",
@@ -59,21 +64,45 @@ function startOfLastMonth(date = new Date()) {
 }
 
 export async function loadShopConfig(shop) {
+  const cached = getCachedShopConfig(shop);
+  if (cached !== undefined) return cached;
+
   const row = await db.settings.findUnique({ where: { shop } });
-  if (!row?.config) return {};
+  if (!row?.config) {
+    setCachedShopConfig(shop, {});
+    return {};
+  }
   try {
-    return JSON.parse(row.config);
+    const { normalizeBrandLogoUrl } = await import("./shop-assets.server.js");
+    const config = JSON.parse(row.config);
+    if (config?.brandLogoUrl) {
+      config.brandLogoUrl = normalizeBrandLogoUrl(config.brandLogoUrl);
+    }
+    setCachedShopConfig(shop, config);
+    return config;
   } catch {
+    setCachedShopConfig(shop, {});
     return {};
   }
 }
 
 export async function saveShopConfig(shop, config) {
+  // Never persist multi-MB data: URLs into Settings — that was the Neon transfer bomb.
+  if (typeof config?.brandLogoUrl === "string" && config.brandLogoUrl.startsWith("data:")) {
+    const { saveShopBrandLogo } = await import("./shop-assets.server.js");
+    config = {
+      ...config,
+      brandLogoUrl: await saveShopBrandLogo(shop, config.brandLogoUrl),
+    };
+  }
+
   await db.settings.upsert({
     where: { shop },
     create: { shop, config: JSON.stringify(config) },
     update: { config: JSON.stringify(config) },
   });
+  setCachedShopConfig(shop, config);
+  invalidateShopSettingsCache(shop);
 }
 
 export async function loadOnsiteWidgetMetrics(shop) {
@@ -149,11 +178,61 @@ export async function saveOnsiteWidgetSettings(shop, { timing }) {
   return { ok: true };
 }
 
+/** In-process buffer so storefront page views don't upsert settings JSON every hit. */
+const VIEW_FLUSH_MS = 15_000;
+const viewBumpState =
+  global.__judgemeWidgetViewBumps ??
+  {
+    pending: new Map(),
+    timer: null,
+    flushing: false,
+  };
+
+global.__judgemeWidgetViewBumps = viewBumpState;
+
+async function flushWidgetViewBumps() {
+  if (viewBumpState.flushing) return;
+  viewBumpState.flushing = true;
+  viewBumpState.timer = null;
+  const batch = [...viewBumpState.pending.entries()];
+  viewBumpState.pending.clear();
+  try {
+    for (const [shop, bump] of batch) {
+      if (!bump) continue;
+      try {
+        const config = await loadShopConfig(shop);
+        const onsiteWidget = rotateOnsiteMetricsIfNeeded(config.onsiteWidget);
+        onsiteWidget.metrics.viewsThisMonth =
+          (onsiteWidget.metrics.viewsThisMonth ?? 0) + bump;
+        config.onsiteWidget = onsiteWidget;
+        await saveShopConfig(shop, config);
+      } catch (err) {
+        console.error("[widget-views] flush failed for", shop, err);
+        viewBumpState.pending.set(
+          shop,
+          (viewBumpState.pending.get(shop) || 0) + bump,
+        );
+      }
+    }
+  } finally {
+    viewBumpState.flushing = false;
+    if (viewBumpState.pending.size > 0 && !viewBumpState.timer) {
+      viewBumpState.timer = setTimeout(() => {
+        void flushWidgetViewBumps();
+      }, VIEW_FLUSH_MS);
+      viewBumpState.timer.unref?.();
+    }
+  }
+}
+
 export async function incrementWidgetView(shop) {
-  const config = await loadShopConfig(shop);
-  const onsiteWidget = rotateOnsiteMetricsIfNeeded(config.onsiteWidget);
-  onsiteWidget.metrics.viewsThisMonth = (onsiteWidget.metrics.viewsThisMonth ?? 0) + 1;
-  config.onsiteWidget = onsiteWidget;
-  await saveShopConfig(shop, config);
+  if (!shop) return { ok: false };
+  viewBumpState.pending.set(shop, (viewBumpState.pending.get(shop) || 0) + 1);
+  if (!viewBumpState.timer) {
+    viewBumpState.timer = setTimeout(() => {
+      void flushWidgetViewBumps();
+    }, VIEW_FLUSH_MS);
+    viewBumpState.timer.unref?.();
+  }
   return { ok: true };
 }

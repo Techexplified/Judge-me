@@ -13,6 +13,7 @@ import {
   buildOnboardingFormConfig,
   isNewOnboardingComplete,
 } from "./onboarding.shared.js";
+import { loadShopConfig, saveShopConfig } from "./collect-reviews.server.js";
 
 export {
   ONBOARDING_LAYOUT_OPTIONS,
@@ -35,21 +36,11 @@ export {
 } from "./onboarding.shared.js";
 
 async function readConfig(shop) {
-  const row = await db.settings.findUnique({ where: { shop } });
-  if (!row?.config) return {};
-  try {
-    return JSON.parse(row.config);
-  } catch {
-    return {};
-  }
+  return loadShopConfig(shop);
 }
 
 async function writeConfig(shop, config) {
-  await db.settings.upsert({
-    where: { shop },
-    update: { config: JSON.stringify(config) },
-    create: { shop, config: JSON.stringify(config) },
-  });
+  await saveShopConfig(shop, config);
 }
 
 export async function getOnboardingState(shop) {
@@ -73,13 +64,17 @@ export function isQuestionnaireComplete(questionnaire) {
 }
 
 export async function saveOnboardingBrandLogo(shop, dataUrl) {
+  const { saveShopBrandLogo } = await import("./shop-assets.server.js");
+  const publicUrl = await saveShopBrandLogo(shop, dataUrl);
   const config = await readConfig(shop);
-  const merged = mergeFormConfig({ ...config, brandLogoUrl: dataUrl });
-  await writeConfig(shop, { ...config, ...merged, brandLogoUrl: dataUrl });
-  return dataUrl;
+  const merged = mergeFormConfig({ ...config, brandLogoUrl: publicUrl });
+  await writeConfig(shop, { ...config, ...merged, brandLogoUrl: publicUrl });
+  return publicUrl;
 }
 
 export async function removeOnboardingBrandLogo(shop) {
+  const { deleteShopBrandLogo } = await import("./shop-assets.server.js");
+  await deleteShopBrandLogo(shop);
   const config = await readConfig(shop);
   const merged = mergeFormConfig({ ...config, brandLogoUrl: null });
   await writeConfig(shop, { ...config, ...merged, brandLogoUrl: null });

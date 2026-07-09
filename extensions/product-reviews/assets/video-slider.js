@@ -32,6 +32,24 @@
     };
   }
 
+  async function waitForSharedConfig() {
+    if (window.__JUDGEME__?.config) return window.__JUDGEME__.config;
+    if (typeof window.__JUDGEME__?.ensureConfig === "function") {
+      return window.__JUDGEME__.ensureConfig();
+    }
+    if (window.__JUDGEME__?.configReady) {
+      try {
+        await Promise.race([
+          window.__JUDGEME__.configReady,
+          new Promise((r) => setTimeout(r, 1500)),
+        ]);
+      } catch {
+        /* ignore */
+      }
+    }
+    return window.__JUDGEME__?.config || null;
+  }
+
   async function init() {
     const root = document.getElementById("jd-video-slider-root");
     if (!root) return;
@@ -40,23 +58,8 @@
     const API = (root.dataset.apiBase || "").replace(/\/$/, "");
     if (!shop || !API) return;
 
+    await waitForSharedConfig();
     let cfg = resolveConfig(root);
-
-    if (!window.__JUDGEME__?.config?.videoSlider) {
-      try {
-        const settingsRes = await fetch(
-          `${API}/api/public/settings?shop=${encodeURIComponent(shop)}`,
-        );
-        const settingsData = await settingsRes.json();
-        if (settingsData?.config) {
-          window.__JUDGEME__ = window.__JUDGEME__ || {};
-          window.__JUDGEME__.config = { ...(window.__JUDGEME__.config || {}), ...settingsData.config };
-          cfg = resolveConfig(root);
-        }
-      } catch {
-        /* use fallbacks */
-      }
-    }
 
     const { heading, limit, starColor, cardWidth, cardHeight, cardBorderRadius, headingFontSize, showStars, sectionPadding } = cfg;
 
@@ -64,7 +67,7 @@
 
     try {
       const res = await fetch(
-        `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=shop&media=video&limit=${limit}`,
+        `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=shop&media=video&limit=${limit}&lite=1`,
       );
       const data = await res.json();
       const reviews = data.reviews || [];
@@ -87,7 +90,10 @@
           cursor: pointer; position: relative;
         }
         .jd-vid-card:hover { transform: scale(1.05); z-index: 2; }
-        .jd-vid-thumb { width: ${cardWidth}px; height: ${cardHeight}px; object-fit: cover; display: block; background: #f1f5f9; }
+        .jd-vid-thumb { width: ${cardWidth}px; height: ${cardHeight}px; object-fit: cover; display: block; background: #0f172a; }
+        .jd-vid-thumb-placeholder {
+          background: #0f172a;
+        }
         .jd-vid-play {
           position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
           width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.92);
@@ -114,19 +120,25 @@
       `;
       document.head.appendChild(style);
 
+      // Never put <video src> in the carousel — browsers download bytes even with
+      // preload="metadata", which was the main egress leak for tiny stored media.
       const cards = reviews
         .map((r) => {
           const video = (r.media || []).find((m) => m.type === "video");
           if (!video) return "";
-          const dur = video.filename?.match(/(\d+:\d+)/)?.[1] || "0:30";
+          const poster = (r.media || []).find((m) => m.type === "image");
+          const dur = video.filename?.match(/(\d+:\d+)/)?.[1] || "";
           const starsHtml = showStars ? `<div class="jd-vid-stars">${stars(r.rating)}</div>` : "";
+          const thumbInner = poster
+            ? `<img class="jd-vid-thumb" src="${esc(poster.url)}" alt="" loading="lazy" decoding="async" />`
+            : `<div class="jd-vid-thumb jd-vid-thumb-placeholder" aria-hidden="true"></div>`;
           return `
             <article class="jd-vid-card" data-video-url="${esc(video.url)}">
-              <video class="jd-vid-thumb" src="${esc(video.url)}" muted playsinline preload="metadata"></video>
+              ${thumbInner}
               <span class="jd-vid-play">▶</span>
               <div class="jd-vid-meta">
                 ${starsHtml}
-                <div style="margin-top:4px;color:#64748b">${esc(dur)}</div>
+                ${dur ? `<div style="margin-top:4px;color:#64748b">${esc(dur)}</div>` : ""}
               </div>
             </article>`;
         })
@@ -172,11 +184,20 @@
         });
       });
 
-      fetch(`${API}/api/public/widget-event`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shop, event: "video_slider_view" }),
-      }).catch(() => {});
+      try {
+        const viewKey = `jd_vid_${shop}`;
+        if (!sessionStorage.getItem(viewKey)) {
+          sessionStorage.setItem(viewKey, "1");
+          fetch(`${API}/api/public/widget-event`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ shop, event: "video_slider_view" }),
+            keepalive: true,
+          }).catch(() => {});
+        }
+      } catch {
+        /* ignore */
+      }
     } catch (e) {
       console.error("[JudgeMe Video Slider]", e);
       root.innerHTML = `<p style="color:#e53e3e">Could not load video reviews.</p>`;

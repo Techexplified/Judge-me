@@ -1,4 +1,4 @@
-const DEFAULT_TTL_MS = 5 * 60 * 1000;
+const DEFAULT_TTL_MS = 15 * 60 * 1000;
 const MAX_ENTRIES = 500;
 
 const cacheState =
@@ -8,9 +8,8 @@ const cacheState =
     tags: new Map(),
   };
 
-if (process.env.NODE_ENV !== "production") {
-  global.__judgemePublicCache = cacheState;
-}
+// Persist across warm serverless invocations so public JSON is not rebuilt every cold hit.
+global.__judgemePublicCache = cacheState;
 
 function nowMs() {
   return Date.now();
@@ -105,8 +104,10 @@ export function publicCacheKey(request, namespace) {
 }
 
 export function publicCacheHeaders(hit = false) {
+  // Longer browser + CDN TTL: storefront widgets re-hit these on every page;
+  // short TTLs were amplifying egress for tiny config/review JSON payloads.
   return {
-    "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600",
+    "Cache-Control": "public, max-age=300, s-maxage=900, stale-while-revalidate=1800",
     "X-JudgeMe-Cache": hit ? "HIT" : "MISS",
   };
 }

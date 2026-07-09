@@ -170,8 +170,12 @@ export async function reviewFormEditorAction({ request, session, admin }) {
       return { logoError: "Use PNG, JPG, SVG, or WebP." };
     }
     const buffer = Buffer.from(await file.arrayBuffer());
-    const b64 = buffer.toString("base64");
-    const dataUrl = `data:${file.type};base64,${b64}`;
+    const { saveShopBrandLogo } = await import("./shop-assets.server.js");
+    const brandLogoUrl = await saveShopBrandLogo(
+      shop,
+      { mimeType: file.type, buffer, filename: file.name || "brand-logo" },
+      // request not available here — store proxy-relative path; public settings resolves origin
+    );
 
     const row = await db.settings.findUnique({ where: { shop } });
     let stored = {};
@@ -182,14 +186,16 @@ export async function reviewFormEditorAction({ request, session, admin }) {
         stored = {};
       }
     }
-    const merged = mergeFormConfig({ ...stored, brandLogoUrl: dataUrl });
+    const merged = mergeFormConfig({ ...stored, brandLogoUrl });
     await db.settings.upsert({
       where: { shop },
       update: { config: JSON.stringify({ ...stored, ...merged }) },
       create: { shop, config: JSON.stringify(merged) },
     });
     invalidateShopSettingsCache(shop);
-    return { logoUploaded: true, brandLogoUrl: dataUrl };
+    const { setCachedShopConfig } = await import("./shop-config-cache.server.js");
+    setCachedShopConfig(shop, { ...stored, ...merged });
+    return { logoUploaded: true, brandLogoUrl };
   }
 
   if (intent === "postReview") {

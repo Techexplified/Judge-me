@@ -8,6 +8,7 @@ import {
   pickSocialShowcaseConfigForSave,
   pruneSocialShowcaseSelections,
 } from "./social-showcase-config.shared.js";
+import { normalizeBrandLogoUrl } from "./shop-assets.server.js";
 
 const PUBLISHED_STATUSES = ["PUBLISHED", "APPROVED"];
 
@@ -45,7 +46,9 @@ function buildConfigDefaults(stored) {
       formConfig.accentColor ||
       formConfig.primaryColor ||
       "",
-    brandLogoUrl: formConfig.brandLogoUrl || stored.brandLogoUrl || null,
+    brandLogoUrl: normalizeBrandLogoUrl(
+      formConfig.brandLogoUrl || stored.brandLogoUrl || null,
+    ),
   };
 }
 

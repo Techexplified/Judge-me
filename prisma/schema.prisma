@@ -77,6 +77,23 @@ model Settings {
   updatedAt DateTime @updatedAt
 }
 
+/// Binary shop assets (brand logos, etc.) — kept out of Settings JSON so Neon
+/// data-transfer is not multiplied on every settings read/write.
+model ShopAsset {
+  id        String   @id @default(uuid())
+  shop      String
+  /// e.g. "brandLogo"
+  key       String
+  mimeType  String
+  filename  String?
+  data      Bytes
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([shop, key])
+  @@index([shop])
+}
+
 /// Tracks per-shop install, billing plan, and review limits.
 model Shop {
   id                 String    @id @default(uuid())

@@ -7,6 +7,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
+const VIEW_EVENTS = new Set([
+  "view",
+  "review_showcase_view",
+  "social_showcase_view",
+]);
+
 export async function action({ request }) {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -40,8 +46,11 @@ export async function action({ request }) {
   }
 
   const shop = normalizeShopDomain(shopRaw);
-  if (event === "view" || event === "review_showcase_view" || event === "social_showcase_view") {
-    await incrementWidgetView(shop);
+  // Never block the storefront beacon on DB work — buffer and return immediately.
+  if (VIEW_EVENTS.has(event)) {
+    void incrementWidgetView(shop).catch((err) => {
+      console.error("[widget-event] increment failed", err);
+    });
   }
 
   return new Response(JSON.stringify({ ok: true }), {
