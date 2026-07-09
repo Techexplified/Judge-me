@@ -327,6 +327,9 @@ export async function getShopPlanStatus(shop, billing = null) {
   await maybeGrantGraceTrial(shop);
 
   let record = await db.shop.findUnique({ where: { shop } });
+  if (!record) {
+    record = await ensureShopRecord(shop);
+  }
   const reviewsThisMonth = await getMonthlyReviewCount(shop);
 
   if (record.billingTrialEndsAt && record.billingTrialEndsAt.getTime() <= Date.now()) {

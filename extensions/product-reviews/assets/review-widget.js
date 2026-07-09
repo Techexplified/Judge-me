@@ -280,6 +280,47 @@
     return d.innerHTML;
   }
 
+  const FETCH_TIMEOUT_MS = 15000;
+
+  async function fetchJson(url) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, { signal: ctrl.signal });
+      const text = await res.text();
+      let data = null;
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          if (!res.ok) throw new Error(`Reviews HTTP ${res.status}`);
+          throw new Error("Invalid response from review server");
+        }
+      }
+      if (!res.ok) {
+        const msg =
+          (data && typeof data === "object" && data.error) ||
+          `Reviews HTTP ${res.status}`;
+        throw new Error(msg);
+      }
+      return data;
+    } catch (err) {
+      if (err && err.name === "AbortError") {
+        throw new Error("Reviews request timed out");
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function showLoadError(root, message) {
+    root.innerHTML = `<p style="color:#e53e3e">${esc(message || "Could not load reviews.")}</p>
+      <button type="button" id="jd-retry-load" style="margin-top:8px;padding:8px 14px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;font:inherit">Try again</button>`;
+    const retry = root.querySelector("#jd-retry-load");
+    if (retry) retry.onclick = () => init();
+  }
+
   function renderMerchantReply(review, cfg) {
     const reply = review?.reply && String(review.reply).trim();
     if (!reply) return "";
@@ -880,17 +921,22 @@
     const API = (root.dataset.apiBase || "").replace(/\/$/, "");
     if (!API || !shop) return;
 
+    if (!productId || !String(productId).trim()) {
+      showLoadError(
+        root,
+        "This block must be on a product page (missing product ID).",
+      );
+      return;
+    }
+
     root.innerHTML = '<p style="color:#64748b">Loading reviews…</p>';
 
     try {
       // Load reviews immediately — never block on settings/ensureConfig (that was
       // hanging storefront widgets when the settings proxy was slow).
-      const reviewsPromise = fetch(
+      const reviewsPromise = fetchJson(
         `${API}/api/public/reviews?productId=${encodeURIComponent(productId)}&shop=${encodeURIComponent(shop)}&limit=24`,
-      ).then(async (r) => {
-        if (!r.ok) throw new Error(`Reviews HTTP ${r.status}`);
-        return r.json();
-      });
+      );
 
       const settingsPromise = (
         typeof window.__JUDGEME__?.ensureConfig === "function"
@@ -1270,7 +1316,7 @@
       window.JudgeMeMediaLightbox?.bind?.(root);
     } catch (e) {
       console.error("[JudgeMe Reviews]", e);
-      root.innerHTML = '<p style="color:#e53e3e">Could not load reviews.</p>';
+      showLoadError(root, e?.message || "Could not load reviews.");
     }
   }
 

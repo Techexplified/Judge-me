@@ -136,12 +136,13 @@ export async function loader({ request }) {
   const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
 
   if (!productId || !shop) {
-    return new Response("Missing params", {
+    return new Response(JSON.stringify({ error: "Missing params" }), {
       status: 400,
-      headers: corsHeaders,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
+  try {
   const shopNorm = normalizeShopDomain(shop);
   const idVariants = productIdMatchList(productId);
   if (idVariants.length === 0) {
@@ -272,6 +273,13 @@ export async function loader({ request }) {
       "Content-Type": "application/json",
     },
   });
+  } catch (err) {
+    console.error("[api.public.reviews] loader failed:", err);
+    return new Response(JSON.stringify({ error: "Could not load reviews" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 }
 
 export async function action({ request }) {

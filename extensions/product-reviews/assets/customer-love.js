@@ -144,7 +144,14 @@
           `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=shop&media=${mediaFilter}&limit=${cfg.limit}`,
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        const text = await res.text();
+        let data;
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch {
+          throw new Error("Invalid response from review server");
+        }
+        if (data && data.error) throw new Error(data.error);
         reviewsByFilter[mediaFilter] = data.reviews || [];
         // Keep summary/filter counts from the richest response (prefer "all").
         if (!summaryCache || mediaFilter === "all") {

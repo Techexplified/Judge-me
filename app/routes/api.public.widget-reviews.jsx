@@ -114,13 +114,6 @@ export async function loader({ request }) {
   }
 
   const shopNorm = normalizeShopDomain(shopRaw);
-  const scope = url.searchParams.get("scope") || "shop";
-  const productId = url.searchParams.get("productId");
-  const media = url.searchParams.get("media") || "all";
-  const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
-  const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
-  // lite=1 skips filter/summary counts (video slider / testimonials) — fewer DB ops + smaller JSON.
-  const lite = url.searchParams.get("lite") === "1" || url.searchParams.get("lite") === "true";
   const cacheKey = publicCacheKey(request, "widget-reviews");
   const cached = getPublicCache(cacheKey);
   if (cached) {
@@ -132,6 +125,15 @@ export async function loader({ request }) {
       },
     });
   }
+
+  try {
+  const scope = url.searchParams.get("scope") || "shop";
+  const productId = url.searchParams.get("productId");
+  const media = url.searchParams.get("media") || "all";
+  const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
+  const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
+  // lite=1 skips filter/summary counts (video slider / testimonials) — fewer DB ops + smaller JSON.
+  const lite = url.searchParams.get("lite") === "1" || url.searchParams.get("lite") === "true";
 
   const baseWhere = { shop: shopNorm, status: { in: PUBLISHED_STATUSES } };
   const scopedWhere = combineWhere(baseWhere, scopeWhere(scope, productId));
@@ -258,4 +260,11 @@ export async function loader({ request }) {
       "Content-Type": "application/json",
     },
   });
+  } catch (err) {
+    console.error("[api.public.widget-reviews] loader failed:", err);
+    return new Response(JSON.stringify({ error: "Could not load reviews" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 }
