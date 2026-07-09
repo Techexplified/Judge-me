@@ -883,23 +883,36 @@
     root.innerHTML = '<p style="color:#64748b">Loading reviews…</p>';
 
     try {
-      const settingsPromise =
-        typeof window.__JUDGEME__?.ensureConfig === "function"
-          ? window.__JUDGEME__.ensureConfig().then((config) => ({ config }))
-          : window.__JUDGEME__?.config
-            ? Promise.resolve({ config: window.__JUDGEME__.config })
-            : fetch(`${API}/api/public/settings?shop=${encodeURIComponent(shop)}`).then((r) =>
-                r.ok ? r.json() : { config: null },
-              );
+      // Load reviews immediately — never block on settings/ensureConfig (that was
+      // hanging storefront widgets when the settings proxy was slow).
+      const reviewsPromise = fetch(
+        `${API}/api/public/reviews?productId=${encodeURIComponent(productId)}&shop=${encodeURIComponent(shop)}&limit=24`,
+      ).then(async (r) => {
+        if (!r.ok) throw new Error(`Reviews HTTP ${r.status}`);
+        return r.json();
+      });
 
-      const [settingsData, reviewsDataRaw] = await Promise.all([
+      const settingsPromise = (
+        typeof window.__JUDGEME__?.ensureConfig === "function"
+          ? window.__JUDGEME__.ensureConfig()
+          : window.__JUDGEME__?.config
+            ? Promise.resolve(window.__JUDGEME__.config)
+            : fetch(`${API}/api/public/settings?shop=${encodeURIComponent(shop)}`)
+                .then((r) => (r.ok ? r.json() : null))
+                .then((data) => data?.config || null)
+                .catch(() => null)
+      )
+        .then((config) => ({ config: config || null }))
+        .catch(() => ({ config: null }));
+
+      // Prefer reviews; settings can finish later / fail without blocking UI.
+      const reviewsDataRaw = await reviewsPromise;
+      const settingsData = await Promise.race([
         settingsPromise,
-        fetch(
-          `${API}/api/public/reviews?productId=${encodeURIComponent(productId)}&shop=${encodeURIComponent(shop)}&limit=24`,
-        ).then((r) => r.json()),
+        new Promise((resolve) => setTimeout(() => resolve({ config: null }), 2000)),
       ]);
 
-      let reviewsData = reviewsDataRaw;
+      let reviewsData = Array.isArray(reviewsDataRaw) ? reviewsDataRaw : [];
 
       const isDesignMode =
         Boolean(window.Shopify?.designMode) ||

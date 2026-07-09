@@ -542,8 +542,15 @@
         if (fromCore) return fromCore;
 
         if (typeof window.__JUDGEME__?.ensureConfig === "function") {
-            const cfg = await window.__JUDGEME__.ensureConfig();
-            if (cfg?.testimonials) return cfg.testimonials;
+            try {
+                const cfg = await Promise.race([
+                    window.__JUDGEME__.ensureConfig(),
+                    new Promise((r) => setTimeout(() => r(null), 2000)),
+                ]);
+                if (cfg?.testimonials) return cfg.testimonials;
+            } catch {
+                /* fall through */
+            }
         }
 
         if (window.__JUDGEME__?.configReady) {
@@ -596,36 +603,44 @@
 
         root.innerHTML = "<p>Loading Testimonials...</p>";
 
-        const remoteConfig = await resolveConfig(shop, API);
-        const config = {
-            heading: remoteConfig?.heading || fallbackHeading || "Testimonials",
-            limit: remoteConfig?.limit || fallbackLimit,
-            verifiedBadgeText: remoteConfig?.verifiedBadgeText || "Verified Buyer",
-            showVerifiedBadge: remoteConfig?.showVerifiedBadge !== false,
-            accentColor: remoteConfig?.accentColor || "#6366f1",
-            starColor: remoteConfig?.starColor || "#6366f1",
-            textColor: remoteConfig?.textColor || "#1e293b",
-            fontFamily: remoteConfig?.fontFamily || "inherit",
-            borderRadius: remoteConfig?.borderRadius ?? 16,
-            sectionPadding: remoteConfig?.sectionPadding ?? 40,
-            headingFontSize: remoteConfig?.headingFontSize ?? 28,
-            cardMinWidth: remoteConfig?.cardMinWidth ?? 270,
-            showNavigationArrows: remoteConfig?.showNavigationArrows !== false,
-            showDots: remoteConfig?.showDots !== false,
-        };
+        // Fetch reviews immediately; config is best-effort and must not block.
+        const reviewsPromise = fetch(
+            `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=store&limit=${fallbackLimit}&lite=1`
+        ).then(async (res) => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        });
 
-        applyConfigVars(root, config);
+        const remoteConfigPromise = resolveConfig(shop, API).catch(() => null);
 
         try {
-            const res = await fetch(
-                `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=store&limit=${config.limit}&lite=1`
-            );
+            const [data, remoteConfig] = await Promise.all([
+                reviewsPromise,
+                Promise.race([
+                    remoteConfigPromise,
+                    new Promise((r) => setTimeout(() => r(null), 2000)),
+                ]),
+            ]);
 
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
-            }
+            const config = {
+                heading: remoteConfig?.heading || fallbackHeading || "Testimonials",
+                limit: remoteConfig?.limit || fallbackLimit,
+                verifiedBadgeText: remoteConfig?.verifiedBadgeText || "Verified Buyer",
+                showVerifiedBadge: remoteConfig?.showVerifiedBadge !== false,
+                accentColor: remoteConfig?.accentColor || "#6366f1",
+                starColor: remoteConfig?.starColor || "#6366f1",
+                textColor: remoteConfig?.textColor || "#1e293b",
+                fontFamily: remoteConfig?.fontFamily || "inherit",
+                borderRadius: remoteConfig?.borderRadius ?? 16,
+                sectionPadding: remoteConfig?.sectionPadding ?? 40,
+                headingFontSize: remoteConfig?.headingFontSize ?? 28,
+                cardMinWidth: remoteConfig?.cardMinWidth ?? 270,
+                showNavigationArrows: remoteConfig?.showNavigationArrows !== false,
+                showDots: remoteConfig?.showDots !== false,
+            };
 
-            const data = await res.json();
+            applyConfigVars(root, config);
+
             let reviews = data.reviews || [];
 
             if (reviews.length === 0 && isDesignMode()) {

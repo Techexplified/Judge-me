@@ -9,11 +9,12 @@
   if (!shop) return;
 
   let resolveConfig;
-  let rejectConfig;
-  const configReady = new Promise((resolve, reject) => {
+  const configReady = new Promise((resolve) => {
     resolveConfig = resolve;
-    rejectConfig = reject;
   });
+
+  // Always settle — never leave widgets waiting forever on a hung settings request.
+  const SETTINGS_TIMEOUT_MS = 2500;
 
   window.__JUDGEME__ = {
     ...cfg,
@@ -25,6 +26,7 @@
 
   /**
    * Single-flight settings fetch shared by all widgets on the page.
+   * Always resolves (never rejects) so review widgets are not blocked.
    * @returns {Promise<object|null>}
    */
   window.__JUDGEME__.ensureConfig = function ensureConfig() {
@@ -34,7 +36,8 @@
     if (window.__JUDGEME__._configFetch) {
       return window.__JUDGEME__._configFetch;
     }
-    window.__JUDGEME__._configFetch = fetch(
+
+    const fetchPromise = fetch(
       `${API}/api/public/settings?shop=${encodeURIComponent(shop)}`,
     )
       .then((r) => (r.ok ? r.json() : null))
@@ -42,13 +45,27 @@
         if (data?.config) {
           window.__JUDGEME__.config = data.config;
         }
-        resolveConfig(window.__JUDGEME__.config || null);
         return window.__JUDGEME__.config || null;
       })
-      .catch((err) => {
-        rejectConfig(err);
-        return null;
-      });
+      .catch(() => null);
+
+    const timeoutPromise = new Promise((resolve) => {
+      setTimeout(() => resolve(null), SETTINGS_TIMEOUT_MS);
+    });
+
+    window.__JUDGEME__._configFetch = Promise.race([fetchPromise, timeoutPromise]).then(
+      (config) => {
+        // If timeout won first, still adopt late settings when they arrive.
+        fetchPromise.then((late) => {
+          if (late && !window.__JUDGEME__.config) {
+            window.__JUDGEME__.config = late;
+          }
+        });
+        resolveConfig(window.__JUDGEME__.config || config || null);
+        return window.__JUDGEME__.config || config || null;
+      },
+    );
+
     return window.__JUDGEME__._configFetch;
   };
 

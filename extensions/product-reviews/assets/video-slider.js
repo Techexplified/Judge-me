@@ -35,7 +35,14 @@
   async function waitForSharedConfig() {
     if (window.__JUDGEME__?.config) return window.__JUDGEME__.config;
     if (typeof window.__JUDGEME__?.ensureConfig === "function") {
-      return window.__JUDGEME__.ensureConfig();
+      try {
+        return await Promise.race([
+          window.__JUDGEME__.ensureConfig(),
+          new Promise((r) => setTimeout(() => r(null), 2000)),
+        ]);
+      } catch {
+        return null;
+      }
     }
     if (window.__JUDGEME__?.configReady) {
       try {
@@ -58,17 +65,21 @@
     const API = (root.dataset.apiBase || "").replace(/\/$/, "");
     if (!shop || !API) return;
 
-    await waitForSharedConfig();
+    root.innerHTML = `<p style="color:#64748b;padding:24px 0">Loading video reviews…</p>`;
+
+    // Don't block review fetch on settings — use Liquid dataset defaults first.
     let cfg = resolveConfig(root);
+    void waitForSharedConfig().then(() => {
+      cfg = resolveConfig(root);
+    });
 
     const { heading, limit, starColor, cardWidth, cardHeight, cardBorderRadius, headingFontSize, showStars, sectionPadding } = cfg;
-
-    root.innerHTML = `<p style="color:#64748b;padding:24px 0">Loading video reviews…</p>`;
 
     try {
       const res = await fetch(
         `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=shop&media=video&limit=${limit}&lite=1`,
       );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const reviews = data.reviews || [];
 

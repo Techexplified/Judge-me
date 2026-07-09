@@ -95,7 +95,14 @@
   async function waitForSharedConfig() {
     if (window.__JUDGEME__?.config) return window.__JUDGEME__.config;
     if (typeof window.__JUDGEME__?.ensureConfig === "function") {
-      return window.__JUDGEME__.ensureConfig();
+      try {
+        return await Promise.race([
+          window.__JUDGEME__.ensureConfig(),
+          new Promise((r) => setTimeout(() => r(null), 2000)),
+        ]);
+      } catch {
+        return null;
+      }
     }
     if (window.__JUDGEME__?.configReady) {
       try {
@@ -118,8 +125,11 @@
     const API = (root.dataset.apiBase || "").replace(/\/$/, "");
     if (!shop || !API) return;
 
-    await waitForSharedConfig();
+    // Render with Liquid/dataset defaults immediately; settings is best-effort.
     let cfg = resolveConfig(root);
+    void waitForSharedConfig().then(() => {
+      cfg = resolveConfig(root);
+    });
 
     let mediaFilter = "all";
     let summaryCache = null;
@@ -133,6 +143,7 @@
         const res = await fetch(
           `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=shop&media=${mediaFilter}&limit=${cfg.limit}`,
         );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         reviewsByFilter[mediaFilter] = data.reviews || [];
         // Keep summary/filter counts from the richest response (prefer "all").
