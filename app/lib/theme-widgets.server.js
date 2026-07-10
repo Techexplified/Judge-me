@@ -4,7 +4,8 @@ import {
   CUSTOMER_LOVE_PAGE_HANDLE,
   PRODUCT_REVIEWS_BLOCK_HANDLE,
   VIDEO_REVIEWS_SLIDER_HANDLE,
-  TESTIMONIALS_BLOCK_HANDLE, 
+  TESTIMONIALS_BLOCK_HANDLE,
+  QUESTION_AND_ANSWER_HANDLE,
   WIDGET_THEME_TARGETS,
 } from "./theme-editor-nav.shared.js";
 
@@ -12,7 +13,8 @@ const BLOCK_HANDLE_BY_WIDGET = {
   "review-showcase": PRODUCT_REVIEWS_BLOCK_HANDLE,
   "video-reviews-slider": VIDEO_REVIEWS_SLIDER_HANDLE,
   "customers-love-page": CUSTOMER_LOVE_PAGE_HANDLE,
-  "testimonials" : TESTIMONIALS_BLOCK_HANDLE,
+  "testimonials": TESTIMONIALS_BLOCK_HANDLE,
+  "question-and-answer": QUESTION_AND_ANSWER_HANDLE,
 };
 
 function extractThemeFileContent(body) {

@@ -1,10 +1,11 @@
 {% if block.settings.enable %}
-    <div id="QandA-root"
-     data-product-id="{{ product.id }}"
-     data-product-name="{{ product.title | escape }}"
-     data-shop="{{ shop.permanent_domain }}"
-     data-api-base="/apps/judgeme-reviews">
-</div>
+<div
+  id="QandA-root"
+  data-product-id="{{ product.id }}"
+  data-product-name="{{ product.title | escape }}"
+  data-shop="{{ shop.permanent_domain }}"
+  data-api-base="/apps/judgeme-reviews"
+></div>
 <script src="{{ 'QandA-widget.js' | asset_url }}" defer></script>
 {% endif %}
 
@@ -12,11 +13,12 @@
 {
   "name": "Question And Answer",
   "target": "section",
+  "templates": ["product"],
   "settings": [
     {
       "type": "checkbox",
       "id": "enable",
-      "label": "Enable reviews",
+      "label": "Enable Q&A",
       "default": true
     }
   ]

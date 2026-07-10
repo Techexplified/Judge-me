@@ -4,6 +4,7 @@ export const VIDEO_REVIEWS_SLIDER_HANDLE = "video-reviews-slider";
 export const CUSTOMER_LOVE_PAGE_HANDLE = "customer-love-page";
 export const CORE_EMBED_HANDLE = "judgeme-core";
 export const TESTIMONIALS_BLOCK_HANDLE = "testimonials";
+export const QUESTION_AND_ANSWER_HANDLE = "question-and-answer";
 
 export const WIDGET_THEME_TARGETS = {
   "review-showcase": {
@@ -24,6 +25,11 @@ export const WIDGET_THEME_TARGETS = {
   "testimonials": {
     template: "index",
     handle: TESTIMONIALS_BLOCK_HANDLE,
+    target: "newAppsSection",
+  },
+  "question-and-answer": {
+    template: "product",
+    handle: QUESTION_AND_ANSWER_HANDLE,
     target: "newAppsSection",
   },
 };
