@@ -25,7 +25,7 @@ export async function loader({ request }) {
     const shopNorm = normalizeShopDomain(shop);
     const pid = normalizeShopifyProductId(productId) || String(productId).trim();
 
-    const questions = await db.QuestionAndAnswer.findMany({
+    const questions = await db.questionAndAnswer.findMany({
         where: { shop: shopNorm, productId: pid },
         orderBy: { createdAt: "desc" },
     });
@@ -55,9 +55,9 @@ export async function action({ request }) {
         }
 
         const shopNorm = normalizeShopDomain(shop);
-        const pid = normalizeShopifyProductId(productId) || string(productId).trim();
+        const pid = normalizeShopifyProductId(productId) || String(productId).trim();
 
-        const created = await db.QuestionAndAnswer.create({
+        const created = await db.questionAndAnswer.create({
             data: {
                 shop: shopNorm,
                 productId: pid,

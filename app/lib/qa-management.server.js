@@ -4,21 +4,29 @@ import { normalizeShopDomain } from "../utils/shop.js";
 import { getGroupShopList } from "../lib/store-group.server.js";
 
 export async function loadQAManagementData({ session }) {
-    const shop = normalizeShopDomain(session.shop);
-    const targetShops = await getGroupShopList(shop);
+    try {
+        const shop = normalizeShopDomain(session.shop);
+        const targetShops = await getGroupShopList(shop);
 
-    const questions = await db.QuestionAndAnswer.findMany({
-        where: { shop: { in: targetShops } },
-        orderBy: { createdAt: "desc" },
-    });
+        const questions = await db.questionAndAnswer.findMany({
+            where: { shop: { in: targetShops } },
+            orderBy: { createdAt: "desc" },
+        });
 
-    const unanswered = questions.filter((q) => q.status === "UNANSWERED").length;
-    const answered = questions.filter((q) => q.status === "ANSWERED").length;
+        const unanswered = questions.filter((q) => q.status === "UNANSWERED").length;
+        const answered = questions.filter((q) => q.status === "ANSWERED").length;
 
-    return {
-        questions,
-        counts: { all: questions.length, unanswered, answered },
-    };
+        return {
+            questions,
+            counts: { all: questions.length, unanswered, answered },
+        };
+    } catch (error) {
+        console.error("[qa-management] load failed:", error);
+        return {
+            questions: [],
+            counts: { all: 0, unanswered: 0, answered: 0 },
+        };
+    }
 }
 
 export async function handleQAManagementAction(requestOrCtx) {
@@ -45,7 +53,7 @@ export async function handleQAManagementAction(requestOrCtx) {
             return { ok: false, error: "Missing question." };
         }
 
-        const existing = await db.QuestionAndAnswer.findFirst({
+        const existing = await db.questionAndAnswer.findFirst({
             where: { id: questionId, shop: { in: targetShops } },
         });
         if (!existing) {
@@ -57,7 +65,7 @@ export async function handleQAManagementAction(requestOrCtx) {
             const trimmed = typeof reply === "string" ? reply.trim() : "";
             if (!trimmed) return { ok: false, error: "Reply cannot be empty." };
 
-            await db.QuestionAndAnswer.update({
+            await db.questionAndAnswer.update({
                 where: { id: questionId },
                 data: { reply: trimmed, replyDate: new Date(), replyPublished: true, status: "ANSWERED" },
             });
@@ -65,7 +73,7 @@ export async function handleQAManagementAction(requestOrCtx) {
         }
 
         if (intent === "unpublish") {
-            await db.QuestionAndAnswer.update({
+            await db.questionAndAnswer.update({
                 where: { id: questionId },
                 data: { replyPublished: false },
             });
