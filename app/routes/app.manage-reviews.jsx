@@ -26,6 +26,10 @@ import {
   handleReviewsManagementAction,
   loadReviewsManagementData,
 } from "../lib/reviews-management.server.js";
+import {
+  handleQAManagementAction,
+  loadQAManagementData,
+} from "../lib/qa-management.server.js";
 import { resolveProductFromUrlParams, reviewsManagementShouldRevalidate, normalizeProductLookup } from "../lib/reviews-management.shared.js";
 import { loadManageReviewsData } from "../utils/performance-metrics.server.js";
 import { mergeShopifyEmbedParams } from "../utils/shopify-embed-nav.js";
@@ -33,6 +37,7 @@ import { normalizeShopDomain } from "../utils/shop.js";
 import { IntegrationSettingsPanel } from "../components/settings/integration-settings-panel";
 import { ProductReviewsModal } from "../components/manage-reviews/reviews-workspace.jsx";
 import { SocialShowcaseTab } from "../components/manage-reviews/social-showcase-tab.jsx";
+import {QATab} from "../components/manage-reviews/qa-tab.jsx";
 import {
   loadSocialShowcaseAdminData,
   saveSocialShowcaseConfig,
@@ -125,11 +130,12 @@ export const loader = async ({ request }) => {
   const url = new URL(request.url);
 
   try {
-    const [tableData, modalData, { group }, socialShowcaseData] = await Promise.all([
+    const [tableData, modalData, { group }, socialShowcaseData, qaData] = await Promise.all([
       loadManageReviewsData({ request, session, admin }),
       loadReviewsManagementData({ request, session, billing }),
       loadStoreIntegrationGroup(shop),
       loadSocialShowcaseAdminData({ shop, request }),
+      loadQAManagementData({ session }),
     ]);
 
     return {
@@ -142,6 +148,8 @@ export const loader = async ({ request }) => {
       aiAvailable: modalData.aiAvailable,
       group,
       socialShowcase: socialShowcaseData,
+      questions: qaData.questions,
+      qaCounts: qaData.counts,
       ...parseStoreIntegrationFlash(url),
     };
   } catch (error) {
@@ -179,6 +187,10 @@ export const action = async ({ request }) => {
       const reviewId = String(formData.get("reviewId") ?? "").trim();
       const selected = formData.get("selected") === "true";
       return toggleShowcaseReview({ shop, reviewId, selected });
+    }
+
+    if (formData.has("questionId")) {
+      return handleQAManagementAction({ session, formData });
     }
 
     return await handleReviewsManagementAction({ session, formData });
@@ -470,6 +482,8 @@ export default function ManageReviews() {
     linkedSuccess,
     unlinkedSuccess,
     socialShowcase,
+    questions,
+    qaCounts,
   } = useLoaderData();
   const actionData = useActionData();
   const location = useLocation();
@@ -647,6 +661,7 @@ export default function ManageReviews() {
             { id: "store", label: "Store Reviews" },
             { id: "social-showcase", label: "Social Showcase" },
             { id: "integration", label: "Store Integration" },
+            { id: "QandA", label: "Question And Answer"},
           ].map((tab) => {
             const active = activeTab === tab.id;
             return (
@@ -731,6 +746,11 @@ export default function ManageReviews() {
           summary={socialShowcase?.summary}
           formAction={replyFormAction}
           onSaveReady={setSaveShowcase}
+        />
+      ) : activeTab === "QandA" ? (
+        <QATab 
+        questions={questions} 
+        qaCounts={qaCounts} 
         />
       ) : (
         <div

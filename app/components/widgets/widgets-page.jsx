@@ -13,6 +13,7 @@ import reviewTranslationImg from "./reviewtranslation.png";
 import videoSliderImg from "./video-slider.png";
 import customerLovePageImg from "./customerlove-page-1.png";
 import testimonialsImg from "./testimonials-1.jpeg";
+import questionandanswerImg from "./qanda-1.jpeg";
 import { ProBadge } from "../admin-ui";
 
 const FONT =
@@ -48,6 +49,12 @@ export const WIDGET_CATALOG = [
     title: "Testimonials",
     description: "Display all your store reviews to build trust and boost conversations",
     previewImage: testimonialsImg,
+  },
+  {
+    id: "question-and-answer",
+    title: "Question and Answer",
+    description: "Create a dedicated space for your customers to ask questions and get answers",
+    previewImage: questionandanswerImg,
   },
 ];
 

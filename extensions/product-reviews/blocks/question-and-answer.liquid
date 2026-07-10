@@ -1,0 +1,24 @@
+{% if block.settings.enable %}
+    <div id="QandA-root"
+     data-product-id="{{ product.id }}"
+     data-product-name="{{ product.title | escape }}"
+     data-shop="{{ shop.permanent_domain }}"
+     data-api-base="/apps/judgeme-reviews">
+</div>
+<script src="{{ 'QandA-widget.js' | asset_url }}" defer></script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Question And Answer",
+  "target": "section",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "enable",
+      "label": "Enable reviews",
+      "default": true
+    }
+  ]
+}
+{% endschema %}

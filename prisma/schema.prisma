@@ -94,6 +94,25 @@ model ShopAsset {
   @@index([shop])
 }
 
+model QuestionAndAnswer {
+  id            String    @id @default(uuid())
+  shop          String
+  productId     String
+  productName   String?
+  question      String
+  author        String
+  email         String?
+  status        String    @default("UNANSWERED")
+  reply         String?
+  replyDate     DateTime?
+  replyPublished Boolean  @default(false)
+  createdAt     DateTime  @default(now())
+  @@index([shop])
+  @@index([shop, createdAt])
+  @@index([shop, status, createdAt])
+  @@index([shop, productId, status, createdAt])
+}
+
 /// Tracks per-shop install, billing plan, and review limits.
 model Shop {
   id                 String    @id @default(uuid())
