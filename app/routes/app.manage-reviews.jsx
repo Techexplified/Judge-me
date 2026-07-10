@@ -122,7 +122,7 @@ const type = {
   },
 };
 
-const MANAGE_REVIEWS_TABS = new Set(["product", "store", "social-showcase", "integration", "QandA"]);
+const MANAGE_REVIEWS_TABS = new Set(["product", "store", "social-showcase", "integration","QandA"]);
 
 export const loader = async ({ request }) => {
   const { session, admin, billing } = await authenticate.admin(request);

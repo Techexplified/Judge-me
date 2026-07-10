@@ -248,6 +248,13 @@
     root.querySelector(".qa-search-input")?.addEventListener("input", applySearch);
   }
 
+    async function handleSubmit(e) {
+        e.preventDefault();
+        const form = e.target;
+        const author = form.author.value.trim();
+        // const email = form.email.value.trim();
+        const question = form.question.value.trim();
+        if (!author || !question) return;
   async function handleSubmit(e) {
     e.preventDefault();
     const form = e.target;
@@ -270,42 +277,26 @@
       submitBtn.textContent = "Submitting...";
     }
 
-    try {
-      const res = await fetch(`${API}/api/public/qa`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          shop,
-          productId,
-          productName: productName || undefined,
-          author,
-          question,
-        }),
-      });
+        try {
+            const res = await fetch(`${API}/api/public/qa`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ shop, productId, productName, author, question }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
 
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.error || `HTTP ${res.status}`);
-      }
-
-      if (data.question) {
-        allQuestions.unshift(data.question);
-      }
-
-      displayLimit = Math.max(displayLimit, 5);
-      renderShell();
-      bindEvents();
-      renderList(allQuestions);
-      updateCount();
-    } catch (err) {
-      console.error("[QandA] submit failed:", err);
-      setFormError("Could not submit your question. Please try again.");
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Submit question";
-      }
+            allQuestions.unshift(data.question);
+            renderShell();
+            bindEvents();
+            renderList(allQuestions);
+        } catch (err) {
+            console.error("[QandA] submit failed:", err);
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Submit question";
+        }
     }
-  }
+}
 
   async function init() {
     root = document.getElementById("QandA-root");
