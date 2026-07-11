@@ -29,7 +29,7 @@ function initials(name) {
 }
 
 function renderPage(data, shop) {
-  const { config, brandLogoUrl, shopUrl, selectedReviews, selectedPhotos, summary } = data;
+  const { config, brandLogoUrl, shopUrl, selectedReviews, selectedPhotos, summary, hideJudgeMeBranding } = data;
   const accent = esc(config.accentColor);
   const storeName = esc(config.storeName);
   const tagline = esc(config.tagline);
@@ -298,7 +298,7 @@ function renderPage(data, shop) {
       <p>Join thousands of happy customers who trust ${storeName} for quality products and great service.</p>
       <a class="shop-btn" href="${esc(shopUrl)}" rel="noopener">${shopNowLabel}</a>
       <div class="bottom-summary">${avg.toFixed(1)} average across ${total.toLocaleString()} reviews</div>
-      <div class="powered">Powered by JudgeMe Reviews</div>
+      ${hideJudgeMeBranding ? "" : '<div class="powered">Powered by JudgeMe Reviews</div>'}
     </section>
   </div>
   <script>

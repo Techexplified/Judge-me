@@ -94,7 +94,7 @@ export function SettingsShell({ children, variant = "default" }) {
         <div style={fullscreenHeader}>
           <PageHeader
             title="Settings"
-            subtitle="Manage your plan, integrations, translations, and storefront widgets."
+            subtitle="Manage your plan, branding, and storefront appearance."
           />
           {tabBar}
         </div>
@@ -107,7 +107,7 @@ export function SettingsShell({ children, variant = "default" }) {
     <Page>
       <PageHeader
         title="Settings"
-        subtitle="Manage your plan, integrations, translations, and storefront widgets."
+        subtitle="Manage your plan, branding, and storefront appearance."
       />
       {tabBar}
       {children}

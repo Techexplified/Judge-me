@@ -34,6 +34,7 @@
     secondaryColor: "#64748b",
     trustBadgeEnabled: true,
     trustBadgeText: "Protected by SSL. We never share your info.",
+    hideJudgeMeBranding: false,
     ratingPageTitle: "How would you rate this product?",
     starLabelHigh: "Love it!",
     starLabelLow: "Dislike it",
@@ -591,7 +592,7 @@
         poweredBy.className = "jd-rating-powered";
         poweredBy.style.cssText = "text-align:center;margin:14px 0 0;font-size:11px;color:#94a3b8";
         poweredBy.textContent = "Powered by JudgeMe Reviews";
-        wrap.appendChild(poweredBy);
+        if (!cfg.hideJudgeMeBranding) wrap.appendChild(poweredBy);
 
         els.content.appendChild(wrap);
         return;
@@ -707,7 +708,7 @@
             <div style="display:inline-flex;align-items:center;gap:8px;font-size:12px;color:#6d7175;margin-bottom:16px">
               🔒 ${esc(trustText)}
             </div>
-            <div style="font-size:11px;color:#94a3b8">Powered by JudgeMe Reviews</div>
+            ${cfg.hideJudgeMeBranding ? "" : '<div style="font-size:11px;color:#94a3b8">Powered by JudgeMe Reviews</div>'}
           </div>`;
       }
     }

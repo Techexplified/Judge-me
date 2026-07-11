@@ -147,6 +147,8 @@ export const defaultFormConfig = {
   layoutPreset: "modern",
   trustBadgeEnabled: true,
   trustBadgeText: "Protected by SSL. We never share your info.",
+  /** When true, storefront widgets omit "Powered by JudgeMe Reviews". */
+  hideJudgeMeBranding: false,
   flowRules: [],
 };
 
@@ -342,6 +344,8 @@ export function mergeFormConfig(saved) {
     base.radiusPreset = radiusPresetFromValue(Number(base.borderRadius) || 12);
   }
   if (!Array.isArray(base.flowRules)) base.flowRules = [];
+  base.hideJudgeMeBranding = base.hideJudgeMeBranding === true;
+  base.trustBadgeEnabled = base.trustBadgeEnabled !== false;
 
   if (base.ratingPageTitle === "How would you rate {{item}} ?") {
     base.ratingPageTitle = defaultFormConfig.ratingPageTitle;

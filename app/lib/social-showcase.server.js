@@ -212,6 +212,7 @@ export async function resolveSocialShowcasePublicData({ shop, request }) {
   return {
     config,
     brandLogoUrl: defaults.brandLogoUrl,
+    hideJudgeMeBranding: mergeFormConfig(stored).hideJudgeMeBranding === true,
     shopUrl: `https://${shop}`,
     selectedReviews,
     selectedPhotos,

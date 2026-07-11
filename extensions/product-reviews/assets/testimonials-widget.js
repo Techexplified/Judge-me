@@ -333,7 +333,7 @@
                         </div>
                     </div>
                     <div class="tw-trust-footer">🔒 ${esc(STORE_REVIEW_COPY.trustText)}</div>
-                    <p class="tw-powered">Powered by JudgeMe Reviews</p>
+                    ${window.__JUDGEME__?.config?.hideJudgeMeBranding ? "" : '<p class="tw-powered">Powered by JudgeMe Reviews</p>'}
                 `;
                 els.stars = els.content.querySelector("#tw-star-row");
                 renderStars();
@@ -406,7 +406,7 @@
                         <h3 class="tw-confirm-title">Thank you!</h3>
                         <p class="tw-confirm-sub">Your review has been published.</p>
                         <div class="tw-trust-footer" style="border-top:none;margin-top:0;padding-top:0">🔒 ${esc(STORE_REVIEW_COPY.trustText)}</div>
-                        <p class="tw-powered">Powered by JudgeMe Reviews</p>
+                        ${window.__JUDGEME__?.config?.hideJudgeMeBranding ? "" : '<p class="tw-powered">Powered by JudgeMe Reviews</p>'}
                     </div>`;
 
                 // Update navigation controls to act as a Close button

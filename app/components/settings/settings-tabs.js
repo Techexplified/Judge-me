@@ -1,5 +1,6 @@
 export const SETTINGS_TABS = [
   { id: "pricing", label: "Pricing", path: "/app/settings" },
+  { id: "branding", label: "Branding", path: "/app/settings/branding" },
 ];
 
 export function getActiveSettingsTab(pathname) {
