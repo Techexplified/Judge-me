@@ -143,6 +143,22 @@ export const APP_SEARCH_ITEMS = [
     keywords: ["customer love", "page", "customize", "widget"],
   },
   {
+    id: "widget-testimonials",
+    title: "Testimonials widget customization",
+    description: "Customize the Testimonials widget",
+    path: "/app/widgets/testimonials",
+    icon: Palette,
+    keywords: ["testimonials", "testimonial", "customize", "widget"],
+  },
+  {
+    id: "widget-qa",
+    title: "Question and Answer widget customization",
+    description: "Customize the Question and Answer widget",
+    path: "/app/widgets/qa",
+    icon: Palette,
+    keywords: ["question", "answer", "question and answer", "customize", "widget"],
+  },
+  {
     id: "translation",
     title: "Translate Your Reviews",
     description: "Translate your reviews into multiple languages",

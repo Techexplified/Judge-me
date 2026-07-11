@@ -15,11 +15,17 @@ import {
   pickTestimonialsConfigForSave,
   parseTestimonialsConfigPayload,
 } from "./testimonials-config.shared.js";
+import {
+  mergeQAConfig,
+  pickQAConfigForSave,
+  parseQAConfigPayload,
+} from "./qa-config.shared.js";
 
 const WIDGET_CONFIG_KEY = {
   "video-reviews-slider": "videoSlider",
   "customers-love-page": "customerLove",
   "testimonials": "testimonials",
+  "qa": "qa",
 };
 
 function parseStoredConfig(row) {
@@ -37,6 +43,7 @@ export function getWidgetCustomizationFromConfig(config, widgetId) {
   if (key === "videoSlider") return mergeVideoSliderConfig(config);
   if (key === "customerLove") return mergeCustomerLoveConfig(config);
   if (key === "testimonials") return mergeTestimonialsConfig(config);
+  if (key === "qa") return mergeQAConfig(config);
   return null;
 }
 
@@ -60,6 +67,8 @@ export async function saveWidgetCustomization(shop, widgetId, payload) {
     normalized = pickCustomerLoveConfigForSave(payload);
   } else if (key === "testimonials") {
     normalized = pickTestimonialsConfigForSave(payload);
+  } else if (key === "qa") {
+    normalized = pickQAConfigForSave(payload);
   } else {
     return { ok: false, error: "Unknown widget" };
   }
@@ -84,5 +93,6 @@ export function parseWidgetCustomizationPayload(widgetId, raw) {
   if (widgetId === "video-reviews-slider") return parseVideoSliderConfigPayload(raw);
   if (widgetId === "customers-love-page") return parseCustomerLoveConfigPayload(raw);
   if (widgetId === "testimonials") return parseTestimonialsConfigPayload(raw);
+  if (widgetId === "qa") return parseQAConfigPayload(raw);
   return null;
 }

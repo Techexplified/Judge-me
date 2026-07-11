@@ -41,10 +41,9 @@
         -ms-overflow-style: none;
         scrollbar-width: none;
         
-        /* The Magic Centering Fix */
-        width: fit-content; 
-        max-width: 100%; 
-        margin: 0 auto; 
+        /* Fixed: Use full width and control alignment dynamically */
+        width: 100%; 
+        justify-content: flex-start; 
         
         padding: 10px 0; 
         box-sizing: border-box; 
@@ -180,7 +179,7 @@
 
     const STORE_REVIEW_COPY = {
         ratingTitle: "How was your experience?",
-        ratingSubtitle: "Tell us about shopping with our store.",
+        ratingSubtitle: "Rate your experience with our store.",
         starLabelLow: "Dislike it",
         starLabelHigh: "Love it!",
         trustText: "Your data is secure and never shared.",
@@ -224,6 +223,13 @@
         function updateLayout() {
             perView = getPerView(root);
             root.style.setProperty("--per-view", perView);
+            
+            // Centering fix: If items don't fill the screen, center them safely
+            if (total < perView) {
+                track.style.justifyContent = "center";
+            } else {
+                track.style.justifyContent = "flex-start";
+            }
         }
 
         function totalPages() {
