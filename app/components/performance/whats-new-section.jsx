@@ -3,7 +3,7 @@ import { useState } from "react"; // Added useState to track hover state
 import { Link } from "react-router";
 import { ArrowRight } from "lucide-react";
 import { SURFACE_BORDER } from "../admin-ui";
-import socialshowcaseimg from "./social-showcase-image.webp";
+import socialshowcaseimg from "./social-showcase-2.jpeg";
 import testimonialsimg from "./testimonials-2.jpeg";
 
 const FONT =
