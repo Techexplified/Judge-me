@@ -34,7 +34,7 @@
     secondaryColor: "#64748b",
     trustBadgeEnabled: true,
     trustBadgeText: "Protected by SSL. We never share your info.",
-    hideJudgeMeBranding: false,
+    hideVerdictBranding: false,
     ratingPageTitle: "How would you rate this product?",
     starLabelHigh: "Love it!",
     starLabelLow: "Dislike it",
@@ -344,18 +344,18 @@
   function readReviewContext(root, shop, productName) {
     const params = new URLSearchParams(window.location.search);
     const order =
-      params.get("judgeme_order") ||
+      params.get("verdict_order") ||
       params.get("order") ||
       root.dataset.orderNumber ||
       "";
     const dateRaw =
-      params.get("judgeme_date") ||
+      params.get("verdict_date") ||
       params.get("order_date") ||
       root.dataset.orderDate ||
       "";
     const date = formatOrderDate(dateRaw) || String(dateRaw || "").trim();
     const autoOpen =
-      params.get("judgeme_review") === "1" || params.get("review") === "1";
+      params.get("verdict_review") === "1" || params.get("review") === "1";
 
     return {
       item: productName,
@@ -369,8 +369,8 @@
   function stripAutoOpenParam() {
     try {
       const url = new URL(window.location.href);
-      if (!url.searchParams.has("judgeme_review") && !url.searchParams.has("review")) return;
-      url.searchParams.delete("judgeme_review");
+      if (!url.searchParams.has("verdict_review") && !url.searchParams.has("review")) return;
+      url.searchParams.delete("verdict_review");
       url.searchParams.delete("review");
       window.history.replaceState({}, "", url.toString());
     } catch {
@@ -591,8 +591,8 @@
         const poweredBy = document.createElement("p");
         poweredBy.className = "jd-rating-powered";
         poweredBy.style.cssText = "text-align:center;margin:14px 0 0;font-size:11px;color:#94a3b8";
-        poweredBy.textContent = "Powered by JudgeMe Reviews";
-        if (!cfg.hideJudgeMeBranding) wrap.appendChild(poweredBy);
+        poweredBy.textContent = "Powered by Verdict Product Reviews";
+        if (!cfg.hideVerdictBranding) wrap.appendChild(poweredBy);
 
         els.content.appendChild(wrap);
         return;
@@ -708,7 +708,7 @@
             <div style="display:inline-flex;align-items:center;gap:8px;font-size:12px;color:#6d7175;margin-bottom:16px">
               🔒 ${esc(trustText)}
             </div>
-            ${cfg.hideJudgeMeBranding ? "" : '<div style="font-size:11px;color:#94a3b8">Powered by JudgeMe Reviews</div>'}
+            ${cfg.hideVerdictBranding ? "" : '<div style="font-size:11px;color:#94a3b8">Powered by Verdict Product Reviews</div>'}
           </div>`;
       }
     }
@@ -940,10 +940,10 @@
       );
 
       const settingsPromise = (
-        typeof window.__JUDGEME__?.ensureConfig === "function"
-          ? window.__JUDGEME__.ensureConfig()
-          : window.__JUDGEME__?.config
-            ? Promise.resolve(window.__JUDGEME__.config)
+        typeof window.__VERDICT__?.ensureConfig === "function"
+          ? window.__VERDICT__.ensureConfig()
+          : window.__VERDICT__?.config
+            ? Promise.resolve(window.__VERDICT__.config)
             : fetch(`${API}/api/public/settings?shop=${encodeURIComponent(shop)}`)
                 .then((r) => (r.ok ? r.json() : null))
                 .then((data) => data?.config || null)
@@ -994,7 +994,7 @@
       const hasSavedConfig = settingsData?.config && typeof settingsData.config === "object";
       if (!hasSavedConfig) {
         console.warn(
-          "[JudgeMe Reviews] No saved shop styling found — using defaults. Complete onboarding or save in Collect Reviews → Review Form.",
+          "[Verdict Product Reviews] No saved shop styling found — using defaults. Complete onboarding or save in Collect Reviews → Review Form.",
         );
       }
       const cfg = mergeConfig(hasSavedConfig ? settingsData.config : {});
@@ -1260,7 +1260,7 @@
             const tab = root.querySelector('.jd-tab[data-tab="product"]');
             if (list) {
               list.innerHTML = productHtml;
-              window.JudgeMeMediaLightbox?.bind?.(root);
+              window.VerdictMediaLightbox?.bind?.(root);
             }
             if (tab) {
               tab.textContent = `Product reviews (${reviewsData.length})`;
@@ -1312,10 +1312,10 @@
         stripAutoOpenParam();
       }
 
-      window.JudgeMeMediaLightbox?.injectStyles?.();
-      window.JudgeMeMediaLightbox?.bind?.(root);
+      window.VerdictMediaLightbox?.injectStyles?.();
+      window.VerdictMediaLightbox?.bind?.(root);
     } catch (e) {
-      console.error("[JudgeMe Reviews]", e);
+      console.error("[Verdict Product Reviews]", e);
       showLoadError(root, e?.message || "Could not load reviews.");
     }
   }

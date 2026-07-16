@@ -14,7 +14,7 @@
   }
 
   function getAppConfig() {
-    return window.__JUDGEME__?.config?.videoSlider || {};
+    return window.__VERDICT__?.config?.videoSlider || {};
   }
 
   function resolveConfig(root) {
@@ -33,28 +33,28 @@
   }
 
   async function waitForSharedConfig() {
-    if (window.__JUDGEME__?.config) return window.__JUDGEME__.config;
-    if (typeof window.__JUDGEME__?.ensureConfig === "function") {
+    if (window.__VERDICT__?.config) return window.__VERDICT__.config;
+    if (typeof window.__VERDICT__?.ensureConfig === "function") {
       try {
         return await Promise.race([
-          window.__JUDGEME__.ensureConfig(),
+          window.__VERDICT__.ensureConfig(),
           new Promise((r) => setTimeout(() => r(null), 2000)),
         ]);
       } catch {
         return null;
       }
     }
-    if (window.__JUDGEME__?.configReady) {
+    if (window.__VERDICT__?.configReady) {
       try {
         await Promise.race([
-          window.__JUDGEME__.configReady,
+          window.__VERDICT__.configReady,
           new Promise((r) => setTimeout(r, 1500)),
         ]);
       } catch {
         /* ignore */
       }
     }
-    return window.__JUDGEME__?.config || null;
+    return window.__VERDICT__?.config || null;
   }
 
   async function init() {
@@ -210,7 +210,7 @@
         /* ignore */
       }
     } catch (e) {
-      console.error("[JudgeMe Video Slider]", e);
+      console.error("[Verdict Video Slider]", e);
       root.innerHTML = `<p style="color:#e53e3e">Could not load video reviews.</p>`;
     }
   }

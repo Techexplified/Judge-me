@@ -8,12 +8,12 @@ import {
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma, { sessionPrisma } from "./db.server";
 
-export const PRO_PLAN = "JudgeMe Pro";
+export const PRO_PLAN = "Verdict Pro";
 export const PRO_PRICE_USD = 9;
 export const PRO_TRIAL_DAYS = 14;
 export const BILLING_TEST_MODE = process.env.BILLING_TEST_MODE !== "false";
-/** App handle from Partner Dashboard / admin URL (e.g. judgeme-reviews). */
-export const APP_HANDLE = process.env.SHOPIFY_APP_HANDLE || "judgeme-reviews";
+/** App handle from Partner Dashboard / admin URL (e.g. verdict-product-reviews). */
+export const APP_HANDLE = process.env.SHOPIFY_APP_HANDLE || "verdict-product-reviews";
 /**
  * Set USE_BILLING_API=true only if Partner Dashboard uses Manual Pricing (not Shopify App Pricing).
  * Apps on Shopify App Pricing must redirect to the hosted plan page instead.

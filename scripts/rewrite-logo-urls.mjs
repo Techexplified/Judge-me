@@ -29,8 +29,8 @@ for (const row of rows) {
   if (typeof url !== "string") continue;
 
   let next = url;
-  if (url.startsWith("/apps/judgeme-reviews/api/public/shop-asset/")) {
-    next = `${base}${url.replace(/^\/apps\/judgeme-reviews/, "")}`;
+  if (url.startsWith("/apps/verdict-product-reviews/api/public/shop-asset/")) {
+    next = `${base}${url.replace(/^\/apps\/verdict-product-reviews/, "")}`;
   } else if (url.startsWith("/api/public/shop-asset/")) {
     next = `${base}${url}`;
   } else {

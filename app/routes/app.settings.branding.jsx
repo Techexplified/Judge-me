@@ -22,12 +22,14 @@ import { BrandingSettingsPanel } from "../components/settings/branding-settings-
 const BRANDING_CORNER_IDS = ["sharp", "slight", "default", "rounded"];
 
 export const loader = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+  const { session, billing } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
   const { loadShopConfig } = await import("../lib/collect-reviews.server.js");
+  const { getShopPlanStatus, serializePlanStatus } = await import("../lib/billing.server.js");
 
   const stored = await loadShopConfig(shop);
   const formConfig = mergeFormConfig(stored);
+  const planStatus = await getShopPlanStatus(shop, billing);
 
   return {
     shop,
@@ -37,18 +39,21 @@ export const loader = async ({ request }) => {
       radiusPreset: formConfig.radiusPreset,
       borderRadius: formConfig.borderRadius,
       typography: formConfig.typography,
-      hideJudgeMeBranding: formConfig.hideJudgeMeBranding === true,
+      hideVerdictBranding: formConfig.hideVerdictBranding === true,
     },
+    planStatus: serializePlanStatus(planStatus),
   };
 };
 
 export const action = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+  const { session, billing } = await authenticate.admin(request);
   const shop = normalizeShopDomain(session.shop);
   const fd = await request.formData();
   const intent = String(fd.get("intent") || "");
 
   const { loadShopConfig, saveShopConfig } = await import("../lib/collect-reviews.server.js");
+  const { getShopPlanStatus } = await import("../lib/billing.server.js");
+  const planStatus = await getShopPlanStatus(shop, billing);
 
   if (intent === "uploadBrandLogo") {
     const file = fd.get("logo");
@@ -103,7 +108,8 @@ export const action = async ({ request }) => {
       typography = "Inter (System)";
     }
 
-    const hideJudgeMeBranding = String(fd.get("hideJudgeMeBranding") || "") === "true";
+    const hideRequested = String(fd.get("hideVerdictBranding") || "") === "true";
+    const hideVerdictBranding = planStatus.hasPro ? hideRequested : false;
 
     const stored = await loadShopConfig(shop);
     const patch = {
@@ -112,7 +118,7 @@ export const action = async ({ request }) => {
       radiusPreset,
       borderRadius: radiusFromPreset(radiusPreset),
       typography,
-      hideJudgeMeBranding,
+      hideVerdictBranding,
     };
 
     const brandLogoUrlField = fd.get("brandLogoUrl");
@@ -131,7 +137,7 @@ export const action = async ({ request }) => {
         radiusPreset: merged.radiusPreset,
         borderRadius: merged.borderRadius,
         typography: merged.typography,
-        hideJudgeMeBranding: merged.hideJudgeMeBranding === true,
+        hideVerdictBranding: merged.hideVerdictBranding === true,
       },
     });
   }
@@ -140,7 +146,7 @@ export const action = async ({ request }) => {
 };
 
 export default function SettingsBrandingPage() {
-  const { branding: initialBranding } = useLoaderData();
+  const { branding: initialBranding, planStatus } = useLoaderData();
   const actionData = useActionData();
   const submit = useSubmit();
   const navigation = useNavigation();
@@ -181,7 +187,7 @@ export default function SettingsBrandingPage() {
         starColor: patch.starColor,
         radiusPreset: patch.radiusPreset,
         typography: patch.typography,
-        hideJudgeMeBranding: String(patch.hideJudgeMeBranding === true),
+        hideVerdictBranding: String(patch.hideVerdictBranding === true),
         brandLogoUrl: patch.brandLogoUrl ?? "",
       },
       { method: "post" },
@@ -204,6 +210,7 @@ export default function SettingsBrandingPage() {
   return (
     <BrandingSettingsPanel
       config={branding}
+      hasPro={planStatus?.hasPro === true}
       isSaving={isSaving}
       isUploading={isUploading}
       saveOk={saveOk}

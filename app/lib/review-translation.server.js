@@ -65,7 +65,7 @@ async function openRouterTranslate({ apiKey, userContent }) {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
       "HTTP-Referer": referer,
-      "X-Title": "JudgeMe Reviews Translation",
+      "X-Title": "Verdict Product Reviews Translation",
     },
     body: JSON.stringify({
       model: process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini",

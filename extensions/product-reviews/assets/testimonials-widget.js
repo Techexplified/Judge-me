@@ -333,7 +333,7 @@
                         </div>
                     </div>
                     <div class="tw-trust-footer">🔒 ${esc(STORE_REVIEW_COPY.trustText)}</div>
-                    ${window.__JUDGEME__?.config?.hideJudgeMeBranding ? "" : '<p class="tw-powered">Powered by JudgeMe Reviews</p>'}
+                    ${window.__VERDICT__?.config?.hideVerdictBranding ? "" : '<p class="tw-powered">Powered by Verdict Product Reviews</p>'}
                 `;
                 els.stars = els.content.querySelector("#tw-star-row");
                 renderStars();
@@ -406,7 +406,7 @@
                         <h3 class="tw-confirm-title">Thank you!</h3>
                         <p class="tw-confirm-sub">Your review has been published.</p>
                         <div class="tw-trust-footer" style="border-top:none;margin-top:0;padding-top:0">🔒 ${esc(STORE_REVIEW_COPY.trustText)}</div>
-                        ${window.__JUDGEME__?.config?.hideJudgeMeBranding ? "" : '<p class="tw-powered">Powered by JudgeMe Reviews</p>'}
+                        ${window.__VERDICT__?.config?.hideVerdictBranding ? "" : '<p class="tw-powered">Powered by Verdict Product Reviews</p>'}
                     </div>`;
 
                 // Update navigation controls to act as a Close button
@@ -540,17 +540,17 @@
     }
 
     function getAppConfig() {
-        return window.__JUDGEME__?.config?.testimonials || null;
+        return window.__VERDICT__?.config?.testimonials || null;
     }
 
     async function resolveConfig(shop, API) {
         const fromCore = getAppConfig();
         if (fromCore) return fromCore;
 
-        if (typeof window.__JUDGEME__?.ensureConfig === "function") {
+        if (typeof window.__VERDICT__?.ensureConfig === "function") {
             try {
                 const cfg = await Promise.race([
-                    window.__JUDGEME__.ensureConfig(),
+                    window.__VERDICT__.ensureConfig(),
                     new Promise((r) => setTimeout(() => r(null), 2000)),
                 ]);
                 if (cfg?.testimonials) return cfg.testimonials;
@@ -559,10 +559,10 @@
             }
         }
 
-        if (window.__JUDGEME__?.configReady) {
+        if (window.__VERDICT__?.configReady) {
             try {
                 await Promise.race([
-                    window.__JUDGEME__.configReady,
+                    window.__VERDICT__.configReady,
                     new Promise((r) => setTimeout(r, 1500)),
                 ]);
                 const waited = getAppConfig();
@@ -579,9 +579,9 @@
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             if (data?.config) {
-                window.__JUDGEME__ = window.__JUDGEME__ || {};
-                window.__JUDGEME__.config = {
-                    ...(window.__JUDGEME__.config || {}),
+                window.__VERDICT__ = window.__VERDICT__ || {};
+                window.__VERDICT__.config = {
+                    ...(window.__VERDICT__.config || {}),
                     ...data.config,
                 };
             }

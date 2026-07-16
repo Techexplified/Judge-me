@@ -19,7 +19,7 @@ function assetHeaders(row, { contentLength, cacheHit = false } = {}) {
     ETag: `"${row.id}"`,
     "Accept-Ranges": "bytes",
     "X-Content-Type-Options": "nosniff",
-    "X-JudgeMe-Asset-Cache": cacheHit ? "HIT" : "MISS",
+    "X-Verdict-Asset-Cache": cacheHit ? "HIT" : "MISS",
   };
   if (contentLength != null) headers["Content-Length"] = String(contentLength);
   if (row.filename) {

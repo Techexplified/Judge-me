@@ -8,12 +8,12 @@ const TTL_MS = 60_000;
 const MAX_ENTRIES = 200;
 
 const state =
-  global.__judgemeShopConfigCache ??
+  global.__verdictShopConfigCache ??
   {
     entries: new Map(),
   };
 
-global.__judgemeShopConfigCache = state;
+global.__verdictShopConfigCache = state;
 
 export function getCachedShopConfig(shop) {
   const entry = state.entries.get(shop);

@@ -104,7 +104,7 @@ export default function WidgetsIndexRoute() {
 
       openThemeEditorUrl(url, shopify);
       shopify?.toast?.show?.(
-        "Theme editor opened. Preview the block, then click Save. Enable JudgeMe Core in App embeds if prompted.",
+        "Theme editor opened. Preview the block, then click Save. Enable Verdict Core in App embeds if prompted.",
       );
     },
     [data.premium, data.themeEditorUrls, data.themeInstalled, embedNavigate, fetcher, shopify],
@@ -119,7 +119,7 @@ export default function WidgetsIndexRoute() {
     fd.set("intent", "ack_core_embed");
     fetcher.submit(fd, { method: "post" });
     openThemeEditorUrl(data.coreEmbedUrl, shopify);
-    shopify?.toast?.show?.("Enable JudgeMe Core under Theme Settings → App embeds, then Save.");
+    shopify?.toast?.show?.("Enable Verdict Core under Theme Settings → App embeds, then Save.");
   }, [data.coreEmbedUrl, fetcher, shopify]);
 
   const handleRefreshStatus = useCallback(() => {

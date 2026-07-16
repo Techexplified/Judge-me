@@ -59,7 +59,7 @@ export async function getOnboardingState(shop) {
 
 export function isQuestionnaireComplete(questionnaire) {
   return Boolean(
-    questionnaire?.judgemeGoal?.trim() && questionnaire?.discoverySource?.trim(),
+    questionnaire?.verdictGoal?.trim() && questionnaire?.discoverySource?.trim(),
   );
 }
 
@@ -221,7 +221,7 @@ export async function saveQuestionnaire(shop, answers) {
   config.onboarding = {
     ...(config.onboarding ?? {}),
     questionnaire: {
-      judgemeGoal: String(answers.judgemeGoal ?? "").trim(),
+      verdictGoal: String(answers.verdictGoal ?? "").trim(),
       discoverySource: String(answers.discoverySource ?? "").trim(),
     },
   };

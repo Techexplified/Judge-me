@@ -562,10 +562,10 @@ export function WidgetsPage({
         >
           <div style={{ flex: 1 }}>
             <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: "#202223" }}>
-              Enable JudgeMe Core to access widgets
+              Enable Verdict Core to access widgets
             </p>
             <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "#6d7175", fontWeight: 500 }}>
-              Turn on <strong style={{ color: "#202223" }}>JudgeMe Core</strong> under Theme settings →
+              Turn on <strong style={{ color: "#202223" }}>Verdict Core</strong> under Theme settings →
               App embeds so your review widgets work on the storefront.
             </p>
             <button
@@ -584,7 +584,7 @@ export function WidgetsPage({
                 cursor: "pointer",
               }}
             >
-              Enable JudgeMe Core
+              Enable Verdict Core
             </button>
           </div>
         </div>

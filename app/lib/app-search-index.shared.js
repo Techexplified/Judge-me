@@ -104,7 +104,7 @@ export const APP_SEARCH_ITEMS = [
   {
     id: "brand-identification",
     title: "Branding",
-    description: "Logo, star color, corner style, fonts, and JudgeMe branding",
+    description: "Logo, star color, corner style, fonts, and Verdict branding",
     path: "/app/settings/branding",
     icon: Tag,
     keywords: ["brand", "logo", "identity", "branding", "font", "star color"],

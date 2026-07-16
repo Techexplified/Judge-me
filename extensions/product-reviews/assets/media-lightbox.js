@@ -99,5 +99,5 @@
     });
   }
 
-  window.JudgeMeMediaLightbox = { open, close, bind, injectStyles };
+  window.VerdictMediaLightbox = { open, close, bind, injectStyles };
 })();

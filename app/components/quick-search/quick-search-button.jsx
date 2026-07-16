@@ -5,7 +5,7 @@ import { useQuickSearch } from "./quick-search-provider.jsx";
 import { QS_FONT, QS_GREEN } from "./quick-search-styles.js";
 import { getQuickSearchShortcutLabel } from "./quick-search-shortcut.js";
 
-const TOOLTIP_KEY = "judgeme-quick-search-tooltip";
+const TOOLTIP_KEY = "verdict-quick-search-tooltip";
 
 export function QuickSearchButton() {
   const { openSearch } = useQuickSearch();
@@ -101,7 +101,7 @@ export function QuickSearchButton() {
       ) : null}
 
       <style>{`
-        @keyframes judgeme-help-wave {
+        @keyframes verdict-help-wave {
           0% { transform: rotate(0deg); }
           20% { transform: rotate(-12deg); }
           40% { transform: rotate(10deg); }
@@ -142,7 +142,7 @@ export function QuickSearchButton() {
           strokeWidth={2.1}
           style={{
             transformOrigin: "70% 80%",
-            animation: hovered ? "judgeme-help-wave 0.7s ease-in-out" : "none",
+            animation: hovered ? "verdict-help-wave 0.7s ease-in-out" : "none",
           }}
         />
       </button>

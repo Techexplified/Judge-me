@@ -1,11 +1,11 @@
 /**
- * JudgeMe Core — global storefront bootstrap (app embed).
+ * Verdict Core — global storefront bootstrap (app embed).
  * Exposes a shared config promise so widgets do not each refetch settings.
  */
 (function () {
-  const cfg = window.__JUDGEME__ || {};
+  const cfg = window.__VERDICT__ || {};
   const shop = cfg.shop;
-  const API = String(cfg.apiBase || "/apps/judgeme-reviews").replace(/\/$/, "");
+  const API = String(cfg.apiBase || "/apps/verdict-product-reviews").replace(/\/$/, "");
   if (!shop) return;
 
   let resolveConfig;
@@ -16,7 +16,7 @@
   // Always settle — never leave widgets waiting forever on a hung settings request.
   const SETTINGS_TIMEOUT_MS = 2500;
 
-  window.__JUDGEME__ = {
+  window.__VERDICT__ = {
     ...cfg,
     shop,
     apiBase: API,
@@ -29,12 +29,12 @@
    * Always resolves (never rejects) so review widgets are not blocked.
    * @returns {Promise<object|null>}
    */
-  window.__JUDGEME__.ensureConfig = function ensureConfig() {
-    if (window.__JUDGEME__.config) {
-      return Promise.resolve(window.__JUDGEME__.config);
+  window.__VERDICT__.ensureConfig = function ensureConfig() {
+    if (window.__VERDICT__.config) {
+      return Promise.resolve(window.__VERDICT__.config);
     }
-    if (window.__JUDGEME__._configFetch) {
-      return window.__JUDGEME__._configFetch;
+    if (window.__VERDICT__._configFetch) {
+      return window.__VERDICT__._configFetch;
     }
 
     const fetchPromise = fetch(
@@ -43,9 +43,9 @@
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.config) {
-          window.__JUDGEME__.config = data.config;
+          window.__VERDICT__.config = data.config;
         }
-        return window.__JUDGEME__.config || null;
+        return window.__VERDICT__.config || null;
       })
       .catch(() => null);
 
@@ -53,27 +53,27 @@
       setTimeout(() => resolve(null), SETTINGS_TIMEOUT_MS);
     });
 
-    window.__JUDGEME__._configFetch = Promise.race([fetchPromise, timeoutPromise]).then(
+    window.__VERDICT__._configFetch = Promise.race([fetchPromise, timeoutPromise]).then(
       (config) => {
         // If timeout won first, still adopt late settings when they arrive.
         fetchPromise.then((late) => {
-          if (late && !window.__JUDGEME__.config) {
-            window.__JUDGEME__.config = late;
+          if (late && !window.__VERDICT__.config) {
+            window.__VERDICT__.config = late;
           }
         });
-        resolveConfig(window.__JUDGEME__.config || config || null);
-        return window.__JUDGEME__.config || config || null;
+        resolveConfig(window.__VERDICT__.config || config || null);
+        return window.__VERDICT__.config || config || null;
       },
     );
 
-    return window.__JUDGEME__._configFetch;
+    return window.__VERDICT__._configFetch;
   };
 
-  window.__JUDGEME__.ensureConfig();
+  window.__VERDICT__.ensureConfig();
 
   // One lightweight beacon per page (deduped in-session for view metrics).
   try {
-    const key = `jd_core_${shop}`;
+    const key = `vd_core_${shop}`;
     if (!sessionStorage.getItem(key)) {
       sessionStorage.setItem(key, "1");
       fetch(`${API}/api/public/widget-event`, {

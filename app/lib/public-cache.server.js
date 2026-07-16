@@ -2,14 +2,14 @@ const DEFAULT_TTL_MS = 15 * 60 * 1000;
 const MAX_ENTRIES = 500;
 
 const cacheState =
-  global.__judgemePublicCache ??
+  global.__verdictPublicCache ??
   {
     entries: new Map(),
     tags: new Map(),
   };
 
 // Persist across warm serverless invocations so public JSON is not rebuilt every cold hit.
-global.__judgemePublicCache = cacheState;
+global.__verdictPublicCache = cacheState;
 
 function nowMs() {
   return Date.now();
@@ -108,6 +108,6 @@ export function publicCacheHeaders(hit = false) {
   // short TTLs were amplifying egress for tiny config/review JSON payloads.
   return {
     "Cache-Control": "public, max-age=300, s-maxage=900, stale-while-revalidate=1800",
-    "X-JudgeMe-Cache": hit ? "HIT" : "MISS",
+    "X-Verdict-Cache": hit ? "HIT" : "MISS",
   };
 }

@@ -642,7 +642,7 @@ export const IMPORT_FROM_APP_OPTIONS = [
   { value: "no", label: "No" },
 ];
 
-export const JUDGE_ME_GOAL_OPTIONS = [
+export const VERDICT_GOAL_OPTIONS = [
   { value: "", label: "Select your main goal" },
   { value: "collect_reviews", label: "Collect more product reviews" },
   { value: "display_reviews", label: "Display reviews on my storefront" },

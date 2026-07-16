@@ -67,7 +67,7 @@ export async function loader({ request }) {
         const payload = Object.fromEntries(fd.entries());
         payload.rating = Number(payload.rating);
         try {
-          const res = await fetch('/apps/judgeme-reviews/api/public/reviews', {
+          const res = await fetch('/apps/verdict-product-reviews/api/public/reviews', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),

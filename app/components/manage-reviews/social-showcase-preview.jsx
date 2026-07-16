@@ -68,7 +68,7 @@ export function SocialShowcasePreview({ config, brandLogoUrl, summary, reviewCan
           padding: "14px 16px 0",
         }}
       >
-        JUDGEME REVIEWS
+        VERDICT PRODUCT REVIEWS
       </div>
       <div style={{ padding: "18px 16px 8px", textAlign: "center" }}>
         {brandLogoUrl ? (
@@ -305,7 +305,7 @@ export function SocialShowcasePreview({ config, brandLogoUrl, summary, reviewCan
         <div style={{ marginTop: 10, fontSize: 12, color: "#6d7175", fontWeight: 600 }}>
           {avg.toFixed(1)} average across {total.toLocaleString()} reviews
         </div>
-        <div style={{ marginTop: 12, fontSize: 10, color: "#8c9196" }}>Powered by JudgeMe Reviews</div>
+        <div style={{ marginTop: 12, fontSize: 10, color: "#8c9196" }}>Powered by Verdict Product Reviews</div>
       </div>
     </div>
   );

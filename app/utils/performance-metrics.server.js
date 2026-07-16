@@ -389,7 +389,7 @@ export async function loadManageReviewsData({ request, session, admin }) {
     };
   });
 
-  const storeReviewLink = `https://${normalizedShop}/apps/judgeme-reviews/store-review`;
+  const storeReviewLink = `https://${normalizedShop}/apps/verdict-product-reviews/store-review`;
 
   return {
     shop: normalizedShop,

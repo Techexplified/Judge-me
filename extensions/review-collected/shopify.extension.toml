@@ -3,7 +3,7 @@ uid = "86a2e27a-709f-8cf3-6672-4069f3a1f0130685862d"
 name = "Review collected"
 type = "flow_trigger"
 handle = "review-collected"
-description = "Starts a workflow when a new product review is collected in JudgeMe."
+description = "Starts a workflow when a new product review is collected in Verdict Product Reviews."
 
 [settings]
 

@@ -2,7 +2,7 @@
 export const PRODUCT_REVIEWS_BLOCK_HANDLE = "product-reviews";
 export const VIDEO_REVIEWS_SLIDER_HANDLE = "video-reviews-slider";
 export const CUSTOMER_LOVE_PAGE_HANDLE = "customer-love-page";
-export const CORE_EMBED_HANDLE = "judgeme-core";
+export const CORE_EMBED_HANDLE = "verdict-core";
 export const TESTIMONIALS_BLOCK_HANDLE = "testimonials";
 export const QUESTION_AND_ANSWER_HANDLE = "question-and-answer";
 
@@ -61,7 +61,7 @@ export function buildThemeEditorProductBlockUrl(shop, apiKey) {
   return buildThemeEditorBlockUrl(shop, apiKey, "review-showcase");
 }
 
-/** Deep link: activate JudgeMe Core app embed in Theme Settings → App embeds. */
+/** Deep link: activate Verdict Core app embed in Theme Settings → App embeds. */
 export function buildThemeEditorCoreEmbedUrl(shop, apiKey, template = "product") {
   if (!apiKey) return null;
   const params = new URLSearchParams({

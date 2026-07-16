@@ -15,7 +15,7 @@ export function resolveShopAssetAbsoluteUrl(assetId) {
   const base = String(process.env.SHOPIFY_APP_URL || "").replace(/\/$/, "");
   if (base) return `${base}${path}`;
   // Fallback: storefront app-proxy path (works on merchant store only).
-  return `/apps/judgeme-reviews${path}`;
+  return `/apps/verdict-product-reviews${path}`;
 }
 
 /**
@@ -42,8 +42,8 @@ export function normalizeBrandLogoUrl(url) {
   const base = String(process.env.SHOPIFY_APP_URL || "").replace(/\/$/, "");
   if (!base) return url;
 
-  if (url.startsWith("/apps/judgeme-reviews/api/public/shop-asset/")) {
-    return `${base}${url.replace(/^\/apps\/judgeme-reviews/, "")}`;
+  if (url.startsWith("/apps/verdict-product-reviews/api/public/shop-asset/")) {
+    return `${base}${url.replace(/^\/apps\/verdict-product-reviews/, "")}`;
   }
   if (url.startsWith("/api/public/shop-asset/")) {
     return `${base}${url}`;

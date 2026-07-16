@@ -357,16 +357,16 @@ export function ReviewFlowPreview({ config, shopDomain, reviewContext, activeSte
               <Shield size={14} />
               {config.privacyFooterText || config.trustBadgeText}
             </div>
-            {config.hideJudgeMeBranding ? null : (
-              <div style={{ fontSize: 11, color: "#94A3B8" }}>Powered by JudgeMe Reviews</div>
+            {config.hideVerdictBranding ? null : (
+              <div style={{ fontSize: 11, color: "#94A3B8" }}>Powered by Verdict Product Reviews</div>
             )}
           </div>
         ) : null}
       </div>
 
-      {step === "rating" && !config.hideJudgeMeBranding ? (
+      {step === "rating" && !config.hideVerdictBranding ? (
         <p style={{ textAlign: "center", marginTop: 14, fontSize: 11, color: "#94A3B8", fontFamily: ff }}>
-          Powered by JudgeMe Reviews
+          Powered by Verdict Product Reviews
         </p>
       ) : null}
 

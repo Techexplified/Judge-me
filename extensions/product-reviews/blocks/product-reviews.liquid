@@ -1,8 +1,8 @@
 {% comment %}
   Optional URL params for post-purchase review flow:
-  ?judgeme_review=1 — auto-open the review form
-  ?judgeme_order=4521 — order number for {{order}} token
-  ?judgeme_date=Nov%2022 — purchase date for {{date}} token
+  ?verdict_review=1 — auto-open the review form
+  ?verdict_order=4521 — order number for {{order}} token
+  ?verdict_date=Nov%2022 — purchase date for {{date}} token
 {% endcomment %}
 {% if block.settings.enable %}
 <div id="app-reviews-root"
@@ -10,7 +10,7 @@
      data-product-name="{{ product.title | escape }}"
      data-product-image="{{ product.featured_image | image_url: width: 200 }}"
      data-shop="{{ shop.permanent_domain }}"
-     data-api-base="/apps/judgeme-reviews">
+     data-api-base="/apps/verdict-product-reviews">
 </div>
 <script src="{{ 'media-lightbox.js' | asset_url }}" defer></script>
 <script src="{{ 'review-widget.js' | asset_url }}" defer></script>

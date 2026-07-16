@@ -39,7 +39,7 @@ async function openRouterChat({ apiKey, userContent, temperature = 0.35 }) {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
       "HTTP-Referer": referer,
-      "X-Title": "JudgeMe Reviews AI",
+      "X-Title": "Verdict Product Reviews AI",
     },
     body: JSON.stringify({
       model: process.env.OPENROUTER_MODEL || DEFAULT_MODEL,

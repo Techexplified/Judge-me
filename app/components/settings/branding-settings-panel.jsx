@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types, jsx-a11y/label-has-associated-control */
 import { useEffect, useRef, useState } from "react";
+import { Link, useLocation } from "react-router";
 import { Upload } from "lucide-react";
 import {
   CORNER_PRESET_OPTIONS,
@@ -8,6 +9,7 @@ import {
   normalizeHex,
   radiusFromPreset,
 } from "../../lib/review-form-config.shared.js";
+import { mergeShopifyEmbedParams } from "../../utils/shopify-embed-nav.js";
 import { Banner, PrimaryButton, SHOPIFY_GREEN } from "../admin-ui";
 
 const APP_FONT = "'Inter', system-ui, -apple-system, sans-serif";
@@ -136,6 +138,19 @@ const styles = {
     fontSize: 13,
     fontWeight: 600,
     color: "#202223",
+  },
+  proPill: {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "2px 8px",
+    borderRadius: 999,
+    background: "linear-gradient(135deg, #fff 0%, #dbeafe 40%, #ede9fe 100%)",
+    border: "1px solid #e5ebe8",
+    fontSize: 10,
+    fontWeight: 800,
+    letterSpacing: "0.06em",
+    textTransform: "uppercase",
+    color: "#475569",
   },
   actions: {
     display: "flex",
@@ -285,6 +300,7 @@ function Toggle({ active, onToggle, disabled }) {
 /**
  * @param {{
  *   config: Record<string, unknown>,
+ *   hasPro: boolean,
  *   isSaving: boolean,
  *   isUploading: boolean,
  *   saveOk?: boolean,
@@ -296,6 +312,7 @@ function Toggle({ active, onToggle, disabled }) {
  */
 export function BrandingSettingsPanel({
   config,
+  hasPro,
   isSaving,
   isUploading,
   saveOk,
@@ -304,6 +321,7 @@ export function BrandingSettingsPanel({
   onLogoUpload,
   onLogoRemove,
 }) {
+  const location = useLocation();
   const logoInputRef = useRef(null);
   const [draft, setDraft] = useState(() => ({
     brandLogoUrl: config.brandLogoUrl || null,
@@ -311,7 +329,7 @@ export function BrandingSettingsPanel({
     radiusPreset: config.radiusPreset || "default",
     borderRadius: config.borderRadius ?? 12,
     typography: config.typography || "Inter (System)",
-    hideJudgeMeBranding: config.hideJudgeMeBranding === true,
+    hideVerdictBranding: config.hideVerdictBranding === true,
   }));
   const [hex, setHex] = useState(draft.starColor);
   const [logoError, setLogoError] = useState("");
@@ -323,7 +341,7 @@ export function BrandingSettingsPanel({
       radiusPreset: config.radiusPreset || "default",
       borderRadius: config.borderRadius ?? 12,
       typography: config.typography || "Inter (System)",
-      hideJudgeMeBranding: config.hideJudgeMeBranding === true,
+      hideVerdictBranding: config.hideVerdictBranding === true,
     });
     setHex(config.starColor || "#F59E0B");
   }, [config]);
@@ -351,6 +369,8 @@ export function BrandingSettingsPanel({
     patchDraft({ starColor: normalized });
   };
 
+  const pricingHref = mergeShopifyEmbedParams("/app/settings", location.search);
+
   const handleSave = () => {
     const starColor = normalizeHex(draft.starColor) || draft.starColor;
     onSave({
@@ -362,7 +382,7 @@ export function BrandingSettingsPanel({
           ? draft.borderRadius
           : radiusFromPreset(draft.radiusPreset, draft.borderRadius),
       typography: draft.typography,
-      hideJudgeMeBranding: draft.hideJudgeMeBranding === true,
+      hideVerdictBranding: hasPro ? draft.hideVerdictBranding === true : false,
       brandLogoUrl: draft.brandLogoUrl,
     });
   };
@@ -524,15 +544,26 @@ export function BrandingSettingsPanel({
 
           <div style={styles.footerRow}>
             <div style={styles.footerLabel}>
-              <span>Hide JudgeMe Reviews branding</span>
+              <span>Hide Verdict Product Reviews branding</span>
+              <span style={styles.proPill}>Pro</span>
             </div>
             <Toggle
-              active={draft.hideJudgeMeBranding === true}
+              active={draft.hideVerdictBranding === true}
+              disabled={!hasPro}
               onToggle={() => {
-                patchDraft({ hideJudgeMeBranding: !draft.hideJudgeMeBranding });
+                if (!hasPro) return;
+                patchDraft({ hideVerdictBranding: !draft.hideVerdictBranding });
               }}
             />
           </div>
+          {!hasPro ? (
+            <p style={{ margin: "10px 0 0", fontSize: 12, color: "#6d7175", lineHeight: 1.45 }}>
+              Remove “Powered by Verdict Product Reviews” from storefront widgets.{" "}
+              <Link to={pricingHref} style={{ color: SHOPIFY_GREEN, fontWeight: 700 }}>
+                Upgrade to Pro
+              </Link>
+            </p>
+          ) : null}
         </div>
       </section>
 

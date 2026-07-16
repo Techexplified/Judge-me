@@ -8,13 +8,13 @@ const MAX_ENTRIES = 40;
 const MAX_TOTAL_BYTES = 40 * 1024 * 1024; // ~40MB soft cap per warm instance
 
 const state =
-  global.__judgemeMediaBlobCache ??
+  global.__verdictMediaBlobCache ??
   {
     entries: new Map(), // id -> { buffer, mimeType, filename, type, size }
     totalBytes: 0,
   };
 
-global.__judgemeMediaBlobCache = state;
+global.__verdictMediaBlobCache = state;
 
 function touch(id) {
   const entry = state.entries.get(id);

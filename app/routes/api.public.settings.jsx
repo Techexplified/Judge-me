@@ -56,6 +56,19 @@ export const loader = async ({ request }) => {
     };
   }
 
+  // Hide Verdict branding is Pro-only; force off for Free plans.
+  if (config?.hideVerdictBranding) {
+    try {
+      const { getShopPlanStatus } = await import("../lib/billing.server.js");
+      const planStatus = await getShopPlanStatus(shop);
+      if (!planStatus.hasPro) {
+        config = { ...config, hideVerdictBranding: false };
+      }
+    } catch {
+      config = { ...config, hideVerdictBranding: false };
+    }
+  }
+
   const body = JSON.stringify({ config });
   setPublicCache(cacheKey, body, { tags: [`settings:${shop}`] });
 

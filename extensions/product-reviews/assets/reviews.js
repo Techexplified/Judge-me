@@ -15,7 +15,7 @@
 
   const API =
     root.dataset.apiBase ||
-    "https://judge-me-sigma.vercel.app";
+    "https://verdict-product-reviews.vercel.app";
 
   /* ---------------- LOAD REVIEWS ---------------- */
   const res = await fetch(

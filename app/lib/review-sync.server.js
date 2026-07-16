@@ -4,7 +4,7 @@
  * Automatically imports existing reviews from a store when the app is installed.
  * Supports reviews stored by:
  *   - Shopify Product Reviews app  (namespace: "spr",  key: "reviews")
- *   - Judge.me                     (namespace: "judgeme", key: "widget")
+ *   - Judge.me (import source; namespace: "judgeme", key: "widget")
  *   - Loox                         (namespace: "loox",  key: "reviews")
  *   - Generic / custom apps        (namespace: "reviews", key: "data")
  */
@@ -30,7 +30,7 @@ const PRODUCT_BY_ID_QUERY = `
       spr: metafield(namespace: "spr", key: "reviews") {
         value
       }
-      judgeme: metafield(namespace: "judgeme", key: "widget") {
+      legacyWidget: metafield(namespace: "judgeme", key: "widget") {
         value
       }
       loox: metafield(namespace: "loox", key: "reviews") {
@@ -65,7 +65,7 @@ const PRODUCTS_QUERY = `
           spr: metafield(namespace: "spr", key: "reviews") {
             value
           }
-          judgeme: metafield(namespace: "judgeme", key: "widget") {
+          legacyWidget: metafield(namespace: "judgeme", key: "widget") {
             value
           }
           loox: metafield(namespace: "loox", key: "reviews") {
@@ -109,12 +109,10 @@ function parseSprMetafield(raw, productId, productName, productImage, shop) {
 }
 
 /**
- * Judge.me stores a pre-rendered HTML widget as a metafield value.
- * We extract individual reviews by parsing the embedded JSON-LD or data attributes.
+ * Judge.me widget metafield — often HTML; try JSON first when importing.
  */
-function parseJudgemeMetafield(raw, productId, productName, productImage, shop) {
+function parseLegacyWidgetMetafield(raw, productId, productName, productImage, shop) {
   try {
-    // Judge.me may also store JSON directly in some versions
     const parsed = JSON.parse(raw);
     const items = Array.isArray(parsed) ? parsed : (parsed.reviews ?? []);
     return items.map((r) => ({
@@ -131,7 +129,7 @@ function parseJudgemeMetafield(raw, productId, productName, productImage, shop) 
       createdAt: r.created_at ? new Date(r.created_at) : new Date(),
     })).filter((r) => r.comment.length > 0);
   } catch {
-    // Fallback: Judge.me HTML widget — skip (can't safely extract without a full parser)
+    // HTML widget payloads cannot be safely extracted without a full parser.
     return [];
   }
 }
@@ -171,8 +169,8 @@ function collectCandidatesFromProductNode(node, shop) {
     ...(node.spr?.value
       ? parseSprMetafield(node.spr.value, productId, productName, productImage, shop)
       : []),
-    ...(node.judgeme?.value
-      ? parseJudgemeMetafield(node.judgeme.value, productId, productName, productImage, shop)
+    ...(node.legacyWidget?.value
+      ? parseLegacyWidgetMetafield(node.legacyWidget.value, productId, productName, productImage, shop)
       : []),
     ...(node.loox?.value
       ? parseLooxMetafield(node.loox.value, productId, productName, productImage, shop)

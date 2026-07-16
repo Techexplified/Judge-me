@@ -29,7 +29,7 @@ function initials(name) {
 }
 
 function renderPage(data, shop) {
-  const { config, brandLogoUrl, shopUrl, selectedReviews, selectedPhotos, summary, hideJudgeMeBranding } = data;
+  const { config, brandLogoUrl, shopUrl, selectedReviews, selectedPhotos, summary, hideVerdictBranding } = data;
   const accent = esc(config.accentColor);
   const storeName = esc(config.storeName);
   const tagline = esc(config.tagline);
@@ -266,7 +266,7 @@ function renderPage(data, shop) {
 </head>
 <body>
   <div class="page">
-    <div class="top-label">JUDGEME REVIEWS</div>
+    <div class="top-label">VERDICT PRODUCT REVIEWS</div>
     <section class="hero">
       ${logoHtml}
       <h1>${storeName}</h1>
@@ -298,7 +298,7 @@ function renderPage(data, shop) {
       <p>Join thousands of happy customers who trust ${storeName} for quality products and great service.</p>
       <a class="shop-btn" href="${esc(shopUrl)}" rel="noopener">${shopNowLabel}</a>
       <div class="bottom-summary">${avg.toFixed(1)} average across ${total.toLocaleString()} reviews</div>
-      ${hideJudgeMeBranding ? "" : '<div class="powered">Powered by JudgeMe Reviews</div>'}
+      ${hideVerdictBranding ? "" : '<div class="powered">Powered by Verdict Product Reviews</div>'}
     </section>
   </div>
   <script>
@@ -310,7 +310,7 @@ function renderPage(data, shop) {
         if (sessionStorage.getItem(key)) return;
         sessionStorage.setItem(key, '1');
       } catch (e) {}
-      fetch('/apps/judgeme-reviews/api/public/widget-event', {
+      fetch('/apps/verdict-product-reviews/api/public/widget-event', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ shop: shop, event: 'social_showcase_view' }),

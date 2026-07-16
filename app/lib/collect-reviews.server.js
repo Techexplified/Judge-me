@@ -181,14 +181,14 @@ export async function saveOnsiteWidgetSettings(shop, { timing }) {
 /** In-process buffer so storefront page views don't upsert settings JSON every hit. */
 const VIEW_FLUSH_MS = 15_000;
 const viewBumpState =
-  global.__judgemeWidgetViewBumps ??
+  global.__verdictWidgetViewBumps ??
   {
     pending: new Map(),
     timer: null,
     flushing: false,
   };
 
-global.__judgemeWidgetViewBumps = viewBumpState;
+global.__verdictWidgetViewBumps = viewBumpState;
 
 async function flushWidgetViewBumps() {
   if (viewBumpState.flushing) return;

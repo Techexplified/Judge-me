@@ -21,7 +21,7 @@
     if (stylesInjected) return;
     stylesInjected = true;
     const style = document.createElement("style");
-    style.setAttribute("data-judgeme-qa", "1");
+    style.setAttribute("data-verdict-qa", "1");
     style.textContent = `
     #QandA-root {
       /* Base fallback variables, updated dynamically via JS inline styles */
@@ -122,27 +122,27 @@
 
   // Config application functions
   function getAppConfig() {
-    return window.__JUDGEME__?.config?.qa || null;
+    return window.__VERDICT__?.config?.qa || null;
   }
 
   async function resolveConfig(shop, API) {
     const fromCore = getAppConfig();
     if (fromCore) return fromCore;
 
-    if (typeof window.__JUDGEME__?.ensureConfig === "function") {
+    if (typeof window.__VERDICT__?.ensureConfig === "function") {
       try {
         const cfg = await Promise.race([
-          window.__JUDGEME__.ensureConfig(),
+          window.__VERDICT__.ensureConfig(),
           new Promise((r) => setTimeout(() => r(null), 2000)),
         ]);
         if (cfg?.qa) return cfg.qa;
       } catch { /* fall through */ }
     }
 
-    if (window.__JUDGEME__?.configReady) {
+    if (window.__VERDICT__?.configReady) {
       try {
         await Promise.race([
-          window.__JUDGEME__.configReady,
+          window.__VERDICT__.configReady,
           new Promise((r) => setTimeout(r, 1500)),
         ]);
         const waited = getAppConfig();
@@ -157,9 +157,9 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data?.config) {
-        window.__JUDGEME__ = window.__JUDGEME__ || {};
-        window.__JUDGEME__.config = {
-          ...(window.__JUDGEME__.config || {}),
+        window.__VERDICT__ = window.__VERDICT__ || {};
+        window.__VERDICT__.config = {
+          ...(window.__VERDICT__.config || {}),
           ...data.config,
         };
       }

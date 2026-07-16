@@ -36,7 +36,7 @@ function mediaHeaders(row, { contentLength, cacheHit = false } = {}) {
     ETag: `"${row.id}"`,
     "Accept-Ranges": "bytes",
     "X-Content-Type-Options": "nosniff",
-    "X-JudgeMe-Media-Cache": cacheHit ? "HIT" : "MISS",
+    "X-Verdict-Media-Cache": cacheHit ? "HIT" : "MISS",
   };
   if (contentLength != null) {
     headers["Content-Length"] = String(contentLength);

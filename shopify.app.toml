@@ -1,9 +1,9 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "98eccc305b95a11d2b9dbec18a0681d1"
-name = "JudgeMe Reviews"
-handle = "judgeme-reviews"
-application_url = "https://judge-me-sigma.vercel.app"
+name = "Verdict Product Reviews App"
+handle = "verdict-product-reviews"
+application_url = "https://verdict-product-reviews.vercel.app"
 embedded = true
 
 [webhooks]
@@ -35,9 +35,9 @@ scopes = "read_orders,read_products,read_themes,write_customers,write_themes"
 
 [auth]
 redirect_urls = [
-  "https://judge-me-sigma.vercel.app/auth/callback",
-  "https://judge-me-sigma.vercel.app/auth/shopify/callback",
-  "https://judge-me-sigma.vercel.app/api/auth/callback",
+  "https://verdict-product-reviews.vercel.app/auth/callback",
+  "https://verdict-product-reviews.vercel.app/auth/shopify/callback",
+  "https://verdict-product-reviews.vercel.app/api/auth/callback",
 ]
 
 [pos]
@@ -48,6 +48,6 @@ embedded = true
 automatically_update_urls_on_dev = true
 
 [app_proxy]
-url = "https://judge-me-sigma.vercel.app"
-subpath = "judgeme-reviews"
+url = "https://verdict-product-reviews.vercel.app"
+subpath = "verdict-product-reviews"
 prefix = "apps"

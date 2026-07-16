@@ -22,7 +22,7 @@ function parseStoredConfig(row) {
 }
 
 export function buildSocialShowcaseShareUrl(shop) {
-  return `https://${shop}/apps/judgeme-reviews/social-showcase`;
+  return `https://${shop}/apps/verdict-product-reviews/social-showcase`;
 }
 
 function formatShopDisplayName(shop) {
@@ -209,10 +209,21 @@ export async function resolveSocialShowcasePublicData({ shop, request }) {
 
   const summary = computeSummary(allReviews);
 
+  let hideVerdictBranding = mergeFormConfig(stored).hideVerdictBranding === true;
+  if (hideVerdictBranding) {
+    try {
+      const { getShopPlanStatus } = await import("./billing.server.js");
+      const planStatus = await getShopPlanStatus(shop);
+      if (!planStatus.hasPro) hideVerdictBranding = false;
+    } catch {
+      hideVerdictBranding = false;
+    }
+  }
+
   return {
     config,
     brandLogoUrl: defaults.brandLogoUrl,
-    hideJudgeMeBranding: mergeFormConfig(stored).hideJudgeMeBranding === true,
+    hideVerdictBranding,
     shopUrl: `https://${shop}`,
     selectedReviews,
     selectedPhotos,
