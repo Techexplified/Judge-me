@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "98eccc305b95a11d2b9dbec18a0681d1"
-name = "Verdict Product Reviews App"
+name = "Verdict-Product Reviews App"
 handle = "verdict-product-reviews"
 application_url = "https://verdict-product-reviews.vercel.app"
 embedded = true
@@ -49,5 +49,5 @@ automatically_update_urls_on_dev = true
 
 [app_proxy]
 url = "https://verdict-product-reviews.vercel.app"
-subpath = "verdict-product-reviews"
+subpath = "judgeme-reviews"
 prefix = "apps"

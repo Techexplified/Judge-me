@@ -5,7 +5,7 @@
 (function () {
   const cfg = window.__VERDICT__ || {};
   const shop = cfg.shop;
-  const API = String(cfg.apiBase || "/apps/verdict-product-reviews").replace(/\/$/, "");
+  const API = String(cfg.apiBase || "/apps/judgeme-reviews").replace(/\/$/, "");
   if (!shop) return;
 
   let resolveConfig;

@@ -28,5 +28,5 @@ export function getOrderStatusWidgetCopy(timing) {
 export function storeReviewUrl(shopDomain) {
   const shop = String(shopDomain ?? "").trim();
   if (!shop) return null;
-  return `https://${shop}/apps/verdict-product-reviews/store-review`;
+  return `https://${shop}/apps/judgeme-reviews/store-review`;
 }

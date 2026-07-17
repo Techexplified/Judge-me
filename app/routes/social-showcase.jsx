@@ -310,7 +310,7 @@ function renderPage(data, shop) {
         if (sessionStorage.getItem(key)) return;
         sessionStorage.setItem(key, '1');
       } catch (e) {}
-      fetch('/apps/verdict-product-reviews/api/public/widget-event', {
+      fetch('/apps/judgeme-reviews/api/public/widget-event', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ shop: shop, event: 'social_showcase_view' }),

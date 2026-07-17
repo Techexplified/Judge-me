@@ -99,7 +99,7 @@ export async function loadReviewsManagementData({ request, session, billing }) {
   return {
     products,
     storeReviews,
-    storeReviewLink: `https://${shop}/apps/verdict-product-reviews/store-review`,
+    storeReviewLink: `https://${shop}/apps/judgeme-reviews/store-review`,
     currentShop: shop,
     translation,
     premium,

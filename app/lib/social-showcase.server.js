@@ -22,7 +22,7 @@ function parseStoredConfig(row) {
 }
 
 export function buildSocialShowcaseShareUrl(shop) {
-  return `https://${shop}/apps/verdict-product-reviews/social-showcase`;
+  return `https://${shop}/apps/judgeme-reviews/social-showcase`;
 }
 
 function formatShopDisplayName(shop) {

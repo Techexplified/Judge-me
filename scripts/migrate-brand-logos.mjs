@@ -64,7 +64,7 @@ for (const row of rows) {
 
     const next = {
       ...config,
-      brandLogoUrl: `/apps/verdict-product-reviews/api/public/shop-asset/${asset.id}`,
+      brandLogoUrl: `/apps/judgeme-reviews/api/public/shop-asset/${asset.id}`,
     };
 
     // Prefer absolute app URL when available (admin + storefront safe).
