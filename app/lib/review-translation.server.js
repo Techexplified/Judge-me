@@ -1,6 +1,6 @@
 import db from "../db.server.js";
 import { getResolvedOpenRouterKey } from "./openrouter.server.js";
-import { hasProAccess, getShopPlanStatus } from "./billing.server.js";
+import { hasProAccess, getShopPlanStatus, checkShopProAccessFast } from "./billing.server.js";
 import { invalidateShopReviewsCache } from "./public-cache.server.js";
 import {
   AUTO_DETECT,
@@ -565,8 +565,7 @@ export async function maybeAutoTranslateReviewData(shop, reviewData) {
 
 /** Load settings + verify premium for translation features. */
 export async function getActiveTranslationContext(shop) {
-  const planStatus = await getShopPlanStatus(shop);
-  const premium = hasProAccess(planStatus);
+  const premium = await checkShopProAccessFast(shop);
   const apiKey = premium ? getResolvedOpenRouterKey() : null;
 
   const settingsRow = await db.settings.findUnique({ where: { shop } });
@@ -584,8 +583,6 @@ export async function getActiveTranslationContext(shop) {
   const canTranslate = premium && Boolean(apiKey);
 
   return {
-    trialStatus: planStatus,
-    planStatus,
     premium,
     apiKey,
     translation,

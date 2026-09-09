@@ -5,6 +5,7 @@
   data-product-name="{{ product.title | escape }}"
   data-shop="{{ shop.permanent_domain }}"
   data-api-base="/apps/judgeme-reviews"
+  data-design-mode="{{ request.design_mode }}"
 ></div>
 <script src="{{ 'QandA-widget.js' | asset_url }}" defer></script>
 {% endif %}

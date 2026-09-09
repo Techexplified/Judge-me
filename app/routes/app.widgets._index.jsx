@@ -142,6 +142,10 @@ export default function WidgetsIndexRoute() {
     [embedNavigate],
   );
 
+  const handleUpgrade = useCallback(() => {
+    embedNavigate("/app/settings");
+  }, [embedNavigate]);
+
   return (
     <WidgetsPage
       {...data}
@@ -149,7 +153,8 @@ export default function WidgetsIndexRoute() {
       onCustomize={handleCustomize}
       onEnableCore={handleEnableCore}
       onRefreshStatus={handleRefreshStatus}
-      isPremium = {data.premium}
+      onUpgrade={handleUpgrade}
+      isPremium={data.premium}
     />
   );
 }

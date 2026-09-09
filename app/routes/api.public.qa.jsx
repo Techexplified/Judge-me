@@ -4,6 +4,7 @@ import {
   normalizeShopifyProductId,
   productIdMatchList,
 } from "../utils/product-id.server";
+import { checkShopProAccessFast } from "../lib/billing.server";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,6 +46,17 @@ export async function loader({ request }) {
 
   try {
     const shopNorm = normalizeShopDomain(shop);
+    const isPro = await checkShopProAccessFast(shopNorm);
+    if (!isPro) {
+      return new Response(JSON.stringify({ ok: false, questions: [], proRequired: true }), {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      });
+    }
+
     const idVariants = productIdMatchList(productId);
     if (idVariants.length === 0) {
       return new Response(JSON.stringify({ questions: [] }), {
@@ -99,6 +111,17 @@ export async function action({ request }) {
     }
 
     const shopNorm = normalizeShopDomain(shop);
+    const isPro = await checkShopProAccessFast(shopNorm);
+    if (!isPro) {
+      return new Response(JSON.stringify({ error: "Q&A requires a Pro Plan" }), {
+        status: 403,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      });
+    }
+
     const pid = normalizeShopifyProductId(productId) || String(productId).trim();
     if (!pid) {
       return new Response(JSON.stringify({ error: "Invalid product" }), {

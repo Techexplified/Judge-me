@@ -68,6 +68,34 @@ function hasActiveShopifyPro(record) {
   );
 }
 
+/**
+ * Ultra-fast, single-query Pro access check for storefront public APIs.
+ * Avoids heavy usage calculations, monthly counts, and DB writes on customer pageviews.
+ */
+export async function checkShopProAccessFast(shop) {
+  if (!shop) return false;
+  try {
+    const record = await db.shop.findUnique({
+      where: { shop },
+      select: {
+        plan: true,
+        subscriptionStatus: true,
+        graceTrialEndsAt: true,
+      },
+    });
+    if (!record) return false;
+    const shopifyPro =
+      record.plan === "pro" &&
+      (!record.subscriptionStatus || ACTIVE_STATUSES.has(record.subscriptionStatus));
+    const graceActive =
+      record.graceTrialEndsAt != null && record.graceTrialEndsAt.getTime() > Date.now();
+    return Boolean(shopifyPro || graceActive);
+  } catch (err) {
+    console.error("[billing] checkShopProAccessFast error:", err);
+    return false;
+  }
+}
+
 function isEligibleForGraceTrial(record) {
   if (!record || record.graceTrialGrantedAt) return false;
   if (hasActiveShopifyPro(record)) return false;

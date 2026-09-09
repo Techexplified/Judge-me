@@ -281,7 +281,7 @@
     return d.innerHTML;
   }
 
-  const FETCH_TIMEOUT_MS = 15000;
+  const FETCH_TIMEOUT_MS = 25000;
 
   async function fetchJson(url) {
     const ctrl = new AbortController();

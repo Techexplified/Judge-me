@@ -141,7 +141,7 @@
     async function loadPayload() {
       if (!reviewsByFilter[mediaFilter]) {
         const res = await fetch(
-          `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=shop&media=${mediaFilter}&limit=${cfg.limit}`,
+          `${API}/api/public/widget-reviews?shop=${encodeURIComponent(shop)}&scope=shop&media=${mediaFilter}&limit=${cfg.limit}&widget=customer-love-page`,
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const text = await res.text();
@@ -151,6 +151,29 @@
         } catch {
           throw new Error("Invalid response from review server");
         }
+
+        if (data && data.proRequired === true) {
+          const isDesignMode = root.dataset.designMode === "true" || window.Shopify?.designMode === true;
+          if (!isDesignMode) {
+            root.style.display = "none";
+            root.innerHTML = "";
+          } else {
+            root.innerHTML = `
+              <div style="border: 2px dashed #cbd5e1; border-radius: 12px; padding: 32px 20px; text-align: center; background: #f8fafc; font-family: system-ui, sans-serif; margin: 20px 0;">
+                <div style="font-size: 28px; margin-bottom: 8px;">🔒</div>
+                <h3 style="margin: 0 0 6px; font-size: 16px; font-weight: 700; color: #1e293b;">Customer's Love Page is a Pro Feature</h3>
+                <p style="margin: 0 auto 16px; font-size: 13px; color: #64748b; max-width: 440px;">
+                  This widget requires a Pro plan. Upgrade in the Verdict Product Reviews app to display it to your store visitors.
+                </p>
+                <span style="display: inline-block; padding: 8px 16px; background: #008060; color: #fff; font-size: 12px; font-weight: 600; border-radius: 6px;">
+                  Pro Plan Required
+                </span>
+              </div>
+            `;
+          }
+          return { proRequired: true, reviews: [], summary: {}, filters: {} };
+        }
+
         if (data && data.error) throw new Error(data.error);
         reviewsByFilter[mediaFilter] = data.reviews || [];
         // Keep summary/filter counts from the richest response (prefer "all").
@@ -170,6 +193,7 @@
 
     async function render() {
       const data = await loadPayload();
+      if (data?.proRequired) return;
       const { reviews = [], summary = {}, filters = {} } = data;
 
       const dist = normalizeDistribution(summary.distribution);
@@ -193,13 +217,13 @@
 
       const collage = cfg.showPhotoCollage
         ? reviews
-            .flatMap((r) => (r.media || []).filter((m) => m.type === "image").slice(0, 1))
-            .slice(0, 5)
-            .map(
-              (m) =>
-                `<button type="button" data-jd-preview="${esc(m.url)}" data-jd-preview-alt="Customer review photo" aria-label="View review photo" style="padding:0;border:none;background:none;cursor:zoom-in;border-radius:8px;overflow:hidden"><img src="${esc(m.url)}" alt="Review photo" style="width:64px;height:64px;object-fit:cover;border-radius:8px;display:block" loading="lazy" /></button>`,
-            )
-            .join("")
+          .flatMap((r) => (r.media || []).filter((m) => m.type === "image").slice(0, 1))
+          .slice(0, 5)
+          .map(
+            (m) =>
+              `<button type="button" data-jd-preview="${esc(m.url)}" data-jd-preview-alt="Customer review photo" aria-label="View review photo" style="padding:0;border:none;background:none;cursor:zoom-in;border-radius:8px;overflow:hidden"><img src="${esc(m.url)}" alt="Review photo" style="width:64px;height:64px;object-fit:cover;border-radius:8px;display:block" loading="lazy" /></button>`,
+          )
+          .join("")
         : "";
 
       const pill = (id, label, count) => `
@@ -304,7 +328,7 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ shop, event: "customer_love_view" }),
             keepalive: true,
-          }).catch(() => {});
+          }).catch(() => { });
         }
       } catch {
         /* ignore */

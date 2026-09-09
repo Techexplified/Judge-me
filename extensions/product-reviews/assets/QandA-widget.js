@@ -2,7 +2,7 @@
   let allQuestions = [];
   let root, API, shop, productId, productName;
   let stylesInjected = false;
-  
+
   // Default configuration (will be overridden by fetched settings)
   let config = {
     heading: "Questions & Answers",
@@ -14,7 +14,7 @@
     cardBackgroundColor: "#ffffff",
     borderRadius: 8,
   };
-  
+
   let currentDisplayLimit = 5;
 
   function injectStyles() {
@@ -255,9 +255,9 @@
   }
 
   function renderShell() {
-    const countBadge = config.showQuestionCount 
-        ? `<span class="qa-count">${allQuestions.length} question${allQuestions.length === 1 ? "" : "s"}</span>`
-        : "";
+    const countBadge = config.showQuestionCount
+      ? `<span class="qa-count">${allQuestions.length} question${allQuestions.length === 1 ? "" : "s"}</span>`
+      : "";
 
     root.innerHTML = `
       <div class="qa-widget">
@@ -373,7 +373,7 @@
     API = (root.dataset.apiBase || "").replace(/\/$/, "");
     productId = root.dataset.productId;
     productName = root.dataset.productName || "";
-    
+
     // Dataset fallbacks
     const fallbackHeading = root.dataset.heading;
     const fallbackLimit = Number(root.dataset.limit);
@@ -413,7 +413,30 @@
           new Promise((r) => setTimeout(() => r(null), 2000)),
         ]),
       ]);
-      
+
+      if (data && data.proRequired === true) {
+        const isDesignMode = root.dataset.designMode === "true" || window.Shopify?.designMode === true;
+        if (!isDesignMode) {
+          root.style.display = "none";
+          root.innerHTML = "";
+          return;
+        } else {
+          root.innerHTML = `
+          <div style="border: 2px dashed #cbd5e1; border-radius: 12px; padding: 32px 20px; text-align: center; background: #f8fafc; font-family: system-ui, sans-serif; margin: 20px 0;">
+            <div style="font-size: 28px; margin-bottom: 8px;">🔒</div>
+            <h3 style="margin: 0 0 6px; font-size: 16px; font-weight: 700; color: #1e293b;">Questions & Answers is a Pro Feature</h3>
+            <p style="margin: 0 auto 16px; font-size: 13px; color: #64748b; max-width: 440px;">
+              This widget requires a Pro plan. Upgrade in the Verdict Product Reviews app to display it to your store visitors.
+            </p>
+            <span style="display: inline-block; padding: 8px 16px; background: #008060; color: #fff; font-size: 12px; font-weight: 600; border-radius: 6px;">
+              Pro Plan Required
+            </span>
+          </div>
+        `;
+          return;
+        }
+      }
+
       allQuestions = Array.isArray(data.questions) ? data.questions : [];
 
       // Merge defaults, remote settings, and dataset fallbacks
@@ -434,7 +457,7 @@
       renderShell();
       bindEvents();
       renderList(allQuestions);
-      
+
     } catch (err) {
       console.error("[QandA] load failed:", err);
       root.innerHTML = `<p class="qa-error">Could not load Questions & Answers.</p>`;

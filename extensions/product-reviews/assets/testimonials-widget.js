@@ -223,7 +223,7 @@
         function updateLayout() {
             perView = getPerView(root);
             root.style.setProperty("--per-view", perView);
-            
+
             // Centering fix: If items don't fill the screen, center them safely
             if (total < perView) {
                 track.style.justifyContent = "center";
@@ -628,6 +628,29 @@
                 ]),
             ]);
 
+            if (data && data.proRequired === true) {
+                const isDesignMode = root.dataset.designMode === "true" || window.Shopify?.designMode === true;
+                if (!isDesignMode) {
+                    root.style.display = "none";
+                    root.innerHTML = "";
+                    return;
+                } else {
+                    root.innerHTML = `
+                      <div style="border: 2px dashed #cbd5e1; border-radius: 12px; padding: 32px 20px; text-align: center; background: #f8fafc; font-family: system-ui, sans-serif; margin: 20px 0;">
+                        <div style="font-size: 28px; margin-bottom: 8px;">🔒</div>
+                        <h3 style="margin: 0 0 6px; font-size: 16px; font-weight: 700; color: #1e293b;">Testimonials is a Pro Feature</h3>
+                        <p style="margin: 0 auto 16px; font-size: 13px; color: #64748b; max-width: 440px;">
+                          This widget requires a Pro plan. Upgrade in the Verdict Product Reviews app to display it to your store visitors.
+                        </p>
+                        <span style="display: inline-block; padding: 8px 16px; background: #008060; color: #fff; font-size: 12px; font-weight: 600; border-radius: 6px;">
+                          Pro Plan Required
+                        </span>
+                      </div>
+                    `;
+                    return;
+                }
+            }
+
             const config = {
                 heading: remoteConfig?.heading || fallbackHeading || "Testimonials",
                 limit: remoteConfig?.limit || fallbackLimit,
@@ -664,13 +687,13 @@
                     if (newReview) {
                         // Add the new review to the beginning of the array
                         reviews.unshift(newReview);
-                        
+
                         // Keep the array length to the limit so we don't break the layout
                         if (reviews.length > config.limit) reviews.pop();
-                        
+
                         // Re-render the widget with the updated array
                         renderWidget({ root, reviews, heading: config.heading, config });
-                        
+
                         // Re-bind the click event to the "Write a Review" button since we overwrote the DOM
                         root.querySelector("#tw-write-review").onclick = () => storeReviewFlow.open();
                     }

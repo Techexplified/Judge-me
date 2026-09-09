@@ -81,6 +81,30 @@
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+
+      if (data && data.proRequired === true) {
+        const isDesignMode = root.dataset.designMode === "true" || window.Shopify?.designMode === true;
+        if (!isDesignMode) {
+          root.style.display = "none";
+          root.innerHTML = "";
+          return;
+        } else {
+          root.innerHTML = `
+          <div style="border: 2px dashed #cbd5e1; border-radius: 12px; padding: 32px 20px; text-align: center; background: #f8fafc; font-family: system-ui, sans-serif; margin: 20px 0;">
+            <div style="font-size: 28px; margin-bottom: 8px;">🔒</div>
+            <h3 style="margin: 0 0 6px; font-size: 16px; font-weight: 700; color: #1e293b;">Video Reviews Slider is a Pro Feature</h3>
+            <p style="margin: 0 auto 16px; font-size: 13px; color: #64748b; max-width: 440px;">
+              This widget requires a Pro plan. Upgrade in the Verdict Product Reviews app to display it to your store visitors.
+            </p>
+            <span style="display: inline-block; padding: 8px 16px; background: #008060; color: #fff; font-size: 12px; font-weight: 600; border-radius: 6px;">
+              Pro Plan Required
+            </span>
+          </div>
+        `;
+          return;
+        }
+      }
+
       const reviews = data.reviews || [];
 
       if (reviews.length === 0) {
@@ -191,7 +215,7 @@
           if (!url) return;
           player.src = url;
           modal.style.display = "flex";
-          player.play().catch(() => {});
+          player.play().catch(() => { });
         });
       });
 
@@ -204,7 +228,7 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ shop, event: "video_slider_view" }),
             keepalive: true,
-          }).catch(() => {});
+          }).catch(() => { });
         }
       } catch {
         /* ignore */

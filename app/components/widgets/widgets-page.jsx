@@ -189,37 +189,69 @@ function WidgetPreview({ previewImage, title }) {
   );
 }
 
-function AlreadyAddedDialog({ widget, onClose }) {
+function AlreadyAddedDialog({ widget, onClose, isPremium, onUpgrade }) {
+  const isPaidWidget = widget.id !== "review-showcase" && widget.id !== "review-translation-hub";
+  const isInactivePro = !isPremium && isPaidWidget;
+
   return (
     <div style={modalStyles.root} role="dialog" aria-modal="true" aria-labelledby="widget-already-added-title">
       <button type="button" style={modalStyles.backdrop} aria-label="Close" onClick={onClose} />
-      <div style={{ ...modalStyles.panel, width: "min(420px, 100%)" }}>
+      <div style={{ ...modalStyles.panel, width: "min(460px, 100%)" }}>
         <div style={{ ...modalStyles.body, padding: "22px 24px 24px" }}>
           <h2 id="widget-already-added-title" style={{ ...type.cardTitle, fontSize: 18, marginBottom: 8 }}>
-            Already added to theme
+            {isInactivePro ? "Inactive on Live Store (Pro Required)" : "Already added to theme"}
           </h2>
-          <p style={{ ...type.cardDesc, margin: 0 }}>
-            <strong style={{ color: "#202223" }}>{widget.title}</strong> is already on your live theme.
-            Open the theme editor if you want to move or customize it.
+          <p style={{ ...type.cardDesc, margin: 0, lineHeight: 1.5 }}>
+            {isInactivePro ? (
+              <>
+                <strong style={{ color: "#202223" }}>{widget.title}</strong> is added in your theme, but is currently inactive because it requires a Pro plan. Upgrade your plan to display this widget to your store visitors.
+              </>
+            ) : (
+              <>
+                <strong style={{ color: "#202223" }}>{widget.title}</strong> is already on your live theme. Open the theme editor if you want to move or customize it.
+              </>
+            )}
           </p>
-          <div style={{ ...modalStyles.footer, paddingTop: 18 }}>
+          <div style={{ ...modalStyles.footer, paddingTop: 18, display: "flex", justifyContent: "flex-end", gap: 10 }}>
             <button
               type="button"
               onClick={onClose}
               style={{
                 padding: "8px 16px",
                 borderRadius: 8,
-                border: "none",
-                background: SHOPIFY_GREEN,
-                color: "#fff",
+                border: `1px solid ${SURFACE_BORDER}`,
+                background: "#fff",
+                color: "#202223",
                 fontFamily: FONT,
                 fontSize: 13,
                 fontWeight: 600,
                 cursor: "pointer",
               }}
             >
-              Got it
+              {isInactivePro ? "Close" : "Got it"}
             </button>
+            {isInactivePro && onUpgrade ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onUpgrade();
+                }}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: SHOPIFY_GREEN,
+                  color: "#fff",
+                  fontFamily: FONT,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Upgrade to Pro
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
@@ -227,9 +259,15 @@ function AlreadyAddedDialog({ widget, onClose }) {
   );
 }
 
-function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlreadyAdded, onCustomize, isPremium }) {
+function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlreadyAdded, onCustomize, isPremium, onUpgrade }) {
   const ctaLabel = getWidgetCtaLabel(widget.id);
-  const installedLabel = widget.id === "review-translation-hub" ? ctaLabel : "Already in theme";
+  const isPaidWidget = widget.id !== "review-showcase" && widget.id !== "review-translation-hub";
+  const isInactivePro = isInstalled && !isPremium && isPaidWidget;
+  const installedLabel = widget.id === "review-translation-hub"
+    ? ctaLabel
+    : isInactivePro
+      ? "Inactive (Pro required)"
+      : "Already in theme";
   const customizable = isWidgetCustomizable(widget.id);
 
   const handleAddClick = () => {
@@ -281,8 +319,10 @@ function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlrea
           </h2>
           <p style={{ ...type.cardDesc, margin: 0 }}>{widget.description}</p>
           {isInstalled ? (
-            <p style={{ ...type.cardDesc, margin: "4px 0 0", color: "#008060", fontWeight: 600 }}>
-              This widget is already added to your theme.
+            <p style={{ ...type.cardDesc, margin: "4px 0 0", color: isInactivePro ? "#b45309" : "#008060", fontWeight: 600 }}>
+              {isInactivePro
+                ? "This widget is added in your theme but inactive on your live store (Pro required)."
+                : "This widget is already added to your theme."}
             </p>
           ) : null}
           <div style={modalStyles.footer}>
@@ -312,24 +352,24 @@ function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlrea
             <button
               type="button"
               onClick={handleAddClick}
-              aria-disabled={isInstalled}
+              aria-disabled={isInstalled && !isInactivePro}
               style={{
                 padding: "10px 16px",
-                paddingRight: !isInstalled && !isPremium && widget.title !== "Review Showcase" ? "58px" : "16px",
+                paddingRight: !isInstalled && !isPremium && isPaidWidget ? "58px" : "16px",
                 position: "relative",
                 borderRadius: 8,
-                border: "none",
-                background: isInstalled ? "#e4e5e7" : SHOPIFY_GREEN,
-                color: isInstalled ? "#6d7175" : "#fff",
+                border: isInactivePro ? "1px solid #fed7aa" : "none",
+                background: isInactivePro ? "#fffbeb" : isInstalled ? "#e4e5e7" : SHOPIFY_GREEN,
+                color: isInactivePro ? "#b45309" : isInstalled ? "#6d7175" : "#fff",
                 fontFamily: FONT,
                 fontSize: 13,
                 fontWeight: 600,
-                cursor: isInstalled ? "not-allowed" : "pointer",
+                cursor: isInstalled && !isInactivePro ? "not-allowed" : "pointer",
                 whiteSpace: "nowrap",
               }}
             >
               {isInstalled ? installedLabel : ctaLabel}
-              {!isInstalled && isPremium && widget.title !== "Review Showcase" && <ProBadge />}
+              {!isInstalled && !isPremium && isPaidWidget && <ProBadge />}
             </button>
           </div>
         </div>
@@ -341,7 +381,13 @@ function WidgetDetailModal({ widget, isInstalled, onClose, onAddToTheme, onAlrea
 function WidgetCard({ widget, isInstalled, onOpen, onAddToTheme, onAlreadyAdded, onCustomize, isPremium }) {
   const [hover, setHover] = useState(false);
   const ctaLabel = getWidgetCtaLabel(widget.id);
-  const installedLabel = widget.id === "review-translation-hub" ? ctaLabel : "Already in theme";
+  const isPaidWidget = widget.id !== "review-showcase" && widget.id !== "review-translation-hub";
+  const isInactivePro = isInstalled && !isPremium && isPaidWidget;
+  const installedLabel = widget.id === "review-translation-hub"
+    ? ctaLabel
+    : isInactivePro
+      ? "Inactive (Pro)"
+      : "Already in theme";
   const customizable = isWidgetCustomizable(widget.id);
 
   const handleAddClick = (event) => {
@@ -448,25 +494,25 @@ function WidgetCard({ widget, isInstalled, onOpen, onAddToTheme, onAlreadyAdded,
           <button
             type="button"
             onClick={handleAddClick}
-            aria-disabled={isInstalled}
+            aria-disabled={isInstalled && !isInactivePro}
             style={{
               padding: "8px 14px",
-              paddingRight: !isInstalled && !isPremium && widget.title !== "Review Showcase" ? "58px" : "14px",
+              paddingRight: !isInstalled && !isPremium && isPaidWidget ? "58px" : "14px",
               position: "relative",
               borderRadius: 8,
-              border: "none",
-              background: isInstalled ? "#e4e5e7" : SHOPIFY_GREEN,
-              color: isInstalled ? "#6d7175" : "#fff",
+              border: isInactivePro ? "1px solid #fed7aa" : "none",
+              background: isInactivePro ? "#fffbeb" : isInstalled ? "#e4e5e7" : SHOPIFY_GREEN,
+              color: isInactivePro ? "#b45309" : isInstalled ? "#6d7175" : "#fff",
               fontFamily: FONT,
               fontSize: 13,
               fontWeight: 600,
-              cursor: isInstalled ? "not-allowed" : "pointer",
+              cursor: isInstalled && !isInactivePro ? "not-allowed" : "pointer",
               whiteSpace: "nowrap",
               flexShrink: 0,
             }}
           >
             {isInstalled ? installedLabel : ctaLabel}
-            {!isInstalled && !isPremium && widget.title !== "Review Showcase" && <ProBadge />}
+            {!isInstalled && !isPremium && isPaidWidget && <ProBadge />}
           </button>
         </div>
       </div>
@@ -479,6 +525,7 @@ export function WidgetsPage({
   onCustomize,
   onEnableCore,
   onRefreshStatus,
+  onUpgrade,
   isPremium,
   widgetSettings,
   themeInstalled,
@@ -622,6 +669,7 @@ export function WidgetsPage({
           onAlreadyAdded={handleAlreadyAdded}
           onCustomize={onCustomize}
           isPremium={isPremium}
+          onUpgrade={onUpgrade}
         />
       ) : null}
 
@@ -629,6 +677,8 @@ export function WidgetsPage({
         <AlreadyAddedDialog
           widget={alreadyAddedWidget}
           onClose={() => setAlreadyAddedWidget(null)}
+          isPremium={isPremium}
+          onUpgrade={onUpgrade}
         />
       ) : null}
 

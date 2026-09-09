@@ -9,6 +9,7 @@ import {
 } from "../lib/public-cache.server.js";
 import { productIdMatchList } from "../utils/product-id.server.js";
 import { normalizeShopDomain } from "../utils/shop.server";
+import { checkShopProAccessFast } from "../lib/billing.server";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -132,6 +133,26 @@ export async function loader({ request }) {
   const media = url.searchParams.get("media") || "all";
   const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
   const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
+  const widget = url.searchParams.get("widget") || "";
+
+  if (media === "video" || scope === "store" || widget === "customer-love-page" || (scope === "shop" && !productId)) {
+    const isPro = await checkShopProAccessFast(shopNorm);
+    if (!isPro) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          proRequired: true,
+          reviews: [],
+          summary: { average: 0, total: 0, distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } },
+          filters: { all: 0, photos: 0, videos: 0, product: 0, store: 0 },
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+  }
   // lite=1 skips filter/summary counts (video slider / testimonials) — fewer DB ops + smaller JSON.
   const lite = url.searchParams.get("lite") === "1" || url.searchParams.get("lite") === "true";
 
