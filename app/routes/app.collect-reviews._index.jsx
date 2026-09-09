@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types, react-hooks/set-state-in-effect */
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   data,
   useActionData,
-  useFetcher,
   useLoaderData,
   useLocation,
   useNavigation,
@@ -15,7 +14,6 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import { normalizeShopDomain } from "../utils/shop.js";
-import { mergeShopifyEmbedParams } from "../utils/shopify-embed-nav.js";
 import { importReviewsLoader, importReviewsAction } from "../lib/import-reviews.server.js";
 import {
   loadOnsiteWidgetMetrics,
@@ -24,12 +22,7 @@ import {
 import { CollectReviewsShell } from "../components/collect-reviews/collect-reviews-shell.jsx";
 import { TabOnsiteWidget } from "../components/collect-reviews/tab-onsite-widget.jsx";
 import { TabReviewForm } from "../components/collect-reviews/tab-review-form.jsx";
-
-const ImportReviewsWizard = lazy(() =>
-  import("../components/collect-reviews/import-reviews-wizard.jsx").then((module) => ({
-    default: module.ImportReviewsWizard,
-  })),
-);
+import { ImportReviewsWizard } from "../components/collect-reviews/import-reviews-wizard.jsx";
 
 const VALID_TABS = new Set(["widget", "review-form", "import"]);
 
@@ -87,20 +80,16 @@ export const loader = async ({ request }) => {
   }
 
   const tab = parseTab(url.searchParams);
-  const needsImportData = tab === "import";
 
   try {
     const [widgetData, importData] = await Promise.all([
       loadOnsiteWidgetMetrics(shop),
-      needsImportData
-        ? importReviewsLoader({ request, ...auth })
-        : Promise.resolve(EMPTY_IMPORT_DATA),
+      importReviewsLoader({ request, ...auth }),
     ]);
 
     return {
       tab,
       widget: widgetData,
-      importDataLoaded: needsImportData,
       ...importData,
     };
   } catch (err) {
@@ -114,18 +103,15 @@ export const loader = async ({ request }) => {
       console.error("[collect-reviews] widget loader failed:", widgetErr);
     }
 
-    if (needsImportData) {
-      try {
-        importData = await importReviewsLoader({ request, ...auth });
-      } catch (importErr) {
-        console.error("[collect-reviews] import loader failed:", importErr);
-      }
+    try {
+      importData = await importReviewsLoader({ request, ...auth });
+    } catch (importErr) {
+      console.error("[collect-reviews] import loader failed:", importErr);
     }
 
     return {
       tab,
       widget,
-      importDataLoaded: needsImportData,
       loaderError: "Some collect review data could not be loaded.",
       ...importData,
     };
@@ -168,11 +154,10 @@ export function shouldRevalidate({
 }) {
   // The import wizard submits "preview" and "import" through a fetcher that
   // returns its own data. Revalidating this route's loader on those submits
-  // re-runs authenticate.admin + the heavy import loader (and the import-data
-  // fetcher) on every click, which in the embedded admin churns/remounts the
-  // wizard and throws the merchant back to step 1. The preview/import results
-  // don't depend on this loader, and a successful import navigates away on its
-  // own, so skip revalidation for those intents.
+  // re-runs authenticate.admin + the import loader on every click, which in
+  // the embedded admin churns/remounts the wizard and throws the merchant
+  // back to step 1. The preview/import results don't depend on this loader,
+  // and a successful import navigates away on its own, so skip revalidation.
   if (formData) {
     const intent = formData.get("_intent") ?? formData.get("intent");
     if (intent === "preview" || intent === "import") return false;
@@ -209,7 +194,6 @@ export default function CollectReviewsPage() {
   const actionData = useActionData();
   const navigation = useNavigation();
   const location = useLocation();
-  const importFetcher = useFetcher();
   const submit = useSubmit();
   const shopify = useAppBridge();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -220,8 +204,6 @@ export default function CollectReviewsPage() {
     navigation.location &&
     isTabOnlySearchChange(location, navigation.location);
   const isPageLoading = navigation.state === "loading" && !isTabSwitch;
-  const importDataLoaded = loaderData?.importDataLoaded === true || Boolean(importFetcher.data);
-  const importDataHref = mergeShopifyEmbedParams("/app/collect-reviews?tab=import", location.search);
   const [draftTiming, setDraftTiming] = useState(null);
   const timing = draftTiming ?? widget.timing;
   const isSaving =
@@ -235,17 +217,6 @@ export default function CollectReviewsPage() {
       shopify?.toast?.show?.("Settings saved");
     }
   }, [actionData, shopify]);
-
-  useEffect(() => {
-    if (
-      activeTab === "import" &&
-      !importDataLoaded &&
-      importFetcher.state === "idle" &&
-      !importFetcher.data
-    ) {
-      importFetcher.load(importDataHref);
-    }
-  }, [activeTab, importDataHref, importDataLoaded, importFetcher]);
 
   const selectTab = useCallback(
     (tabId) => {
@@ -275,21 +246,16 @@ export default function CollectReviewsPage() {
 
   const saveDisabled = activeTab !== "widget" || draftTiming === null || draftTiming === widget.timing;
 
-  const importSource = importFetcher.data ?? loaderData;
   const importWizardProps = {
-    hasPremium: importSource?.hasPremium ?? EMPTY_IMPORT_DATA.hasPremium,
-    planStatus: importSource?.planStatus ?? EMPTY_IMPORT_DATA.planStatus,
-    trialStatus: importSource?.trialStatus ?? EMPTY_IMPORT_DATA.trialStatus,
-    productIndexCount: importSource?.productIndexCount ?? EMPTY_IMPORT_DATA.productIndexCount,
+    hasPremium: loaderData?.hasPremium ?? EMPTY_IMPORT_DATA.hasPremium,
+    planStatus: loaderData?.planStatus ?? EMPTY_IMPORT_DATA.planStatus,
+    trialStatus: loaderData?.trialStatus ?? EMPTY_IMPORT_DATA.trialStatus,
+    productIndexCount: loaderData?.productIndexCount ?? EMPTY_IMPORT_DATA.productIndexCount,
     defaultAutoTranslateImport:
-      importSource?.defaultAutoTranslateImport ?? EMPTY_IMPORT_DATA.defaultAutoTranslateImport,
+      loaderData?.defaultAutoTranslateImport ?? EMPTY_IMPORT_DATA.defaultAutoTranslateImport,
     translationTargetLabel:
-      importSource?.translationTargetLabel ?? EMPTY_IMPORT_DATA.translationTargetLabel,
+      loaderData?.translationTargetLabel ?? EMPTY_IMPORT_DATA.translationTargetLabel,
   };
-  const isImportLoading =
-    activeTab === "import" &&
-    !importDataLoaded &&
-    (importFetcher.state === "loading" || importFetcher.state === "submitting");
 
   return (
     <CollectReviewsShell
@@ -319,13 +285,7 @@ export default function CollectReviewsPage() {
           {activeTab === "review-form" ? <TabReviewForm /> : null}
 
           {activeTab === "import" ? (
-            isImportLoading ? (
-              <CollectReviewsLoading />
-            ) : (
-              <Suspense fallback={<CollectReviewsLoading />}>
-                <ImportReviewsWizard {...importWizardProps} />
-              </Suspense>
-            )
+            <ImportReviewsWizard {...importWizardProps} />
           ) : null}
         </>
       )}
