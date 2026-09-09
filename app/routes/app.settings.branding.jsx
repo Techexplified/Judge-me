@@ -26,6 +26,7 @@ export const loader = async ({ request }) => {
   const shop = normalizeShopDomain(session.shop);
   const { loadShopConfig } = await import("../lib/collect-reviews.server.js");
   const { getShopPlanStatus, serializePlanStatus } = await import("../lib/billing.server.js");
+  const { normalizeBrandLogoUrl } = await import("../lib/shop-assets.server.js");
 
   const stored = await loadShopConfig(shop);
   const formConfig = mergeFormConfig(stored);
@@ -34,7 +35,7 @@ export const loader = async ({ request }) => {
   return {
     shop,
     branding: {
-      brandLogoUrl: formConfig.brandLogoUrl || null,
+      brandLogoUrl: normalizeBrandLogoUrl(formConfig.brandLogoUrl, request) || null,
       starColor: formConfig.starColor,
       radiusPreset: formConfig.radiusPreset,
       borderRadius: formConfig.borderRadius,
@@ -69,17 +70,25 @@ export const action = async ({ request }) => {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const { saveShopBrandLogo } = await import("../lib/shop-assets.server.js");
-    const brandLogoUrl = await saveShopBrandLogo(shop, {
-      mimeType: file.type,
-      buffer,
-      filename: file.name || "brand-logo",
-    });
+    const { saveShopBrandLogo, normalizeBrandLogoUrl } = await import("../lib/shop-assets.server.js");
+    const brandLogoUrl = await saveShopBrandLogo(
+      shop,
+      {
+        mimeType: file.type,
+        buffer,
+        filename: file.name || "brand-logo",
+      },
+      request,
+    );
 
     const stored = await loadShopConfig(shop);
     const merged = mergeFormConfig({ ...stored, brandLogoUrl });
     await saveShopConfig(shop, { ...stored, ...merged, brandLogoUrl });
-    return data({ ok: true, logoUploaded: true, brandLogoUrl });
+    return data({
+      ok: true,
+      logoUploaded: true,
+      brandLogoUrl: normalizeBrandLogoUrl(brandLogoUrl, request),
+    });
   }
 
   if (intent === "removeBrandLogo") {

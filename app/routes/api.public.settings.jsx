@@ -52,7 +52,7 @@ export const loader = async ({ request }) => {
     const { normalizeBrandLogoUrl } = await import("../lib/shop-assets.server.js");
     config = {
       ...config,
-      brandLogoUrl: normalizeBrandLogoUrl(config.brandLogoUrl),
+      brandLogoUrl: normalizeBrandLogoUrl(config.brandLogoUrl, request),
     };
   }
 

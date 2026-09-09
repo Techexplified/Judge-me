@@ -7,47 +7,52 @@ export function shopAssetPublicPath(assetId) {
 
 /**
  * Absolute public URL for a shop asset.
- * Prefer SHOPIFY_APP_URL so logos work in admin iframe AND storefront
- * (proxy-relative /apps/... paths break inside the Shopify admin).
+ * If request is provided, uses its origin. Otherwise returns relative path.
  */
-export function resolveShopAssetAbsoluteUrl(assetId) {
+export function resolveShopAssetAbsoluteUrl(assetId, request) {
   const path = shopAssetPublicPath(assetId);
-  const base = String(process.env.SHOPIFY_APP_URL || "").replace(/\/$/, "");
-  if (base) return `${base}${path}`;
-  // Fallback: storefront app-proxy path (works on merchant store only).
-  return `/apps/judgeme-reviews${path}`;
+  if (request) {
+    try {
+      const origin = new URL(request.url).origin;
+      return `${origin}${path}`;
+    } catch {}
+  }
+  return path;
 }
 
 /**
- * @param {Request} request
+ * @param {Request} [request]
  * @param {string} assetId
  */
 export function shopAssetPublicUrl(request, assetId) {
-  const base = String(process.env.SHOPIFY_APP_URL || "").replace(/\/$/, "");
-  if (base) return `${base}${shopAssetPublicPath(assetId)}`;
-  const origin = new URL(request.url).origin;
-  return `${origin}${shopAssetPublicPath(assetId)}`;
+  return resolveShopAssetAbsoluteUrl(assetId, request);
 }
 
 /**
  * Normalize a stored brandLogoUrl for display (admin or storefront).
- * Converts legacy proxy-relative paths to absolute app URLs.
+ * Converts legacy proxy-relative paths (/apps/judgeme-reviews/..., /apps/verdict-product-reviews/..., https://.../shop-asset/...)
+ * to a clean relative path for admin or absolute URL when request is provided.
  * @param {string | null | undefined} url
+ * @param {Request} [request]
  */
-export function normalizeBrandLogoUrl(url) {
+export function normalizeBrandLogoUrl(url, request) {
   if (!url || typeof url !== "string") return url || null;
-  if (url.startsWith("data:") || url.startsWith("http://") || url.startsWith("https://")) {
-    return url;
-  }
-  const base = String(process.env.SHOPIFY_APP_URL || "").replace(/\/$/, "");
-  if (!base) return url;
+  if (url.startsWith("data:")) return url;
 
-  if (url.startsWith("/apps/judgeme-reviews/api/public/shop-asset/")) {
-    return `${base}${url.replace(/^\/apps\/verdict-product-reviews/, "")}`;
+  // Extract asset id if this is any shop-asset URL format
+  const match = url.match(/\/api\/public\/shop-asset\/([^/?#]+)/);
+  if (match) {
+    const assetId = match[1];
+    const path = `/api/public/shop-asset/${assetId}`;
+    if (request) {
+      try {
+        const origin = new URL(request.url).origin;
+        return `${origin}${path}`;
+      } catch {}
+    }
+    return path;
   }
-  if (url.startsWith("/api/public/shop-asset/")) {
-    return `${base}${url}`;
-  }
+
   return url;
 }
 

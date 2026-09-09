@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types, jsx-a11y/label-has-associated-control */
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
-import { Upload } from "lucide-react";
+import { Upload, RefreshCw, Trash2, Star } from "lucide-react";
 import {
   CORNER_PRESET_OPTIONS,
   TYPOGRAPHY_OPTIONS,
@@ -54,13 +54,14 @@ const styles = {
     color: "#6d7175",
   },
   styleCard: {
-    padding: 20,
-    borderRadius: 12,
+    padding: 24,
+    borderRadius: 14,
     border: "1px solid #e5ebe8",
     background: "#fff",
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
   },
   fieldBlock: {
-    marginBottom: 22,
+    marginBottom: 24,
   },
   fieldLabel: {
     display: "block",
@@ -75,20 +76,20 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: 10,
-    maxWidth: 280,
-    padding: "8px 12px",
-    border: "1px solid #e5ebe8",
+    width: 170,
+    padding: "6px 12px",
+    border: "1px solid #d1d5db",
     borderRadius: 10,
     background: "#fff",
   },
   colorSwatch: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     borderRadius: 6,
     overflow: "hidden",
     flexShrink: 0,
     cursor: "pointer",
-    border: "1px solid #e5ebe8",
+    border: "1px solid #e2e8f0",
     display: "block",
   },
   hexInput: {
@@ -97,29 +98,31 @@ const styles = {
     outline: "none",
     fontSize: 13,
     fontFamily: APP_FONT,
-    fontWeight: 500,
-    color: "#202223",
+    fontWeight: 600,
+    color: "#1e293b",
     background: "transparent",
     minWidth: 0,
+    textTransform: "uppercase",
   },
   cornerGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-    gap: 10,
-    maxWidth: 360,
+    gap: 12,
+    maxWidth: 420,
   },
   select: {
     width: "100%",
-    maxWidth: 360,
-    padding: "10px 12px",
+    maxWidth: 380,
+    padding: "10px 14px",
     borderRadius: 10,
-    border: "1px solid #e5ebe8",
+    border: "1px solid #d1d5db",
     background: "#fff",
     fontSize: 14,
     fontFamily: APP_FONT,
     fontWeight: 500,
     color: "#202223",
     cursor: "pointer",
+    outline: "none",
   },
   footerRow: {
     display: "flex",
@@ -127,8 +130,8 @@ const styles = {
     justifyContent: "space-between",
     gap: 16,
     borderTop: "1px solid #f0f2f1",
-    marginTop: 4,
-    paddingTop: 18,
+    marginTop: 6,
+    paddingTop: 20,
   },
   footerLabel: {
     display: "flex",
@@ -155,24 +158,24 @@ const styles = {
   actions: {
     display: "flex",
     justifyContent: "flex-end",
-    marginTop: 8,
+    marginTop: 12,
   },
 };
 
 function CornerPreview({ id, selected }) {
   const radiusById = {
     sharp: 0,
-    slight: 5,
+    slight: 4,
     default: 8,
     rounded: 999,
   };
   return (
     <span
       style={{
-        width: 28,
-        height: 28,
-        border: `2px solid ${selected ? SHOPIFY_GREEN : "#94A3B8"}`,
-        background: selected ? "#D1FAE5" : "#F8FAFC",
+        width: 26,
+        height: 26,
+        border: `2px solid ${selected ? SHOPIFY_GREEN : "#94a3b8"}`,
+        background: selected ? "#d1fae5" : "#f8fafc",
         borderRadius: radiusById[id] ?? 8,
         boxSizing: "border-box",
       }}
@@ -181,79 +184,244 @@ function CornerPreview({ id, selected }) {
 }
 
 function LogoUploadBox({ logoUrl, uploading, onPick, onDrop, onRemove }) {
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={onPick}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={onDrop}
-        disabled={uploading}
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  if (uploading) {
+    return (
+      <div
         style={{
           width: "100%",
-          maxWidth: 420,
-          minHeight: 120,
-          padding: logoUrl ? 20 : 28,
-          border: "2px dashed #d1d5db",
-          borderRadius: 12,
-          background: "#fafbfa",
-          cursor: uploading ? "wait" : "pointer",
+          maxWidth: 480,
+          minHeight: 110,
+          padding: 24,
+          borderRadius: 14,
+          border: "1px solid #e5ebe8",
+          background: "#fff",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           gap: 10,
           fontFamily: APP_FONT,
-          opacity: uploading ? 0.7 : 1,
         }}
       >
-        {logoUrl ? (
-          <img
-            src={logoUrl}
-            alt="Brand logo"
-            style={{ maxHeight: 56, maxWidth: "100%", objectFit: "contain" }}
-          />
-        ) : (
-          <>
-            <span
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                background: "#ecfdf5",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Upload size={18} color={SHOPIFY_GREEN} />
-            </span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#202223" }}>
-              Upload your logo
-            </span>
-            <span style={{ fontSize: 12, color: "#94a3b8" }}>PNG, SVG, JPG · Max 2MB</span>
-          </>
-        )}
-      </button>
-      {logoUrl ? (
-        <button
-          type="button"
-          onClick={onRemove}
+        <div
           style={{
-            marginTop: 10,
-            border: "none",
-            background: "transparent",
-            color: "#dc2626",
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: "pointer",
-            fontFamily: APP_FONT,
-            padding: 0,
+            width: 28,
+            height: 28,
+            border: "3px solid #e5ebe8",
+            borderTopColor: SHOPIFY_GREEN,
+            borderRadius: "50%",
+            animation: "jd-spin 0.8s linear infinite",
           }}
-        >
-          Remove logo
-        </button>
-      ) : null}
+        />
+        <span style={{ fontSize: 13, fontWeight: 600, color: "#6d7175" }}>
+          Uploading logo...
+        </span>
+      </div>
+    );
+  }
+
+  if (logoUrl) {
+    return (
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 480,
+          background: "#fff",
+          border: "1px solid #e5ebe8",
+          borderRadius: 14,
+          padding: "16px 20px",
+          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 0 }}>
+          <div
+            style={{
+              width: 68,
+              height: 68,
+              borderRadius: 10,
+              border: "1px solid #e2e8f0",
+              background: "#f8fafc",
+              padding: 8,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              overflow: "hidden",
+            }}
+          >
+            <img
+              src={logoUrl}
+              alt="Brand logo"
+              style={{
+                maxHeight: "100%",
+                maxWidth: "100%",
+                objectFit: "contain",
+              }}
+            />
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>
+                Brand Logo
+              </span>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: SHOPIFY_GREEN,
+                  background: "#ecfdf5",
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  border: "1px solid #d1fae5",
+                }}
+              >
+                Active
+              </span>
+            </div>
+            <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.4 }}>
+              Shown on review forms & widgets
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={onPick}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 14px",
+              borderRadius: 8,
+              border: "1px solid #d1d5db",
+              background: "#fff",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#374151",
+              cursor: "pointer",
+              fontFamily: APP_FONT,
+              transition: "all 0.15s ease",
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = "#f9fafb";
+              e.currentTarget.style.borderColor = "#9ca3af";
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = "#fff";
+              e.currentTarget.style.borderColor = "#d1d5db";
+            }}
+          >
+            <RefreshCw size={13} />
+            Replace
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 14px",
+              borderRadius: 8,
+              border: "1px solid #fecaca",
+              background: "#fef2f2",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#dc2626",
+              cursor: "pointer",
+              fontFamily: APP_FONT,
+              transition: "all 0.15s ease",
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = "#fee2e2";
+              e.currentTarget.style.borderColor = "#f87171";
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = "#fef2f2";
+              e.currentTarget.style.borderColor = "#fecaca";
+            }}
+          >
+            <Trash2 size={13} />
+            Remove
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={onPick}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragOver(true);
+      }}
+      onDragLeave={() => setIsDragOver(false)}
+      onDrop={(e) => {
+        setIsDragOver(false);
+        onDrop(e);
+      }}
+      style={{
+        width: "100%",
+        maxWidth: 480,
+        padding: "32px 24px",
+        borderRadius: 14,
+        border: `2px dashed ${isDragOver ? SHOPIFY_GREEN : "#d1d5db"}`,
+        background: isDragOver ? "#f0fdf4" : "#fafbfa",
+        cursor: "pointer",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 10,
+        fontFamily: APP_FONT,
+        transition: "all 0.2s ease",
+      }}
+      onMouseOver={(e) => {
+        if (!isDragOver) {
+          e.currentTarget.style.background = "#f4f7f5";
+          e.currentTarget.style.borderColor = "#9ca3af";
+        }
+      }}
+      onMouseOut={(e) => {
+        if (!isDragOver) {
+          e.currentTarget.style.background = "#fafbfa";
+          e.currentTarget.style.borderColor = "#d1d5db";
+        }
+      }}
+    >
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 12,
+          background: "#ecfdf5",
+          border: "1px solid #d1fae5",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: SHOPIFY_GREEN,
+        }}
+      >
+        <Upload size={20} />
+      </div>
+      <div style={{ textAlign: "center" }}>
+        <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#1e293b" }}>
+          Click to upload or drag & drop
+        </p>
+        <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
+          PNG, SVG, JPG or WebP (max 2MB)
+        </p>
+      </div>
     </div>
   );
 }
@@ -447,35 +615,61 @@ export function BrandingSettingsPanel({
         <div style={styles.styleCard}>
           <div style={styles.fieldBlock}>
             <span style={styles.fieldLabel}>Star rating</span>
-            <div style={styles.colorRow}>
-              <label style={styles.colorSwatch}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+              <div style={styles.colorRow}>
+                <label style={styles.colorSwatch}>
+                  <input
+                    type="color"
+                    value={/^#[0-9A-Fa-f]{6}$/.test(hex) ? hex : "#F59E0B"}
+                    onChange={(e) => applyStarColor(e.target.value)}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      margin: -4,
+                      padding: 0,
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  />
+                </label>
                 <input
-                  type="color"
-                  value={/^#[0-9A-Fa-f]{6}$/.test(hex) ? hex : "#F59E0B"}
-                  onChange={(e) => applyStarColor(e.target.value)}
-                  style={{
-                    width: 40,
-                    height: 40,
-                    margin: -4,
-                    padding: 0,
-                    border: "none",
-                    cursor: "pointer",
+                  type="text"
+                  value={hex}
+                  aria-label="Star color hex code"
+                  placeholder="Hex code"
+                  onChange={(e) => setHex(e.target.value)}
+                  onBlur={() => {
+                    const n = normalizeHex(hex);
+                    if (n) applyStarColor(n);
+                    else setHex(draft.starColor);
                   }}
+                  style={styles.hexInput}
                 />
-              </label>
-              <input
-                type="text"
-                value={hex}
-                aria-label="Star color hex code"
-                placeholder="Hex code"
-                onChange={(e) => setHex(e.target.value)}
-                onBlur={() => {
-                  const n = normalizeHex(hex);
-                  if (n) applyStarColor(n);
-                  else setHex(draft.starColor);
+              </div>
+
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 3,
+                  padding: "7px 14px",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 10,
                 }}
-                style={styles.hexInput}
-              />
+              >
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <Star
+                    key={i}
+                    size={16}
+                    fill={draft.starColor || "#F59E0B"}
+                    color={draft.starColor || "#F59E0B"}
+                  />
+                ))}
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginLeft: 6 }}>
+                  5.0 Preview
+                </span>
+              </div>
             </div>
           </div>
 
@@ -574,6 +768,10 @@ export function BrandingSettingsPanel({
       </div>
 
       <style>{`
+        @keyframes jd-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
         @media (max-width: 720px) {
           .jd-branding-section {
             grid-template-columns: 1fr !important;

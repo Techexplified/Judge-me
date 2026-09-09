@@ -94,7 +94,7 @@ export async function loader({ params, request }) {
     });
   }
 
-  return new Response(body, {
+  return new Response(new Uint8Array(body.buffer, body.byteOffset, body.byteLength), {
     status: 200,
     headers: assetHeaders(meta, {
       contentLength: body.length,
