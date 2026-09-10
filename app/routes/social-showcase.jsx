@@ -75,7 +75,7 @@ function renderPage(data, shop) {
       : `<div class="empty-reviews">No featured reviews yet.</div>`;
 
   const logoHtml = brandLogoUrl
-    ? `<img src="${esc(brandLogoUrl)}" alt="${storeName}" class="logo-img" />`
+    ? `<img src="${esc(brandLogoUrl)}" alt="${storeName}" class="logo-img" onerror="this.onerror=null;this.style.display='none';var fb=this.nextElementSibling;if(fb)fb.style.display='flex';" /><div class="logo-fallback" style="display:none">${logoInitials}</div>`
     : `<div class="logo-fallback">${logoInitials}</div>`;
 
   return `<!DOCTYPE html>
@@ -109,7 +109,11 @@ function renderPage(data, shop) {
       height: 72px;
       border-radius: 50%;
       margin: 0 auto 14px;
-      object-fit: cover;
+      object-fit: contain;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      box-sizing: border-box;
+      padding: 6px;
     }
     .logo-fallback {
       display: flex;

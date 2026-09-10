@@ -37,7 +37,7 @@ function formatShopDisplayName(shop) {
     .join(" ");
 }
 
-function buildConfigDefaults(stored) {
+function buildConfigDefaults(stored, request) {
   const formConfig = mergeFormConfig(stored);
   return {
     storeName: stored.storeProfile?.storeName?.trim() || "",
@@ -48,6 +48,7 @@ function buildConfigDefaults(stored) {
       "",
     brandLogoUrl: normalizeBrandLogoUrl(
       formConfig.brandLogoUrl || stored.brandLogoUrl || null,
+      request,
     ),
   };
 }
@@ -124,7 +125,7 @@ export function serializeShowcaseReview(review) {
 export async function loadSocialShowcaseAdminData({ shop, request }) {
   const row = await db.settings.findUnique({ where: { shop } });
   const stored = parseStoredConfig(row);
-  const defaults = buildConfigDefaults(stored);
+  const defaults = buildConfigDefaults(stored, request);
   const allReviews = await loadPublishedReviews(shop, request);
   const photoCandidates = flattenPhotoCandidates(allReviews);
   const validReviewIds = allReviews.map((r) => r.id);
@@ -183,7 +184,7 @@ export async function saveSocialShowcaseConfig({ shop, payload }) {
 export async function resolveSocialShowcasePublicData({ shop, request }) {
   const row = await db.settings.findUnique({ where: { shop } });
   const stored = parseStoredConfig(row);
-  const defaults = buildConfigDefaults(stored);
+  const defaults = buildConfigDefaults(stored, request);
   const allReviews = await loadPublishedReviews(shop, request);
   const validReviewIds = allReviews.map((r) => r.id);
   const photoCandidates = flattenPhotoCandidates(allReviews);
@@ -231,10 +232,10 @@ export async function resolveSocialShowcasePublicData({ shop, request }) {
   };
 }
 
-export async function toggleShowcaseReview({ shop, reviewId, selected }) {
+export async function toggleShowcaseReview({ shop, reviewId, selected, request }) {
   const row = await db.settings.findUnique({ where: { shop } });
   const stored = parseStoredConfig(row);
-  const defaults = buildConfigDefaults(stored);
+  const defaults = buildConfigDefaults(stored, request);
   let config = mergeSocialShowcaseConfig(stored, {
     storeName: defaults.storeName || formatShopDisplayName(shop),
     accentColor: defaults.accentColor,

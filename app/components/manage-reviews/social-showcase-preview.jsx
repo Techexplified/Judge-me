@@ -75,34 +75,43 @@ export function SocialShowcasePreview({ config, brandLogoUrl, summary, reviewCan
           <img
             src={brandLogoUrl}
             alt=""
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+              if (e.currentTarget.nextElementSibling) {
+                e.currentTarget.nextElementSibling.style.display = "flex";
+              }
+            }}
             style={{
               width: 64,
               height: 64,
               borderRadius: "50%",
-              objectFit: "cover",
+              objectFit: "contain",
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              boxSizing: "border-box",
+              padding: 4,
               margin: "0 auto 12px",
               display: "block",
             }}
           />
-        ) : (
-          <div
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: "50%",
-              margin: "0 auto 12px",
-              background: "#eef2ff",
-              color: "#4338ca",
-              fontWeight: 800,
-              fontSize: 20,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {initials(config.storeName)}
-          </div>
-        )}
+        ) : null}
+        <div
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: "50%",
+            margin: "0 auto 12px",
+            background: "#eef2ff",
+            color: "#4338ca",
+            fontWeight: 800,
+            fontSize: 20,
+            display: brandLogoUrl ? "none" : "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {initials(config.storeName)}
+        </div>
         <h3 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, color: "#202223" }}>
           {config.storeName || "Your store"}
         </h3>
